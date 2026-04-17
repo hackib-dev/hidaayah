@@ -43,7 +43,18 @@ export interface ReflectPostsResponse {
 }
 
 export interface FetchReflectFeedParams {
-  tab?: 'newest' | 'latest' | 'following' | 'draft' | 'favorite' | 'most_popular' | 'only_room_members' | 'public' | 'feed' | 'trending' | 'popular';
+  tab?:
+    | 'newest'
+    | 'latest'
+    | 'following'
+    | 'draft'
+    | 'favorite'
+    | 'most_popular'
+    | 'only_room_members'
+    | 'public'
+    | 'feed'
+    | 'trending'
+    | 'popular';
   page?: number;
   limit?: number;
   languages?: number[];

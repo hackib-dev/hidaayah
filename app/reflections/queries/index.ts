@@ -32,7 +32,9 @@ export const fetchBookmarks = async (
 ): Promise<ListBookmarksResponse> => {
   // API enforces first <= 20
   const safeParams = { ...params, first: Math.min(params.first ?? 20, 20) };
-  const response = await userApi.get<ListBookmarksResponse>('/v1/bookmarks', { params: safeParams });
+  const response = await userApi.get<ListBookmarksResponse>('/v1/bookmarks', {
+    params: safeParams
+  });
   return response.data;
 };
 
@@ -45,9 +47,8 @@ export const fetchAllBookmarks = async (
   do {
     const res = await fetchBookmarks({ ...baseParams, first: 20, after });
     all.push(...res.data);
-    after = res.pagination.hasNextPage && res.pagination.endCursor
-      ? res.pagination.endCursor
-      : undefined;
+    after =
+      res.pagination.hasNextPage && res.pagination.endCursor ? res.pagination.endCursor : undefined;
   } while (after);
   return all;
 };

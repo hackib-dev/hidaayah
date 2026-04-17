@@ -62,8 +62,8 @@ export interface TafsirEntry {
 }
 
 export interface TafsirResponse {
-  tafsir?: TafsirEntry;        // by_ayah endpoint returns singular object
-  tafsirs?: TafsirEntry[];     // by_chapter endpoint returns array
+  tafsir?: TafsirEntry; // by_ayah endpoint returns singular object
+  tafsirs?: TafsirEntry[]; // by_chapter endpoint returns array
   pagination?: ContentPagination;
 }
 

@@ -226,16 +226,16 @@ export default function ReflectionsPage() {
                               expandedId !== post.id && 'max-h-16'
                             )}
                           >
-                            <p className="text-sm text-foreground/80 leading-relaxed">{post.body}</p>
+                            <p className="text-sm text-foreground/80 leading-relaxed">
+                              {post.body}
+                            </p>
                             {expandedId !== post.id && (
                               <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-card to-transparent" />
                             )}
                           </div>
 
                           <button
-                            onClick={() =>
-                              setExpandedId(expandedId === post.id ? null : post.id)
-                            }
+                            onClick={() => setExpandedId(expandedId === post.id ? null : post.id)}
                             className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors font-semibold"
                           >
                             {expandedId === post.id ? 'Show less' : 'Read more'}

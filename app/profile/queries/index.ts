@@ -1,5 +1,10 @@
 import Axios from 'axios';
-import { userApi, reflectApi, QF_OAUTH_BASE_URL, USER_TOKEN_KEY } from '@/app/apiService/quranFoundationService';
+import {
+  userApi,
+  reflectApi,
+  QF_OAUTH_BASE_URL,
+  USER_TOKEN_KEY
+} from '@/app/apiService/quranFoundationService';
 import type {
   FetchStreakParams,
   StreakResponse,
