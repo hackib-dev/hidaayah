@@ -81,7 +81,9 @@ export default function BookmarksPage() {
               Saved Verses
             </h1>
             <p className="text-sm text-muted-foreground">
-              {fetching ? '...' : `${bookmarks.length} verse${bookmarks.length !== 1 ? 's' : ''} saved`}
+              {fetching
+                ? '...'
+                : `${bookmarks.length} verse${bookmarks.length !== 1 ? 's' : ''} saved`}
             </p>
           </motion.div>
 

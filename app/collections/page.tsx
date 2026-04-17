@@ -260,7 +260,9 @@ export default function CollectionsPage() {
 
                           <div className="space-y-1">
                             <h3 className="font-bold text-foreground">{collection.label}</h3>
-                            <p className="text-xs text-muted-foreground">{collection.description}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {collection.description}
+                            </p>
                           </div>
 
                           <div className="flex items-center justify-between">
