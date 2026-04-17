@@ -40,8 +40,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
-  const redirectToOAuth = () => {
-    window.location.href = buildAuthorizeUrl(REDIRECT_URI);
+  const redirectToOAuth = async () => {
+    const url = await buildAuthorizeUrl(REDIRECT_URI);
+    window.location.href = url;
   };
 
   const login = async () => redirectToOAuth();

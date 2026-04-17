@@ -69,7 +69,8 @@ export const ensureContentToken = async (): Promise<string> => {
 // Adds x-client-id on every request. For content/search APIs, also fetches
 // and attaches a client-credentials token if none is in localStorage.
 // Content APIs use the production client ID; user APIs use the auth client ID
-const CONTENT_CLIENT_ID = '35b5c830-4a8d-4e57-9588-946d695080a4';
+const CONTENT_CLIENT_ID =
+  process.env.QF_CONTENT_CLIENT_ID || process.env.NEXT_PUBLIC_QF_CLIENT_ID || '';
 
 const addAuthHeaders =
   (fetchToken: boolean) =>
