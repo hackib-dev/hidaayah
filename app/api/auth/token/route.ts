@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// ─── Environment selection ────────────────────────────────────────────────────
+// Prefer explicit QF_ENV; fall back to inferring from the public OAuth base URL.
+const isPrelive =
+  process.env.QF_ENV === 'prelive' ||
+  (process.env.NEXT_PUBLIC_QF_OAUTH_BASE_URL ?? '').includes('prelive');
+
+const QF_ENV = isPrelive ? 'prelive' : 'production';
+
+const AUTH_BASE_URL = isPrelive
+  ? 'https://prelive-oauth2.quran.foundation'
+  : 'https://oauth2.quran.foundation';
+
 // User auth client — authorization_code + refresh_token grants
-const AUTH_OAUTH_BASE =
-  process.env.NEXT_PUBLIC_QF_OAUTH_BASE_URL || 'https://oauth2.quran.foundation';
 const AUTH_CLIENT_ID = process.env.NEXT_PUBLIC_QF_CLIENT_ID || '';
 const AUTH_CLIENT_SECRET = process.env.QF_CLIENT_SECRET || '';
 
 // Content client — client_credentials grant only
-const CONTENT_OAUTH_BASE = 'https://oauth2.quran.foundation';
 const CONTENT_CLIENT_ID = process.env.QF_CONTENT_CLIENT_ID || '';
 const CONTENT_CLIENT_SECRET = process.env.QF_CONTENT_CLIENT_SECRET || '';
 
@@ -17,7 +26,8 @@ export async function POST(req: NextRequest) {
 
   const isContentGrant = grant_type === 'client_credentials';
 
-  const oauthBase = isContentGrant ? CONTENT_OAUTH_BASE : AUTH_OAUTH_BASE;
+  // Both grants hit the same environment's auth server
+  const oauthBase = AUTH_BASE_URL;
   const clientId = isContentGrant ? CONTENT_CLIENT_ID : AUTH_CLIENT_ID;
   const clientSecret = isContentGrant ? CONTENT_CLIENT_SECRET : AUTH_CLIENT_SECRET;
 
@@ -40,10 +50,14 @@ export async function POST(req: NextRequest) {
     body: params.toString()
   });
 
-  const data = await upstream.json();
+  const data: Record<string, unknown> = await upstream.json();
 
   if (!upstream.ok) {
-    console.error('[/api/auth/token] OAuth error:', JSON.stringify(data));
+    // Log only safe diagnostics — never log tokens, codes, or secrets
+    // eslint-disable-next-line no-console
+    console.error(
+      `[QF token][${QF_ENV}] /oauth2/token — grant: ${grant_type} — status: ${upstream.status} — error: ${data.error ?? 'unknown'}`
+    );
   }
 
   return NextResponse.json(data, { status: upstream.status });

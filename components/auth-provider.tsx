@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { buildAuthorizeUrl } from '@/app/apiService/quranFoundationService/oauth';
-import { clearToken } from '@/app/apiService/quranFoundationService';
+import { clearToken, clearUserTokens } from '@/app/apiService/quranFoundationService';
 
 const REDIRECT_URI =
   process.env.NEXT_PUBLIC_QF_OAUTH_REDIRECT_URI || 'http://localhost:3000/callback';
@@ -57,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     localStorage.removeItem(USER_STORAGE_KEY);
     clearToken();
+    clearUserTokens();
   };
 
   return (
