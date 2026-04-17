@@ -135,7 +135,7 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
       })
       .catch(() => setError('Failed to fetch guidance. Please check your connection.'))
       .finally(() => setLoading(false));
-  }, [emotion, situation]);
+  }, [emotion, situation, color]);
 
   const handleLoadTafsir = async () => {
     if (!guidance || guidance.tafsir !== null) {

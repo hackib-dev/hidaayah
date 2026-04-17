@@ -77,6 +77,8 @@ interface AppStateContextType {
 
 const AppStateContext = createContext<AppStateContextType | null>(null);
 
+const FEATURED_VERSE_KEYS = ['13:28', '94:6', '65:3', '2:286', '39:53'];
+
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [features] = useState<FeatureItem[]>([
     {
@@ -122,9 +124,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       ref: 'At-Talaq 65:3'
     }
   ];
-
-  // Featured verse keys to fetch from the API
-  const FEATURED_VERSE_KEYS = ['13:28', '94:6', '65:3', '2:286', '39:53'];
 
   const [verses, setVerses] = useState<VerseItem[]>(FALLBACK_VERSES);
 

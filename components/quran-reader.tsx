@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import {
   Play,
@@ -18,14 +18,12 @@ import {
   Type,
   Minus,
   Plus,
-  Loader2,
-  ChevronLeft,
-  ChevronRight
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchVersesByChapter, fetchChapter } from '@/app/quran/queries';
 import { fetchTafsirByChapter } from '@/app/guidance/queries';
-import { createBookmark, deleteBookmark, fetchBookmarks } from '@/app/reflections/queries';
+import { createBookmark, deleteBookmark } from '@/app/reflections/queries';
 import type { Verse, Chapter } from '@/app/quran/types';
 import type { TafsirEntry } from '@/app/guidance/types';
 import { QF_DEFAULT_TRANSLATION_ID, QF_DEFAULT_TAFSIR_ID, QF_DEFAULT_MUSHAF_ID } from '@/config';
@@ -53,7 +51,6 @@ export function QuranReader({ surahNumber }: QuranReaderProps) {
   const [arabicSize, setArabicSize] = useState(3);
   const [showTransliteration, setShowTransliteration] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Load chapter info + first page of verses
   useEffect(() => {

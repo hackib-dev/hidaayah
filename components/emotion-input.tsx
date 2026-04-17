@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Heart, Cloud, Zap, Sunrise, Moon, Wind, Sparkles, ArrowRight, Mic } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Cloud, Zap, Sunrise, Moon, Wind, Sparkles, ArrowRight, Mic } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const emotions = [
   {
