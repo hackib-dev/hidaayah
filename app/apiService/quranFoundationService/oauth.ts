@@ -27,7 +27,7 @@ export const fetchClientCredentialsToken = async (): Promise<string> => {
 // matching the official QF example app pattern.
 export const buildAuthorizeUrl = (redirectUri: string): string => {
   const clientId = process.env.NEXT_PUBLIC_QF_CLIENT_ID || '';
-  const scopes = ['openid', 'offline_access', 'bookmark', 'collection', 'user', 'streak'].join(' ');
+  const scopes = ['offline_access', 'bookmark', 'collection', 'user', 'streak'].join(' ');
 
   // CSRF state stored in sessionStorage, validated in /callback
   const state = crypto.randomUUID();
