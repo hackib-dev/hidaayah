@@ -46,15 +46,13 @@ export const fetchClientCredentialsToken = async (): Promise<string> => {
 // for validation in /callback.
 export const buildAuthorizeUrl = async (redirectUri: string): Promise<string> => {
   const clientId = process.env.NEXT_PUBLIC_QF_CLIENT_ID || '';
-  const scopes = ['openid', 'offline_access', 'bookmark', 'collection', 'user', 'streak'].join(' ');
+  const scopes = ['offline_access', 'bookmark', 'collection', 'user', 'streak'].join(' ');
 
   const { codeVerifier, codeChallenge } = await generatePkcePair();
   const state = randomString(16);
-  const nonce = randomString(16);
 
   // Persist for callback validation
   sessionStorage.setItem('oauth_state', state);
-  sessionStorage.setItem('oauth_nonce', nonce);
   sessionStorage.setItem('oauth_code_verifier', codeVerifier);
 
   const params = new URLSearchParams({
@@ -63,7 +61,6 @@ export const buildAuthorizeUrl = async (redirectUri: string): Promise<string> =>
     redirect_uri: redirectUri,
     scope: scopes,
     state,
-    nonce,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256'
   });
@@ -91,7 +88,6 @@ export const exchangeCodeForToken = async (
 
   // Clean up PKCE + state from session
   sessionStorage.removeItem('oauth_state');
-  sessionStorage.removeItem('oauth_nonce');
   sessionStorage.removeItem('oauth_code_verifier');
 
   const data: OAuthTokenResponse = await res.json();
