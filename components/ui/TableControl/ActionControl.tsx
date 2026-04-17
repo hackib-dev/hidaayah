@@ -19,6 +19,7 @@ interface ActionControlsProps<T> {
   data: T[];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ActionControls = <T extends Record<string, any>>({
   config,
   data

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useAppState } from '@/components/app-state-provider';
-import { Shield, Compass, Sun, Moon, Scale, ArrowRight } from 'lucide-react';
+import { Shield, Compass, Sun, Moon, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export function ThemeCollections() {

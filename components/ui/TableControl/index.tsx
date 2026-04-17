@@ -41,6 +41,7 @@ interface TableControlsProps<T> {
   exportFieldMapping?: Record<string, keyof T>;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const TableControls = <T extends Record<string, any>>({
   searchTerm,
   onSearchChange,

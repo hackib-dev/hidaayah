@@ -13,9 +13,8 @@ interface DataTableRowActionsProps<TData> {
 }
 
 export function DataTableRowActions<TData>({
-  row,
-  children,
-  column
+  // row and column are part of the required interface but not used in default render
+  children
 }: DataTableRowActionsProps<TData>) {
   return (
     <DropdownMenu>
