@@ -26,8 +26,8 @@ export async function POST(req: NextRequest) {
 
   const isContentGrant = grant_type === 'client_credentials';
 
-  // Both grants hit the same environment's auth server
-  const oauthBase = AUTH_BASE_URL;
+  // Content client always uses production OAuth server regardless of QF_ENV
+  const oauthBase = isContentGrant ? 'https://oauth2.quran.foundation' : AUTH_BASE_URL;
   const clientId = isContentGrant ? CONTENT_CLIENT_ID : AUTH_CLIENT_ID;
   const clientSecret = isContentGrant ? CONTENT_CLIENT_SECRET : AUTH_CLIENT_SECRET;
 
