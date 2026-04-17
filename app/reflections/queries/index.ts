@@ -131,6 +131,6 @@ export const fetchUserReflectPosts = async (
 
 // Convenience: get total count of the authenticated user's posts (probe with limit=1)
 export const fetchMyReflectionsCount = async (): Promise<number> => {
-  const res = await fetchMyReflectPosts({ limit: 1, page: 1 });
-  return res.total ?? 0;
+  const res = await fetchMyReflectPosts({ limit: 1, page: 1 }).catch(() => null);
+  return res?.total ?? 0;
 };

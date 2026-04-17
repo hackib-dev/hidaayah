@@ -49,9 +49,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setReflectProfileLoading(true);
     try {
       const p = await fetchReflectProfile();
-      setReflectProfile(p);
+      setReflectProfile(p ?? null);
     } catch {
-      // Non-fatal — pages fall back to auth user data
+      setReflectProfile(null);
     } finally {
       setReflectProfileLoading(false);
     }

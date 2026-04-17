@@ -53,15 +53,14 @@ export default function ReflectionsPage() {
     if (!user) return;
 
     Promise.all([
-      fetchMyReflectPosts({ limit: 20, page: 1 }),
+      fetchMyReflectPosts({ limit: 20, page: 1 }).catch(() => null),
       fetchActiveStreak().catch(() => null)
     ])
       .then(([postsRes, streakRes]) => {
-        setPosts(postsRes.data);
-        setTotal(postsRes.total);
+        setPosts(postsRes?.data ?? []);
+        setTotal(postsRes?.total ?? 0);
         setStreakDays(streakRes?.data?.[0]?.days ?? 0);
       })
-      .catch(() => {})
       .finally(() => setLoading(false));
   }, [user]);
 
