@@ -1,25 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Navigation } from '@/components/navigation';
 import { QuranReader } from '@/components/quran-reader';
 import { SurahList } from '@/components/surah-list';
-import { cn } from '@/lib/utils';
 import { ChevronLeft, BookText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function QuranPage() {
+  const searchParams = useSearchParams();
   const [selectedSurah, setSelectedSurah] = useState<number | null>(null);
+  const [scrollToVerse, setScrollToVerse] = useState<number | undefined>();
   const [view, setView] = useState<'list' | 'reader'>('list');
+
+  // Open directly to surah/verse if provided via query params
+  useEffect(() => {
+    const surah = searchParams.get('surah');
+    const verse = searchParams.get('verse');
+    if (surah) {
+      setSelectedSurah(parseInt(surah, 10));
+      setScrollToVerse(verse ? parseInt(verse, 10) : undefined);
+      setView('reader');
+    }
+  }, [searchParams]);
 
   const handleSelectSurah = (surahNumber: number) => {
     setSelectedSurah(surahNumber);
+    setScrollToVerse(undefined);
     setView('reader');
   };
 
   const handleBack = () => {
     setView('list');
     setSelectedSurah(null);
+    setScrollToVerse(undefined);
   };
 
   return (
@@ -75,7 +90,9 @@ export default function QuranPage() {
                   <span>All Surahs</span>
                 </motion.button>
 
-                {selectedSurah && <QuranReader surahNumber={selectedSurah} />}
+                {selectedSurah && (
+                  <QuranReader surahNumber={selectedSurah} scrollToVerse={scrollToVerse} />
+                )}
               </motion.div>
             )}
           </AnimatePresence>

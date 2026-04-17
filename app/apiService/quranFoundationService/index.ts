@@ -101,7 +101,8 @@ const addAuthHeaders =
   };
 // ─── 401 auto-refresh interceptor for user APIs ───────────────────────────────
 // Retries once after refreshing the access token. Never loops.
-function addRefreshInterceptor(instance: AxiosInstance) {
+// silent403: when true, 403s are swallowed without logging (reflect API — scopes pending approval)
+function addRefreshInterceptor(instance: AxiosInstance, silent403 = false) {
   instance.interceptors.response.use(
     (res) => res,
     async (error: AxiosError) => {
@@ -122,7 +123,7 @@ function addRefreshInterceptor(instance: AxiosInstance) {
         }
       }
 
-      if (status === 403) {
+      if (status === 403 && !silent403) {
         logApiError(
           originalReq.url ?? 'unknown',
           403,
@@ -163,4 +164,5 @@ export const reflectApi: AxiosInstance = Axios.create({
   timeout: 30000
 });
 reflectApi.interceptors.request.use(addAuthHeaders(false));
-addRefreshInterceptor(reflectApi);
+// silent403=true: reflect scopes (post/like/save/views) are pending approval on this client
+addRefreshInterceptor(reflectApi, true);

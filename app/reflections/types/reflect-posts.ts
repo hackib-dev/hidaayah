@@ -9,29 +9,47 @@ export interface ReflectPostReference {
   verseKey?: string;
 }
 
+export interface ReflectPostAuthor {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  avatarUrls?: { small?: string; medium?: string; large?: string };
+  verified?: boolean;
+  memberType?: number;
+}
+
 export interface ReflectPost {
   id: string | number;
   body: string;
-  postType: ReflectPostType;
+  authorId?: string;
+  /** Legacy field — some endpoints return postType, others postTypeId */
+  postType?: ReflectPostType;
+  postTypeId?: number;
+  postTypeName?: string;
+  draft?: boolean;
+  roomPostStatus?: number;
   likesCount: number;
   commentsCount: number;
+  viewsCount?: number;
   createdAt: string;
   updatedAt: string;
+  publishedAt?: string;
+  languageName?: string;
+  estimatedReadingTime?: number;
+  isLiked?: boolean;
+  isSaved?: boolean;
+  isCommentedOn?: boolean;
   references?: ReflectPostReference[];
-  tags?: string[];
-  // The author's user object (shape varies — only present on feed responses)
-  user?: {
-    id: string;
-    firstName?: string;
-    lastName?: string;
-    username?: string;
-    avatarUrls?: Record<string, string>;
-    verified?: boolean;
-  };
+  tags?: { name?: string }[];
+  mentions?: unknown[];
+  author?: ReflectPostAuthor;
+  /** Legacy field name used in some endpoints */
+  user?: ReflectPostAuthor;
   recentComment?: {
     id: string | number;
     body: string;
-  };
+  } | null;
 }
 
 export interface ReflectPostsResponse {

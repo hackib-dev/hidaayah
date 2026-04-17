@@ -24,7 +24,7 @@ export function Navigation() {
     { href: '/quran', label: 'Quran', icon: BookText },
     { href: '/guidance', label: 'Guidance', icon: Compass },
     { href: '/reflections', label: 'Journal', icon: BookOpen },
-    { href: '/collections', label: 'Themes', icon: Bookmark }
+    { href: '/bookmarks', label: 'Saved', icon: Bookmark }
   ];
 
   return (

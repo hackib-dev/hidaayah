@@ -18,21 +18,34 @@ import {
   Type,
   Minus,
   Plus,
-  Loader2
+  Loader2,
+  Mic
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { fetchVersesByChapter, fetchChapter, fetchChapterAudio } from '@/app/quran/queries';
+import {
+  fetchVersesByChapter,
+  fetchChapter,
+  fetchChapterAudio,
+  fetchReciters,
+  lookupVerseByTimestamp
+} from '@/app/quran/queries';
 import { fetchTafsirByChapter } from '@/app/guidance/queries';
-import { createBookmark, deleteBookmark } from '@/app/reflections/queries';
-import type { Verse, Chapter } from '@/app/quran/types';
+import { createBookmark, deleteBookmark, fetchBookmarks } from '@/app/reflections/queries';
+import type { Verse, Chapter, Reciter } from '@/app/quran/types';
 import type { TafsirEntry } from '@/app/guidance/types';
-import { QF_DEFAULT_TRANSLATION_ID, QF_DEFAULT_TAFSIR_ID, QF_DEFAULT_MUSHAF_ID } from '@/config';
+import {
+  QF_DEFAULT_TRANSLATION_ID,
+  QF_DEFAULT_TAFSIR_ID,
+  QF_DEFAULT_MUSHAF_ID,
+  QF_DEFAULT_RECITER_ID
+} from '@/config';
 
 interface QuranReaderProps {
   surahNumber: number;
+  scrollToVerse?: number;
 }
 
-export function QuranReader({ surahNumber }: QuranReaderProps) {
+export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [verses, setVerses] = useState<Verse[]>([]);
   const [tafsirs, setTafsirs] = useState<Record<number, string>>({});
@@ -44,7 +57,7 @@ export function QuranReader({ surahNumber }: QuranReaderProps) {
   const [loadingMore, setLoadingMore] = useState(false);
 
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentVerse, setCurrentVerse] = useState(1);
+  const [activeVerse, setActiveVerse] = useState<number>(1);
   const [showSettings, setShowSettings] = useState(false);
   const [showTafsir, setShowTafsir] = useState<number | null>(null);
   const [loadingTafsir, setLoadingTafsir] = useState(false);
@@ -52,16 +65,69 @@ export function QuranReader({ surahNumber }: QuranReaderProps) {
   const [showTransliteration, setShowTransliteration] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [loadingAudio, setLoadingAudio] = useState(false);
 
-  // Fetch chapter audio (reciter 7 = Mishary Rashid Alafasy)
+  // Reciters
+  const [reciters, setReciters] = useState<Reciter[]>([]);
+  const [selectedReciterId, setSelectedReciterId] = useState<number>(QF_DEFAULT_RECITER_ID);
+  const [loadingReciters, setLoadingReciters] = useState(false);
+  const [showReciterPicker, setShowReciterPicker] = useState(false);
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const verseRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const lookupInFlightRef = useRef<boolean>(false); // prevents overlapping lookup requests
+
+  // Fetch reciters list once
+  useEffect(() => {
+    setLoadingReciters(true);
+    fetchReciters()
+      .then((res) => setReciters(res.reciters ?? []))
+      .catch(() => null)
+      .finally(() => setLoadingReciters(false));
+  }, []);
+
+  // Fetch audio when reciter or surah changes
   useEffect(() => {
     setAudioUrl(null);
     setIsPlaying(false);
-    fetchChapterAudio(7, surahNumber)
+    setActiveVerse(1);
+    setLoadingAudio(true);
+
+    fetchChapterAudio(selectedReciterId, surahNumber)
       .then((res) => setAudioUrl(res.audio_file.audio_url))
-      .catch(() => null);
-  }, [surahNumber]);
+      .catch(() => null)
+      .finally(() => setLoadingAudio(false));
+  }, [selectedReciterId, surahNumber]);
+
+  // Active verse tracking: fire lookup as fast as the API responds, no overlapping requests
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => {
+      if (!isPlaying || lookupInFlightRef.current) return;
+      lookupInFlightRef.current = true;
+
+      const timestampMs = audio.currentTime * 1000;
+      lookupVerseByTimestamp(selectedReciterId, surahNumber, timestampMs)
+        .then((result) => {
+          if (!result) return;
+          setActiveVerse((prev) => {
+            if (prev === result.verse_number) return prev;
+            const el = verseRefs.current[result.verse_number];
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return result.verse_number;
+          });
+        })
+        .catch(() => null)
+        .finally(() => {
+          lookupInFlightRef.current = false;
+        });
+    };
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    return () => audio.removeEventListener('timeupdate', handleTimeUpdate);
+  }, [isPlaying, selectedReciterId, surahNumber]);
 
   // Sync play/pause/mute to the audio element
   useEffect(() => {
@@ -88,16 +154,35 @@ export function QuranReader({ surahNumber }: QuranReaderProps) {
         words: true,
         page: 1,
         per_page: 20
-      })
+      }),
+      fetchBookmarks({
+        type: 'ayah',
+        mushafId: QF_DEFAULT_MUSHAF_ID,
+        key: surahNumber,
+        first: 20
+      }).catch(() => null)
     ])
-      .then(([chapterRes, versesRes]) => {
+      .then(([chapterRes, versesRes, bookmarksRes]) => {
         setChapter(chapterRes.chapter);
         setVerses(versesRes.verses);
         setTotalPages(versesRes.pagination.total_pages);
+        const map: Record<number, string> = {};
+        for (const bm of bookmarksRes?.data ?? []) {
+          if (bm.verseNumber !== null) map[bm.verseNumber] = bm.id;
+        }
+        setBookmarkedVerses(map);
+
+        if (scrollToVerse) {
+          setTimeout(() => {
+            document
+              .getElementById(`verse-${surahNumber}-${scrollToVerse}`)
+              ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 300);
+        }
       })
       .catch(() => setError('Failed to load surah. Please try again.'))
       .finally(() => setLoading(false));
-  }, [surahNumber]);
+  }, [surahNumber, scrollToVerse]);
 
   const loadMoreVerses = () => {
     if (loadingMore || page >= totalPages) return;
@@ -123,7 +208,6 @@ export function QuranReader({ surahNumber }: QuranReaderProps) {
       const res = await fetchTafsirByChapter(QF_DEFAULT_TAFSIR_ID, surahNumber, 1, 50);
       const map: Record<number, string> = {};
       (res.tafsirs ?? []).forEach((t: TafsirEntry) => {
-        // verse_key is "chapter:verse" e.g. "2:5" — parse verse number from it
         const vNum = t.verse_number ?? parseInt(t.verse_key?.split(':')[1] ?? '0', 10);
         if (vNum && t.text) map[vNum] = t.text;
       });
@@ -156,13 +240,20 @@ export function QuranReader({ surahNumber }: QuranReaderProps) {
         type: 'ayah',
         key: surahNumber,
         verseNumber: verse.verse_number,
-        mushafId: QF_DEFAULT_MUSHAF_ID
+        mushaf: QF_DEFAULT_MUSHAF_ID
       }).catch(() => null);
       if (res?.data?.id) {
         setBookmarkedVerses((prev) => ({ ...prev, [verse.verse_number]: res.data.id }));
       }
     }
   };
+
+  const handlePlayVerse = (verseNumber: number) => {
+    setActiveVerse(verseNumber);
+    setIsPlaying(true);
+  };
+
+  const selectedReciter = reciters.find((r) => r.id === selectedReciterId);
 
   const arabicSizeClass = [
     'text-xl md:text-2xl',
@@ -243,7 +334,16 @@ export function QuranReader({ surahNumber }: QuranReaderProps) {
       </motion.div>
 
       {/* Hidden audio element */}
-      {audioUrl && <audio ref={audioRef} src={audioUrl} onEnded={() => setIsPlaying(false)} />}
+      {audioUrl && (
+        <audio
+          ref={audioRef}
+          src={audioUrl}
+          onEnded={() => {
+            setIsPlaying(false);
+            setActiveVerse(1);
+          }}
+        />
+      )}
 
       {/* Audio Player */}
       <div className="p-4 rounded-2xl bg-card border border-border shadow-sm">
@@ -251,7 +351,10 @@ export function QuranReader({ surahNumber }: QuranReaderProps) {
           <div className="flex items-center gap-2">
             <motion.button
               whileTap={{ scale: 0.88 }}
-              onClick={() => setCurrentVerse((v) => Math.max(1, v - 1))}
+              onClick={() => {
+                const prev = Math.max(1, activeVerse - 1);
+                handlePlayVerse(prev);
+              }}
               className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
             >
               <SkipBack className="w-4 h-4" />
@@ -259,6 +362,7 @@ export function QuranReader({ surahNumber }: QuranReaderProps) {
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => setIsPlaying((p) => !p)}
+              disabled={loadingAudio}
               className={cn(
                 'p-3 rounded-xl transition-all duration-200',
                 isPlaying
@@ -266,21 +370,32 @@ export function QuranReader({ surahNumber }: QuranReaderProps) {
                   : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
               )}
             >
-              {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+              {loadingAudio ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : isPlaying ? (
+                <Pause className="w-5 h-5" />
+              ) : (
+                <Play className="w-5 h-5" />
+              )}
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.88 }}
-              onClick={() => setCurrentVerse((v) => Math.min(chapter?.verses_count ?? v, v + 1))}
+              onClick={() => {
+                const next = Math.min(chapter?.verses_count ?? activeVerse, activeVerse + 1);
+                handlePlayVerse(next);
+              }}
               className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
             >
               <SkipForward className="w-4 h-4" />
             </motion.button>
           </div>
-          <div className="flex-1 text-center">
-            <p className="text-sm font-semibold text-foreground">
-              Verse {currentVerse} of {chapter?.verses_count ?? '...'}
+          <div className="flex-1 text-center min-w-0">
+            <p className="text-sm font-semibold text-foreground truncate">
+              {selectedReciter?.name ?? 'Loading reciters...'}
             </p>
-            <p className="text-xs text-muted-foreground">{isPlaying ? 'Playing...' : 'Paused'}</p>
+            <p className="text-xs text-muted-foreground">
+              {isPlaying ? `Verse ${activeVerse} playing` : 'Paused'}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <motion.button
@@ -315,6 +430,61 @@ export function QuranReader({ surahNumber }: QuranReaderProps) {
               className="overflow-hidden"
             >
               <div className="mt-4 pt-4 border-t border-border space-y-4">
+                {/* Reciter selector */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Mic className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm text-foreground font-medium">Reciter</span>
+                  </div>
+                  <button
+                    onClick={() => setShowReciterPicker((v) => !v)}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors text-sm"
+                  >
+                    <span className="text-foreground font-medium truncate">
+                      {loadingReciters ? 'Loading...' : (selectedReciter?.name ?? 'Select reciter')}
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        'w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200',
+                        showReciterPicker && 'rotate-180'
+                      )}
+                    />
+                  </button>
+                  <AnimatePresence>
+                    {showReciterPicker && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.18 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="max-h-48 overflow-y-auto rounded-xl border border-border bg-card divide-y divide-border">
+                          {reciters.map((reciter) => (
+                            <button
+                              key={reciter.id}
+                              onClick={() => {
+                                setSelectedReciterId(reciter.id);
+                                setShowReciterPicker(false);
+                                setIsPlaying(false);
+                              }}
+                              className={cn(
+                                'w-full text-left px-3 py-2.5 text-sm transition-colors',
+                                reciter.id === selectedReciterId
+                                  ? 'bg-primary/10 text-primary font-semibold'
+                                  : 'text-foreground hover:bg-secondary'
+                              )}
+                            >
+                              {reciter.name}
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Arabic size */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Type className="w-4 h-4 text-muted-foreground" />
@@ -338,6 +508,8 @@ export function QuranReader({ surahNumber }: QuranReaderProps) {
                     </motion.button>
                   </div>
                 </div>
+
+                {/* Transliteration toggle */}
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-foreground font-medium">Show Transliteration</span>
                   <motion.button
@@ -371,25 +543,66 @@ export function QuranReader({ surahNumber }: QuranReaderProps) {
               .filter(Boolean)
               .join(' ') ?? '';
           const isBookmarked = !!bookmarkedVerses[verse.verse_number];
+          const isActive = isPlaying && activeVerse === verse.verse_number;
+          const isHighlighted =
+            scrollToVerse === verse.verse_number || activeVerse === verse.verse_number;
 
           return (
             <motion.div
               key={verse.id}
+              id={`verse-${surahNumber}-${verse.verse_number}`}
+              ref={(el) => {
+                verseRefs.current[verse.verse_number] = el;
+              }}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.04 }}
               className={cn(
-                'p-5 md:p-6 rounded-2xl bg-card border transition-all duration-200',
-                currentVerse === verse.verse_number
-                  ? 'border-primary/40 ring-2 ring-primary/15 shadow-sm'
-                  : 'border-border hover:border-primary/20'
+                'p-5 md:p-6 rounded-2xl border transition-all duration-300',
+                isActive
+                  ? 'bg-primary/5 border-primary/40 ring-2 ring-primary/20 shadow-md'
+                  : isHighlighted
+                    ? 'bg-card border-primary/40 ring-2 ring-primary/15 shadow-sm'
+                    : 'bg-card border-border hover:border-primary/20'
               )}
             >
+              {/* Active verse indicator bar */}
+              {isActive && (
+                <motion.div
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  className="h-0.5 bg-linear-to-r from-primary to-teal rounded-full mb-4 origin-left"
+                />
+              )}
+
               {/* Verse header */}
               <div className="flex items-center justify-between mb-4">
-                <div className="w-9 h-9 rounded-xl bg-linear-to-br from-primary/10 to-teal/10 text-primary flex items-center justify-center font-bold text-sm">
+                <div
+                  className={cn(
+                    'w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm transition-colors duration-300',
+                    isActive
+                      ? 'bg-linear-to-br from-primary to-teal text-white shadow-sm'
+                      : 'bg-linear-to-br from-primary/10 to-teal/10 text-primary'
+                  )}
+                >
                   {verse.verse_number}
                 </div>
+
+                {/* Active playing badge */}
+                {isActive && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold"
+                  >
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                    </span>
+                    Now playing
+                  </motion.div>
+                )}
+
                 <div className="flex items-center gap-1">
                   <motion.button
                     whileTap={{ scale: 0.88 }}
@@ -405,10 +618,10 @@ export function QuranReader({ surahNumber }: QuranReaderProps) {
                   </motion.button>
                   <motion.button
                     whileTap={{ scale: 0.88 }}
-                    onClick={() => setCurrentVerse(verse.verse_number)}
+                    onClick={() => handlePlayVerse(verse.verse_number)}
                     className={cn(
                       'p-2 rounded-xl transition-colors',
-                      currentVerse === verse.verse_number
+                      isActive
                         ? 'bg-primary text-primary-foreground'
                         : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                     )}

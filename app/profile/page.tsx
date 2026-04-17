@@ -19,7 +19,7 @@ import {
   Award,
   Target,
   Clock,
-  Bookmark,
+  Bookmark as BookmarkIcon,
   LogOut,
   Flame,
   MapPin,
@@ -28,6 +28,7 @@ import {
 import { motion } from 'framer-motion';
 import { fetchActiveStreak, fetchStreaks } from '@/app/profile/queries';
 import { fetchAllBookmarks, fetchMyReflectionsCount } from '@/app/reflections/queries';
+import type { Bookmark as BookmarkType } from '@/app/reflections/types';
 import { QF_DEFAULT_MUSHAF_ID } from '@/config';
 
 export default function ProfilePage() {
@@ -51,21 +52,19 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!user) return;
-    fetchActiveStreak()
-      .then((res) => setCurrentStreak(res.data?.[0]?.days ?? 0))
-      .catch(() => setCurrentStreak(0));
-
-    fetchStreaks({ orderBy: 'days', sortOrder: 'desc', first: 1 })
-      .then((res) => setLongestStreak(res.data?.[0]?.days ?? 0))
-      .catch(() => setLongestStreak(0));
-
-    fetchAllBookmarks({ type: 'ayah', mushafId: QF_DEFAULT_MUSHAF_ID })
-      .then((bookmarks) => setSavedCount(bookmarks.length))
-      .catch(() => setSavedCount(0));
-
-    fetchMyReflectionsCount()
-      .then(setReflectionsCount)
-      .catch(() => setReflectionsCount(0));
+    Promise.all([
+      fetchActiveStreak().catch(() => null),
+      fetchStreaks({ orderBy: 'days', sortOrder: 'desc', first: 1 }).catch(() => null),
+      fetchAllBookmarks({ type: 'ayah', mushafId: QF_DEFAULT_MUSHAF_ID }).catch(
+        () => [] as BookmarkType[]
+      ),
+      fetchMyReflectionsCount().catch(() => 0)
+    ]).then(([streakRes, longestRes, bookmarks, count]) => {
+      setCurrentStreak(streakRes?.data?.[0]?.days ?? 0);
+      setLongestStreak(longestRes?.data?.[0]?.days ?? 0);
+      setSavedCount(bookmarks.length);
+      setReflectionsCount(count ?? 0);
+    });
   }, [user]);
 
   const toggleDarkMode = () => {
@@ -187,7 +186,7 @@ export default function ProfilePage() {
                 border: 'border-accent/15'
               },
               {
-                icon: Bookmark,
+                icon: BookmarkIcon,
                 value: savedCount,
                 label: 'Saved',
                 bg: 'bg-teal-muted',

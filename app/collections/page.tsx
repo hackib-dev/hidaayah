@@ -6,24 +6,11 @@ import { useAuth } from '@/components/auth-provider';
 import { useAppState } from '@/components/app-state-provider';
 import { Navigation } from '@/components/navigation';
 import { cn } from '@/lib/utils';
-import {
-  Heart,
-  Shield,
-  Compass,
-  Sun,
-  Moon,
-  Scale,
-  Search,
-  ChevronRight,
-  Sparkles,
-  Star,
-  Zap,
-  Leaf,
-  Eye,
-  Users
-} from 'lucide-react';
+import { Search, ChevronRight, Sparkles, FolderOpen, Plus, Loader2, X } from 'lucide-react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { fetchCollections, createCollection } from '@/app/collections/queries';
+import type { Collection } from '@/app/collections/types';
 
 export default function CollectionsPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,11 +18,41 @@ export default function CollectionsPage() {
   const { collections } = useAppState();
   const router = useRouter();
 
+  const [userCollections, setUserCollections] = useState<Collection[]>([]);
+  const [collectionsLoading, setCollectionsLoading] = useState(false);
+  const [showNewCollectionForm, setShowNewCollectionForm] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState('');
+  const [creating, setCreating] = useState(false);
+
   useEffect(() => {
     if (!loading && !user) {
       router.replace('/login');
     }
   }, [user, loading, router]);
+
+  useEffect(() => {
+    if (!user) return;
+    setCollectionsLoading(true);
+    fetchCollections({ sortBy: 'alphabetical', first: 20 })
+      .then((res) => setUserCollections(res.data ?? []))
+      .catch(() => setUserCollections([]))
+      .finally(() => setCollectionsLoading(false));
+  }, [user]);
+
+  const handleCreateCollection = async () => {
+    if (!newCollectionName.trim() || creating) return;
+    setCreating(true);
+    try {
+      const res = await createCollection({ name: newCollectionName.trim() });
+      setUserCollections((prev) => [res.data, ...prev]);
+      setNewCollectionName('');
+      setShowNewCollectionForm(false);
+    } catch {
+      // silently fail — user can retry
+    } finally {
+      setCreating(false);
+    }
+  };
 
   if (loading) return <div>Loading...</div>;
   if (!user) return null;
@@ -48,6 +65,10 @@ export default function CollectionsPage() {
 
   const featuredCollections = filteredCollections.filter((c) => c.featured);
   const otherCollections = filteredCollections.filter((c) => !c.featured);
+
+  const filteredUserCollections = userCollections.filter((c) =>
+    c.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <main className="min-h-screen pb-20 md:pb-8">
@@ -62,11 +83,10 @@ export default function CollectionsPage() {
             className="space-y-2"
           >
             <h1 className="text-2xl md:text-3xl font-serif font-bold text-foreground tracking-tight">
-              Life Theme Collections
+              Collections
             </h1>
             <p className="text-sm md:text-base text-muted-foreground max-w-lg">
-              Curated verses organized by life themes. Explore guidance for whatever your heart
-              needs.
+              Curated verses by life theme, plus your personal saved collections.
             </p>
           </motion.div>
 
@@ -87,6 +107,119 @@ export default function CollectionsPage() {
             />
           </motion.div>
 
+          {/* My Collections */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="space-y-3"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <FolderOpen className="w-4 h-4 text-primary" />
+                My Collections
+              </h2>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowNewCollectionForm((v) => !v)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                New
+              </motion.button>
+            </div>
+
+            <AnimatePresence>
+              {showNewCollectionForm && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="flex gap-2 p-3 rounded-2xl bg-card border border-border">
+                    <input
+                      autoFocus
+                      type="text"
+                      value={newCollectionName}
+                      onChange={(e) => setNewCollectionName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleCreateCollection()}
+                      placeholder="Collection name..."
+                      className="flex-1 px-3 py-2 rounded-xl bg-secondary border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <button
+                      onClick={handleCreateCollection}
+                      disabled={!newCollectionName.trim() || creating}
+                      className={cn(
+                        'px-3 py-2 rounded-xl text-sm font-bold transition-colors',
+                        newCollectionName.trim() && !creating
+                          ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                          : 'bg-muted text-muted-foreground cursor-not-allowed'
+                      )}
+                    >
+                      {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowNewCollectionForm(false);
+                        setNewCollectionName('');
+                      }}
+                      className="p-2 rounded-xl bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {collectionsLoading ? (
+              <div className="flex items-center gap-2 py-4 text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm">Loading your collections...</span>
+              </div>
+            ) : filteredUserCollections.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {filteredUserCollections.map((collection, index) => (
+                  <motion.div
+                    key={collection.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    whileHover={{ y: -2, boxShadow: '0 8px 20px -4px oklch(0 0 0 / 0.10)' }}
+                    whileTap={{ scale: 0.96 }}
+                  >
+                    <Link
+                      href={`/collections/${collection.id}`}
+                      className="group rounded-2xl border border-border bg-card p-4 transition-colors duration-200 block hover:border-primary/30"
+                    >
+                      <div className="space-y-2.5">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
+                          <FolderOpen className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-foreground text-sm truncate">
+                            {collection.name}
+                          </h3>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {new Date(collection.updatedAt).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground py-2">
+                {searchQuery ? 'No matching collections.' : 'No collections yet. Create one above.'}
+              </p>
+            )}
+          </motion.div>
+
           {/* Featured Collections */}
           {featuredCollections.length > 0 && (
             <div className="space-y-3">
@@ -104,10 +237,7 @@ export default function CollectionsPage() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 + index * 0.08 }}
-                      whileHover={{
-                        y: -3,
-                        boxShadow: '0 12px 30px -6px oklch(0 0 0 / 0.12)'
-                      }}
+                      whileHover={{ y: -3, boxShadow: '0 12px 30px -6px oklch(0 0 0 / 0.12)' }}
                       whileTap={{ scale: 0.97 }}
                     >
                       <Link
@@ -130,9 +260,7 @@ export default function CollectionsPage() {
 
                           <div className="space-y-1">
                             <h3 className="font-bold text-foreground">{collection.label}</h3>
-                            <p className="text-xs text-muted-foreground">
-                              {collection.description}
-                            </p>
+                            <p className="text-xs text-muted-foreground">{collection.description}</p>
                           </div>
 
                           <div className="flex items-center justify-between">
@@ -163,10 +291,7 @@ export default function CollectionsPage() {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    whileHover={{
-                      y: -2,
-                      boxShadow: '0 8px 20px -4px oklch(0 0 0 / 0.10)'
-                    }}
+                    whileHover={{ y: -2, boxShadow: '0 8px 20px -4px oklch(0 0 0 / 0.10)' }}
                     whileTap={{ scale: 0.96 }}
                   >
                     <Link
@@ -202,7 +327,7 @@ export default function CollectionsPage() {
           </div>
 
           {/* Empty State */}
-          {filteredCollections.length === 0 && (
+          {filteredCollections.length === 0 && filteredUserCollections.length === 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}

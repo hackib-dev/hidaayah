@@ -69,16 +69,44 @@ export const deleteBookmark = async (bookmarkId: string): Promise<{ success: boo
 };
 
 // Helper: bookmark a specific verse
-export const bookmarkVerse = async (chapterId: number, verseNumber: number, mushafId = 1) => {
+export const bookmarkVerse = async (chapterId: number, verseNumber: number, mushaf = 1) => {
   return createBookmark({
     type: 'ayah',
     key: chapterId,
     verseNumber,
-    mushafId
+    mushaf
   });
 };
 
 // ─── Quran Reflect Posts ──────────────────────────────────────────────────────
+
+export const togglePostLike = async (postId: string | number): Promise<{ liked: boolean }> => {
+  const response = await reflectApi.post<{ liked: boolean }>(`/v1/posts/${postId}/toggle-like`);
+  return response.data;
+};
+
+export const togglePostSave = async (postId: string | number): Promise<{ saved: boolean }> => {
+  const response = await reflectApi.post<{ saved: boolean }>(`/v1/posts/${postId}/toggle-save`);
+  return response.data;
+};
+
+export const deletePost = async (postId: string | number): Promise<void> => {
+  await reflectApi.delete(`/v1/posts/${postId}`);
+};
+
+export const editPost = async (
+  postId: string | number,
+  body: string,
+  draft: boolean
+): Promise<void> => {
+  await reflectApi.put(`/v1/posts/${postId}`, { post: { body, draft } });
+};
+
+export const trackPostView = async (postId: string | number): Promise<void> => {
+  await reflectApi.post(`/v1/posts/${postId}/views`).catch(() => {
+    // 403 = views scope not granted on this client — silently skip
+  });
+};
 
 // Fetch the public feed (or filtered by tab/postType)
 export const fetchReflectFeed = async (

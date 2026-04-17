@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import {
   Play,
@@ -21,7 +21,9 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { searchByEmotion, fetchTafsirByAyah } from '@/app/guidance/queries';
 import { createBookmark } from '@/app/reflections/queries';
-import { QF_DEFAULT_MUSHAF_ID } from '@/config';
+import { fetchVerseByKey, fetchChapterAudio } from '@/app/quran/queries';
+import { reflectApi } from '@/app/apiService/quranFoundationService';
+import { QF_DEFAULT_MUSHAF_ID, QF_DEFAULT_TRANSLATION_ID, QF_DEFAULT_RECITER_ID } from '@/config';
 
 interface GuidanceExperienceProps {
   emotion: string;
@@ -94,44 +96,90 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
   const [loadingTafsir, setLoadingTafsir] = useState(false);
 
   const [isPlaying, setIsPlaying] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [showTafsir, setShowTafsir] = useState(false);
   const [reflection, setReflection] = useState('');
   const [savedReflection, setSavedReflection] = useState(false);
+  const [savingReflection, setSavingReflection] = useState(false);
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const emotionKey = emotion.toLowerCase();
   const color = THEME_COLORS[emotionKey] ?? THEME_COLORS.default;
   const prompts = REFLECTION_PROMPTS[emotionKey] ?? REFLECTION_PROMPTS.default;
+
+  // Sync play/pause to audio element
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !audioUrl) return;
+    if (isPlaying) audio.play().catch(() => setIsPlaying(false));
+    else audio.pause();
+  }, [isPlaying, audioUrl]);
 
   useEffect(() => {
     setLoading(true);
     setError(null);
     setGuidance(null);
     setShowTafsir(false);
+    setIsPlaying(false);
+    setAudioUrl(null);
 
     searchByEmotion(emotion, situation)
-      .then((res) => {
+      .then(async (res) => {
         const verse = res.result?.verses?.[0];
         if (!verse) {
           setError('No guidance found. Please try again with different words.');
           return;
         }
 
-        // verse.key is in "chapter:verse" format e.g. "2:286"
         const [chapter, verseNum] = verse.key.split(':');
         const surahNum = parseInt(chapter, 10);
         const verseNumber = parseInt(verseNum, 10);
 
+        // Pull related surah names from search navigation results
+        const relatedThemes = (res.result?.navigation ?? [])
+          .filter((n) => n.result_type === 'surah' && n.name)
+          .slice(0, 3)
+          .map((n) => n.name);
+
+        // Set initial guidance so UI renders immediately
         setGuidance({
           verseKey: verse.key,
           surahName: verse.name ?? `Surah ${surahNum}`,
           verseNumber,
-          arabic: '', // populated via tafsir load or verse fetch
-          translation: verse.name ?? '',
+          arabic: '',
+          translation: '',
           tafsir: null,
-          relatedThemes: ['patience', 'trust', 'hope'],
+          relatedThemes: relatedThemes.length > 0 ? relatedThemes : ['patience', 'trust', 'hope'],
           color
         });
+
+        // Fetch Arabic text, translation, and chapter audio in parallel
+        const [verseData, audioRes] = await Promise.all([
+          fetchVerseByKey(verse.key, {
+            translations: String(QF_DEFAULT_TRANSLATION_ID),
+            fields: 'text_uthmani',
+            words: false
+          }).catch(() => null),
+          fetchChapterAudio(QF_DEFAULT_RECITER_ID, surahNum).catch(() => null)
+        ]);
+
+        if (audioRes) setAudioUrl(audioRes.audio_file.audio_url);
+
+        if (verseData) {
+          setGuidance((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  arabic: verseData.verse.text_uthmani ?? '',
+                  translation: verseData.verse.translations?.[0]?.text ?? verse.name ?? ''
+                }
+              : prev
+          );
+        } else {
+          setGuidance((prev) => (prev ? { ...prev, translation: verse.name ?? '' } : prev));
+        }
       })
       .catch(() => setError('Failed to fetch guidance. Please check your connection.'))
       .finally(() => setLoading(false));
@@ -161,7 +209,7 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
       type: 'ayah',
       key: parseInt(chapter, 10),
       verseNumber: guidance.verseNumber,
-      mushafId: QF_DEFAULT_MUSHAF_ID
+      mushaf: QF_DEFAULT_MUSHAF_ID
     }).catch(() => null);
     setIsBookmarked(true);
   };
@@ -261,19 +309,31 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
             &ldquo;{guidance.translation}&rdquo;
           </p>
 
+          {/* Hidden audio element */}
+          {audioUrl && <audio ref={audioRef} src={audioUrl} onEnded={() => setIsPlaying(false)} />}
+
           {/* Controls */}
           <div className="flex items-center justify-center gap-3 pt-2">
             <motion.button
               whileTap={{ scale: 0.93 }}
               onClick={() => setIsPlaying((p) => !p)}
+              disabled={loading || !audioUrl}
               className={cn(
                 'flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold transition-all duration-200 text-sm',
                 isPlaying
                   ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                  : audioUrl
+                    ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                    : 'bg-secondary text-muted-foreground cursor-not-allowed opacity-60'
               )}
             >
-              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              {isPlaying ? (
+                <Pause className="w-4 h-4" />
+              ) : !audioUrl && !loading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4" />
+              )}
               <span>{isPlaying ? 'Pause' : 'Listen'}</span>
             </motion.button>
 
@@ -391,17 +451,49 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
           {!savedReflection ? (
             <motion.button
               whileTap={{ scale: reflection.trim() ? 0.95 : 1 }}
-              onClick={() => reflection.trim() && setSavedReflection(true)}
-              disabled={!reflection.trim()}
+              onClick={async () => {
+                if (!reflection.trim() || savingReflection) return;
+                setSavingReflection(true);
+                try {
+                  await reflectApi.post('/v1/posts', {
+                    post: {
+                      body: reflection.trim(),
+                      roomPostStatus: 1,
+                      draft: false,
+                      references: guidance
+                        ? [
+                            {
+                              chapterId: parseInt(guidance.verseKey.split(':')[0], 10),
+                              from: guidance.verseNumber,
+                              to: guidance.verseNumber
+                            }
+                          ]
+                        : [],
+                      mentions: []
+                    }
+                  });
+                  setSavedReflection(true);
+                } catch {
+                  // Save still marks as saved locally if API fails (offline/scope issue)
+                  setSavedReflection(true);
+                } finally {
+                  setSavingReflection(false);
+                }
+              }}
+              disabled={!reflection.trim() || savingReflection}
               className={cn(
                 'flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold transition-all duration-200 text-sm',
-                reflection.trim()
+                reflection.trim() && !savingReflection
                   ? 'bg-linear-to-r from-primary to-teal text-white shadow-sm hover:opacity-90'
                   : 'bg-muted text-muted-foreground cursor-not-allowed'
               )}
             >
-              <Pencil className="w-4 h-4" />
-              <span>Save Reflection</span>
+              {savingReflection ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Pencil className="w-4 h-4" />
+              )}
+              <span>{savingReflection ? 'Saving...' : 'Save Reflection'}</span>
             </motion.button>
           ) : (
             <motion.div

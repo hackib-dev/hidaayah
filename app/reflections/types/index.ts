@@ -85,6 +85,6 @@ export interface CreateBookmarkParams {
   type: BookmarkType;
   key: number;
   verseNumber?: number;
-  mushafId: number;
+  mushaf: number;
   isReading?: boolean;
 }

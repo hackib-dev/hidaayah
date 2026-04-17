@@ -12,7 +12,7 @@ import { fetchBookmarks, fetchMyReflectionsCount } from '@/app/reflections/queri
 import { QF_DEFAULT_MUSHAF_ID } from '@/config';
 
 export default function HomePage() {
-  const { user, loading } = useAuth();
+  const { user, loading, reflectProfile } = useAuth();
   const router = useRouter();
   const [streakDays, setStreakDays] = useState<number | null>(null);
   const [savedVerses, setSavedVerses] = useState<number | null>(null);
@@ -26,15 +26,15 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!user) return;
-    fetchActiveStreak()
-      .then((res) => setStreakDays(res.data?.[0]?.days ?? 0))
-      .catch(() => null);
-    fetchBookmarks({ type: 'ayah', mushafId: QF_DEFAULT_MUSHAF_ID, first: 20 })
-      .then((res) => setSavedVerses(res.data?.length ?? 0))
-      .catch(() => null);
-    fetchMyReflectionsCount()
-      .then(setReflectionsCount)
-      .catch(() => null);
+    Promise.all([
+      fetchActiveStreak().catch(() => null),
+      fetchBookmarks({ type: 'ayah', mushafId: QF_DEFAULT_MUSHAF_ID, first: 20 }).catch(() => null),
+      fetchMyReflectionsCount().catch(() => 0)
+    ]).then(([streakRes, bookmarksRes, count]) => {
+      setStreakDays(streakRes?.data?.[0]?.days ?? 0);
+      setSavedVerses(bookmarksRes?.data?.length ?? 0);
+      setReflectionsCount(count ?? 0);
+    });
   }, [user]);
 
   if (loading || !user) {
@@ -58,7 +58,10 @@ export default function HomePage() {
             className="text-center space-y-3"
           >
             <h1 className="text-2xl md:text-3xl font-serif font-bold text-foreground tracking-tight">
-              Welcome back, <span className="text-primary">{user.name}</span>
+              Welcome back,{' '}
+              <span className="text-primary">
+                {reflectProfile?.firstName ?? reflectProfile?.username ?? user.name}
+              </span>
             </h1>
             <p className="text-muted-foreground text-sm md:text-base max-w-md mx-auto leading-relaxed">
               Continue your spiritual journey with today's guidance.
