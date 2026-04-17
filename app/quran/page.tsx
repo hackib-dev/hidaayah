@@ -1,0 +1,86 @@
+'use client';
+
+import { useState } from 'react';
+import { Navigation } from '@/components/navigation';
+import { QuranReader } from '@/components/quran-reader';
+import { SurahList } from '@/components/surah-list';
+import { cn } from '@/lib/utils';
+import { ChevronLeft, BookText } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+export default function QuranPage() {
+  const [selectedSurah, setSelectedSurah] = useState<number | null>(null);
+  const [view, setView] = useState<'list' | 'reader'>('list');
+
+  const handleSelectSurah = (surahNumber: number) => {
+    setSelectedSurah(surahNumber);
+    setView('reader');
+  };
+
+  const handleBack = () => {
+    setView('list');
+    setSelectedSurah(null);
+  };
+
+  return (
+    <main className="min-h-screen pb-20 md:pb-8">
+      <Navigation />
+
+      <div className="pt-16 md:pt-20 px-4 md:px-6">
+        <div className="max-w-4xl mx-auto">
+          <AnimatePresence mode="wait">
+            {view === 'list' ? (
+              <motion.div
+                key="list"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="py-6 space-y-6"
+              >
+                {/* Header */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-teal flex items-center justify-center shadow-sm">
+                      <BookText className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h1 className="text-2xl md:text-3xl font-serif font-bold text-foreground tracking-tight">
+                        The Noble Quran
+                      </h1>
+                      <p className="text-muted-foreground text-sm md:text-base">
+                        Read, listen, and reflect on the words of Allah
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <SurahList onSelectSurah={handleSelectSurah} />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="reader"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.3 }}
+                className="py-4"
+              >
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleBack}
+                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4 touch-target font-semibold"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>All Surahs</span>
+                </motion.button>
+
+                {selectedSurah && <QuranReader surahNumber={selectedSurah} />}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </main>
+  );
+}
