@@ -21,7 +21,9 @@ import {
   Clock,
   Bookmark,
   LogOut,
-  Flame
+  Flame,
+  MapPin,
+  BadgeCheck
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { fetchActiveStreak, fetchStreaks } from '@/app/profile/queries';
@@ -29,7 +31,7 @@ import { fetchAllBookmarks, fetchMyReflectionsCount } from '@/app/reflections/qu
 import { QF_DEFAULT_MUSHAF_ID } from '@/config';
 
 export default function ProfilePage() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, reflectProfile } = useAuth();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const isDarkMode = theme === 'dark';
@@ -83,27 +85,81 @@ export default function ProfilePage() {
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-4 p-4 md:p-5 rounded-2xl bg-teal-muted border border-teal/15 shadow-sm"
+            className="p-4 md:p-5 rounded-2xl bg-teal-muted border border-teal/15 shadow-sm space-y-3"
           >
-            <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground text-xl md:text-2xl font-serif font-bold shadow-sm">
-              {user.name[0]}
+            <div className="flex items-center gap-4">
+              {/* Avatar */}
+              {reflectProfile?.avatarUrls?.medium ? (
+                <img
+                  src={reflectProfile.avatarUrls.medium}
+                  alt="avatar"
+                  className="w-14 h-14 md:w-16 md:h-16 rounded-2xl object-cover shadow-sm"
+                />
+              ) : (
+                <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground text-xl md:text-2xl font-serif font-bold shadow-sm">
+                  {(reflectProfile?.firstName || user.name)[0]}
+                </div>
+              )}
+
+              <div className="flex-1 min-w-0">
+                {/* Name + verified badge */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h1 className="text-lg md:text-xl font-serif font-bold text-foreground">
+                    {reflectProfile
+                      ? `${reflectProfile.firstName ?? ''} ${reflectProfile.lastName ?? ''}`.trim() ||
+                        reflectProfile.username ||
+                        user.name
+                      : user.name}
+                  </h1>
+                  {reflectProfile?.verified && (
+                    <BadgeCheck className="w-4 h-4 text-primary flex-shrink-0" />
+                  )}
+                </div>
+
+                {/* Username */}
+                {reflectProfile?.username && (
+                  <p className="text-xs text-primary font-semibold">@{reflectProfile.username}</p>
+                )}
+
+                {/* Email */}
+                <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+              </div>
+
+              <Link
+                href="/profile/settings"
+                className="p-2.5 rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors flex-shrink-0"
+              >
+                <Settings className="w-5 h-5" />
+              </Link>
             </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-lg md:text-xl font-serif font-bold text-foreground">
-                {user.name}
-              </h1>
-              <p className="text-sm text-muted-foreground truncate">{user.email}</p>
-              <span className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                <Calendar className="w-3 h-3" />
-                Joined recently
-              </span>
+
+            {/* Bio */}
+            {reflectProfile?.bio && (
+              <p className="text-sm text-foreground/80 leading-relaxed">{reflectProfile.bio}</p>
+            )}
+
+            {/* Meta row */}
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+              {reflectProfile?.country && (
+                <span className="flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  {reflectProfile.country}
+                </span>
+              )}
+              {reflectProfile?.joiningYear && (
+                <span className="flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  Joined {reflectProfile.joiningYear}
+                </span>
+              )}
+              {reflectProfile?.followersCount !== undefined && (
+                <span className="flex items-center gap-1">
+                  <User className="w-3 h-3" />
+                  {reflectProfile.followersCount} follower
+                  {reflectProfile.followersCount !== 1 ? 's' : ''}
+                </span>
+              )}
             </div>
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              className="p-2.5 rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
-            >
-              <Settings className="w-5 h-5" />
-            </motion.button>
           </motion.div>
 
           {/* Stats Overview */}

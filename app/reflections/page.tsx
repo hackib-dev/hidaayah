@@ -53,7 +53,7 @@ export default function ReflectionsPage() {
     if (!user) return;
 
     Promise.all([
-      fetchMyReflectPosts({ limit: 50, page: 1 }),
+      fetchMyReflectPosts({ limit: 20, page: 1 }),
       fetchActiveStreak().catch(() => null)
     ])
       .then(([postsRes, streakRes]) => {

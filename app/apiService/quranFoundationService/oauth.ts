@@ -72,9 +72,21 @@ export const fetchClientCredentialsToken = async (): Promise<string> => {
 // ─── Build the OAuth authorize URL (Authorization Code + PKCE) ───────────────
 export const buildAuthorizeUrl = async (redirectUri: string): Promise<string> => {
   const clientId = process.env.NEXT_PUBLIC_QF_CLIENT_ID || '';
-  // openid is omitted until the production client has it enabled.
-  // Add it back once Quran Foundation enables it on your client.
-  const scopes = ['offline_access', 'bookmark', 'collection', 'user', 'streak'].join(' ');
+  const scopes = [
+    'offline_access',
+    'content',
+    'user',
+    'collection',
+    'bookmark',
+    'reading_session',
+    'preference',
+    'comment',
+    'post',
+    'activity_day',
+    'goal',
+    'streak',
+    'note'
+  ].join(' ');
 
   const { codeVerifier, codeChallenge } = await generatePkcePair();
   const state = randomString(16);

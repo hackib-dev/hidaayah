@@ -1,8 +1,10 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { buildAuthorizeUrl } from '@/app/apiService/quranFoundationService/oauth';
 import { clearToken, clearUserTokens } from '@/app/apiService/quranFoundationService';
+import { fetchReflectProfile } from '@/app/profile/queries';
+import type { ReflectProfile } from '@/app/profile/types';
 
 const REDIRECT_URI =
   process.env.NEXT_PUBLIC_QF_OAUTH_REDIRECT_URI || 'http://localhost:3000/callback';
@@ -16,12 +18,12 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  /** Redirects the browser to the QF OAuth authorize endpoint (PKCE). */
+  reflectProfile: ReflectProfile | null;
+  reflectProfileLoading: boolean;
+  reloadReflectProfile: () => Promise<void>;
   login: () => Promise<void>;
-  /** Also redirects to QF OAuth — registration happens on the QF side. */
   signup: () => Promise<void>;
   logout: () => void;
-  /** Called by /callback page once token exchange is complete. */
   setUserFromToken: (user: User) => void;
   loading: boolean;
 }
@@ -31,6 +33,8 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reflectProfile, setReflectProfile] = useState<ReflectProfile | null>(null);
+  const [reflectProfileLoading, setReflectProfileLoading] = useState(false);
 
   useEffect(() => {
     try {
@@ -39,6 +43,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {}
     setLoading(false);
   }, []);
+
+  // Fetch reflect profile once when user is known
+  const loadReflectProfile = useCallback(async () => {
+    setReflectProfileLoading(true);
+    try {
+      const p = await fetchReflectProfile();
+      setReflectProfile(p);
+    } catch {
+      // Non-fatal — pages fall back to auth user data
+    } finally {
+      setReflectProfileLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user) loadReflectProfile();
+  }, [user, loadReflectProfile]);
 
   const redirectToOAuth = async () => {
     const url = await buildAuthorizeUrl(REDIRECT_URI);
@@ -55,13 +76,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null);
+    setReflectProfile(null);
     localStorage.removeItem(USER_STORAGE_KEY);
     clearToken();
     clearUserTokens();
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, setUserFromToken, loading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        reflectProfile,
+        reflectProfileLoading,
+        reloadReflectProfile: loadReflectProfile,
+        login,
+        signup,
+        logout,
+        setUserFromToken,
+        loading
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

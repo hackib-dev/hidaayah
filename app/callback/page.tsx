@@ -46,12 +46,16 @@ export default function CallbackPage() {
         try {
           const oauthBase =
             process.env.NEXT_PUBLIC_QF_OAUTH_BASE_URL || 'https://oauth2.quran.foundation';
-          const res = await fetch(`${oauthBase}/oauth2/userinfo`, {
+          const res = await fetch(`${oauthBase}/userinfo`, {
             headers: { Authorization: `Bearer ${tokenData.access_token}` }
           });
           if (res.ok) {
             const info = await res.json();
-            name = info.name || info.given_name || info.preferred_username || 'User';
+            name =
+              (info.first_name ? `${info.first_name} ${info.last_name ?? ''}`.trim() : null) ||
+              info.name ||
+              info.preferred_username ||
+              'User';
             email = info.email || '';
             sub = info.sub || '';
           }

@@ -78,9 +78,13 @@ export interface ReflectProfile {
   country?: string;
   verified?: boolean;
   avatarUrls?: Record<string, string>;
-  settings?: Record<string, unknown>;
-  createdAt?: Record<string, unknown>;
+  followersCount?: number;
+  postsCount?: number;
   joiningYear?: number;
+  languageId?: number;
+  languageIsoCode?: string;
+  settings?: Record<string, unknown>;
+  createdAt?: string;
 }
 
 export interface UpdateReflectProfileParams {

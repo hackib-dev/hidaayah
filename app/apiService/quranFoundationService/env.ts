@@ -30,6 +30,7 @@ export const qfConfig = {
     qfEnv === 'prelive' ? 'https://apis-prelive.quran.foundation' : 'https://apis.quran.foundation',
   clientId: process.env.NEXT_PUBLIC_QF_CLIENT_ID || '',
   clientSecret: process.env.QF_CLIENT_SECRET || '',
-  contentClientId: process.env.QF_CONTENT_CLIENT_ID || '',
+  contentClientId:
+    process.env.NEXT_PUBLIC_QF_CONTENT_CLIENT_ID || process.env.QF_CONTENT_CLIENT_ID || '',
   contentClientSecret: process.env.QF_CONTENT_CLIENT_SECRET || ''
 };

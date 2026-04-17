@@ -4,8 +4,7 @@ import type {
   ListVersesResponse,
   GetVerseResponse,
   ListVersesParams,
-  ListRecitersResponse,
-  AudioTimestampResponse
+  ListRecitersResponse
 } from '@/app/quran/types';
 
 // ─── Chapters ─────────────────────────────────────────────────────────────────
@@ -33,6 +32,7 @@ export const fetchVersesByChapter = async (
       language: 'en',
       page: 1,
       per_page: 10,
+      fields: 'text_uthmani',
       ...params,
       words: params.words ? 'true' : 'false'
     }
@@ -77,14 +77,11 @@ export const fetchReciters = async (): Promise<ListRecitersResponse> => {
   return response.data;
 };
 
-export const fetchAudioTimestamp = async (
+export const fetchChapterAudio = async (
   reciterId: number,
   chapterNumber: number
-): Promise<AudioTimestampResponse> => {
-  const response = await contentApi.get<AudioTimestampResponse>(
-    `/audio/reciters/${reciterId}/timestamp`,
-    { params: { chapter_number: chapterNumber } }
-  );
+): Promise<{ audio_file: { audio_url: string } }> => {
+  const response = await contentApi.get(`/chapter_recitations/${reciterId}/${chapterNumber}`);
   return response.data;
 };
 

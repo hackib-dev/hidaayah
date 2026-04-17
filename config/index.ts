@@ -39,8 +39,8 @@ export const QF_OAUTH_BASE_URL =
 
 export const QF_CLIENT_ID = process.env.NEXT_PUBLIC_QF_CLIENT_ID || '';
 
-// Default translation resource ID — Sahih International (English)
-export const QF_DEFAULT_TRANSLATION_ID = 131;
+// Default translation resource ID — Saheeh International (English), ID verified via /resources/translations
+export const QF_DEFAULT_TRANSLATION_ID = 20;
 
 // Default Mushaf ID — QCFV2 (standard digital Mushaf)
 export const QF_DEFAULT_MUSHAF_ID = 1;

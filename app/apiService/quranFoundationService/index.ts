@@ -99,7 +99,6 @@ const addAuthHeaders =
     }
     return config;
   };
-
 // ─── 401 auto-refresh interceptor for user APIs ───────────────────────────────
 // Retries once after refreshing the access token. Never loops.
 function addRefreshInterceptor(instance: AxiosInstance) {

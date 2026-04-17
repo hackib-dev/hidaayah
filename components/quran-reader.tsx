@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import {
   Play,
@@ -21,7 +21,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { fetchVersesByChapter, fetchChapter } from '@/app/quran/queries';
+import { fetchVersesByChapter, fetchChapter, fetchChapterAudio } from '@/app/quran/queries';
 import { fetchTafsirByChapter } from '@/app/guidance/queries';
 import { createBookmark, deleteBookmark } from '@/app/reflections/queries';
 import type { Verse, Chapter } from '@/app/quran/types';
@@ -51,6 +51,26 @@ export function QuranReader({ surahNumber }: QuranReaderProps) {
   const [arabicSize, setArabicSize] = useState(3);
   const [showTransliteration, setShowTransliteration] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Fetch chapter audio (reciter 7 = Mishary Rashid Alafasy)
+  useEffect(() => {
+    setAudioUrl(null);
+    setIsPlaying(false);
+    fetchChapterAudio(7, surahNumber)
+      .then((res) => setAudioUrl(res.audio_file.audio_url))
+      .catch(() => null);
+  }, [surahNumber]);
+
+  // Sync play/pause/mute to the audio element
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !audioUrl) return;
+    audio.muted = isMuted;
+    if (isPlaying) audio.play().catch(() => setIsPlaying(false));
+    else audio.pause();
+  }, [isPlaying, isMuted, audioUrl]);
 
   // Load chapter info + first page of verses
   useEffect(() => {
@@ -221,6 +241,9 @@ export function QuranReader({ surahNumber }: QuranReaderProps) {
           </div>
         </div>
       </motion.div>
+
+      {/* Hidden audio element */}
+      {audioUrl && <audio ref={audioRef} src={audioUrl} onEnded={() => setIsPlaying(false)} />}
 
       {/* Audio Player */}
       <div className="p-4 rounded-2xl bg-card border border-border shadow-sm">
