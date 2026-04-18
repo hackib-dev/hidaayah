@@ -77,6 +77,19 @@ export const fetchReciters = async (): Promise<ListRecitersResponse> => {
   return response.data;
 };
 
+// Returns only reciters that have verse-level audio (/recitations/:id) —
+// a subset of chapter_reciters. IDs that don't exist in /resources/recitations
+// will return 404 from fetchVerseAudioFiles and produce no audio.
+export const fetchVerseReciters = async (): Promise<ListRecitersResponse> => {
+  const [chapterReciters, recitations] = await Promise.all([
+    contentApi.get<ListRecitersResponse>('/resources/chapter_reciters'),
+    contentApi.get<{ recitations: { id: number }[] }>('/resources/recitations')
+  ]);
+  const validIds = new Set((recitations.data.recitations ?? []).map((r) => r.id));
+  const filtered = (chapterReciters.data.reciters ?? []).filter((r) => validIds.has(r.id));
+  return { reciters: filtered };
+};
+
 export const fetchChapterAudio = async (
   reciterId: number,
   chapterNumber: number

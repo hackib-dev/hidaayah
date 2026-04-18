@@ -109,10 +109,15 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
   const color = THEME_COLORS[emotionKey] ?? THEME_COLORS.default;
   const prompts = REFLECTION_PROMPTS[emotionKey] ?? REFLECTION_PROMPTS.default;
 
-  // Sync play/pause to audio element
+  // Sync play/pause/src to audio element imperatively
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !audioUrl) return;
+    if (!audio) return;
+    if (!audioUrl) { audio.pause(); return; }
+    if (audio.src !== audioUrl) {
+      audio.src = audioUrl;
+      audio.load();
+    }
     if (isPlaying) audio.play().catch(() => setIsPlaying(false));
     else audio.pause();
   }, [isPlaying, audioUrl]);
@@ -333,8 +338,8 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
             &ldquo;{guidance.translation}&rdquo;
           </p>
 
-          {/* Hidden audio element */}
-          {audioUrl && <audio ref={audioRef} src={audioUrl} onEnded={() => setIsPlaying(false)} />}
+          {/* Hidden audio element — always mounted, src managed imperatively */}
+          <audio ref={audioRef} onEnded={() => setIsPlaying(false)} />
 
           {/* Controls */}
           <div className="flex items-center justify-center gap-3 pt-2">

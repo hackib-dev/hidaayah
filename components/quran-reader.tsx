@@ -26,7 +26,7 @@ import {
   fetchVersesByChapter,
   fetchChapter,
   fetchVerseAudioFiles,
-  fetchReciters
+  fetchVerseReciters
 } from '@/app/quran/queries';
 import { fetchTafsirByChapter } from '@/app/guidance/queries';
 import { createBookmark, deleteBookmark, fetchBookmarks } from '@/app/reflections/queries';
@@ -84,8 +84,8 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
   // Fetch reciters list once
   useEffect(() => {
     setLoadingReciters(true);
-    fetchReciters()
-      .then((res) => setReciters(res.reciters ?? []))
+    fetchVerseReciters()
+      .then((res: { reciters: Reciter[] }) => setReciters(res.reciters ?? []))
       .catch(() => null)
       .finally(() => setLoadingReciters(false));
   }, []);
