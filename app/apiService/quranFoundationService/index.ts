@@ -101,9 +101,9 @@ const addAuthHeaders =
   };
 // ─── 401 auto-refresh interceptor for user APIs ───────────────────────────────
 // Retries once after refreshing the access token. Never loops.
-// silent403: when true, 403s are swallowed without logging (reflect API — scopes pending approval)
-// retry500: when true, also retries on 500 — prelive returns 500 for expired tokens on some endpoints
-function addRefreshInterceptor(instance: AxiosInstance, silent403 = false, retry500 = false) {
+// silent403: when true, 403s that are real scope errors are swallowed without logging.
+//            403s with type=invalid_token (prelive expired token) are always retried.
+function addRefreshInterceptor(instance: AxiosInstance, silent403 = false) {
   instance.interceptors.response.use(
     (res) => res,
     async (error: AxiosError) => {
@@ -115,8 +115,7 @@ function addRefreshInterceptor(instance: AxiosInstance, silent403 = false, retry
       const isExpiredToken = responseData?.type === 'invalid_token';
 
       const shouldRefresh =
-        (status === 401 || (retry500 && status === 500) || (status === 403 && isExpiredToken)) &&
-        !originalReq._retried;
+        (status === 401 || (status === 403 && isExpiredToken)) && !originalReq._retried;
 
       if (shouldRefresh) {
         originalReq._retried = true;
@@ -126,14 +125,17 @@ function addRefreshInterceptor(instance: AxiosInstance, silent403 = false, retry
           originalReq.headers['x-auth-token'] = tokenData.access_token;
           return instance(originalReq);
         } catch {
-          // Refresh token expired — clear stale tokens and force re-login
           logApiError(
             originalReq.url ?? 'unknown',
             status ?? 401,
-            'token refresh failed — clearing session and redirecting to login'
+            'token refresh failed — clearing session'
           );
+          // Only redirect to login if user had a valid session (access token existed).
+          // Avoids false redirects on first-load API failures before login completes.
+          const hadSession =
+            typeof window !== 'undefined' && !!localStorage.getItem(USER_TOKEN_KEY);
           clearUserTokens();
-          if (typeof window !== 'undefined') {
+          if (hadSession) {
             window.dispatchEvent(new CustomEvent('qf:session-expired'));
           }
           return Promise.reject(error);
@@ -181,6 +183,6 @@ export const reflectApi: AxiosInstance = Axios.create({
   timeout: 30000
 });
 reflectApi.interceptors.request.use(addAuthHeaders(false));
-// silent403=true: reflect scopes are approved but 403s may appear on some endpoints
-// retry500=true: prelive returns 500 (not 401) for expired tokens on some reflect endpoints
-addRefreshInterceptor(reflectApi, true, true);
+// silent403=true: swallow 403s that are real scope errors, not token expiry
+// isExpiredToken check in the interceptor handles prelive's 403 invalid_token responses
+addRefreshInterceptor(reflectApi, true);

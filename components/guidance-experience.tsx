@@ -21,7 +21,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { searchByEmotion, fetchTafsirByAyah } from '@/app/guidance/queries';
 import { createBookmark } from '@/app/reflections/queries';
-import { fetchVerseByKey, fetchChapterAudio } from '@/app/quran/queries';
+import { fetchVerseByKey, fetchVerseAudioFiles } from '@/app/quran/queries';
 import { reflectApi } from '@/app/apiService/quranFoundationService';
 import { QF_DEFAULT_MUSHAF_ID, QF_DEFAULT_TRANSLATION_ID, QF_DEFAULT_RECITER_ID } from '@/config';
 
@@ -171,17 +171,21 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
           color
         });
 
-        // Fetch Arabic text, translation, and chapter audio in parallel
-        const [verseData, audioRes] = await Promise.all([
+        // Fetch Arabic text, translation, and verse-level audio in parallel
+        const [verseData, verseAudioFiles] = await Promise.all([
           fetchVerseByKey(verse.key, {
             translations: String(QF_DEFAULT_TRANSLATION_ID),
             fields: 'text_uthmani',
             words: false
           }).catch(() => null),
-          fetchChapterAudio(QF_DEFAULT_RECITER_ID, surahNum).catch(() => null)
+          fetchVerseAudioFiles(QF_DEFAULT_RECITER_ID, surahNum).catch(() => null)
         ]);
 
-        if (audioRes) setAudioUrl(audioRes.audio_file.audio_url);
+        // Find the specific verse's audio URL — play only that verse, not the whole surah
+        const verseAudio = verseAudioFiles?.find(
+          (f) => parseInt(f.verse_key.split(':')[1], 10) === verseNumber
+        );
+        if (verseAudio) setAudioUrl(verseAudio.url);
 
         if (verseData) {
           setGuidance((prev) =>
