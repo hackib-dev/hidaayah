@@ -25,9 +25,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   fetchVersesByChapter,
   fetchChapter,
-  fetchChapterAudio,
-  fetchReciters,
-  lookupVerseByTimestamp
+  fetchVerseAudioFiles,
+  fetchReciters
 } from '@/app/quran/queries';
 import { fetchTafsirByChapter } from '@/app/guidance/queries';
 import { createBookmark, deleteBookmark, fetchBookmarks } from '@/app/reflections/queries';
@@ -64,8 +63,11 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
   const [arabicSize, setArabicSize] = useState(3);
   const [showTransliteration, setShowTransliteration] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [loadingAudio, setLoadingAudio] = useState(false);
+
+  // Verse-by-verse audio: list of { verse_key, url } in order
+  const [verseAudioFiles, setVerseAudioFiles] = useState<{ verse_key: string; url: string }[]>([]);
+  const [currentVerseIndex, setCurrentVerseIndex] = useState(0);
 
   // Reciters
   const [reciters, setReciters] = useState<Reciter[]>([]);
@@ -75,7 +77,9 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const verseRefs = useRef<Record<number, HTMLDivElement | null>>({});
-  const lookupInFlightRef = useRef<boolean>(false); // prevents overlapping lookup requests
+
+  // Derived: current audio URL from verse list
+  const audioUrl = verseAudioFiles[currentVerseIndex]?.url ?? null;
 
   // Fetch reciters list once
   useEffect(() => {
@@ -86,54 +90,42 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
       .finally(() => setLoadingReciters(false));
   }, []);
 
-  // Fetch audio when reciter or surah changes
+  // Fetch verse audio files when reciter or surah changes
   useEffect(() => {
-    setAudioUrl(null);
+    setVerseAudioFiles([]);
+    setCurrentVerseIndex(0);
     setIsPlaying(false);
     setActiveVerse(1);
     setLoadingAudio(true);
 
-    fetchChapterAudio(selectedReciterId, surahNumber)
-      .then((res) => setAudioUrl(res.audio_file.audio_url))
+    fetchVerseAudioFiles(selectedReciterId, surahNumber)
+      .then((files) => setVerseAudioFiles(files))
       .catch(() => null)
       .finally(() => setLoadingAudio(false));
   }, [selectedReciterId, surahNumber]);
 
-  // Active verse tracking: fire lookup as fast as the API responds, no overlapping requests
+  // When currentVerseIndex changes, update activeVerse and scroll to it
+  useEffect(() => {
+    if (verseAudioFiles.length === 0) return;
+    const vk = verseAudioFiles[currentVerseIndex]?.verse_key;
+    if (!vk) return;
+    const verseNum = parseInt(vk.split(':')[1], 10);
+    setActiveVerse(verseNum);
+    const el = verseRefs.current[verseNum];
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [currentVerseIndex, verseAudioFiles]);
+
+  // Sync play/pause/mute/src to the audio element
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-
-    const handleTimeUpdate = () => {
-      if (!isPlaying || lookupInFlightRef.current) return;
-      lookupInFlightRef.current = true;
-
-      const timestampMs = audio.currentTime * 1000;
-      lookupVerseByTimestamp(selectedReciterId, surahNumber, timestampMs)
-        .then((result) => {
-          if (!result) return;
-          setActiveVerse((prev) => {
-            if (prev === result.verse_number) return prev;
-            const el = verseRefs.current[result.verse_number];
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            return result.verse_number;
-          });
-        })
-        .catch(() => null)
-        .finally(() => {
-          lookupInFlightRef.current = false;
-        });
-    };
-
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    return () => audio.removeEventListener('timeupdate', handleTimeUpdate);
-  }, [isPlaying, selectedReciterId, surahNumber]);
-
-  // Sync play/pause/mute to the audio element
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !audioUrl) return;
     audio.muted = isMuted;
+    if (!audioUrl) return;
+    // Only update src if it actually changed to avoid resetting playback
+    if (audio.src !== audioUrl) {
+      audio.src = audioUrl;
+      audio.load();
+    }
     if (isPlaying) audio.play().catch(() => setIsPlaying(false));
     else audio.pause();
   }, [isPlaying, isMuted, audioUrl]);
@@ -249,7 +241,10 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
   };
 
   const handlePlayVerse = (verseNumber: number) => {
-    setActiveVerse(verseNumber);
+    const idx = verseAudioFiles.findIndex(
+      (f) => parseInt(f.verse_key.split(':')[1], 10) === verseNumber
+    );
+    if (idx !== -1) setCurrentVerseIndex(idx);
     setIsPlaying(true);
   };
 
@@ -333,17 +328,21 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
         </div>
       </motion.div>
 
-      {/* Hidden audio element */}
-      {audioUrl && (
-        <audio
-          ref={audioRef}
-          src={audioUrl}
-          onEnded={() => {
+      {/* Hidden audio element — src is managed imperatively in the sync effect */}
+      <audio
+        ref={audioRef}
+        onEnded={() => {
+          const nextIndex = currentVerseIndex + 1;
+          if (nextIndex < verseAudioFiles.length) {
+            setCurrentVerseIndex(nextIndex);
+            // isPlaying stays true — the sync effect will play the new src
+          } else {
             setIsPlaying(false);
+            setCurrentVerseIndex(0);
             setActiveVerse(1);
-          }}
-        />
-      )}
+          }
+        }}
+      />
 
       {/* Audio Player */}
       <div className="p-4 rounded-2xl bg-card border border-border shadow-sm">
@@ -352,10 +351,12 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
             <motion.button
               whileTap={{ scale: 0.88 }}
               onClick={() => {
-                const prev = Math.max(1, activeVerse - 1);
-                handlePlayVerse(prev);
+                const prev = Math.max(0, currentVerseIndex - 1);
+                setCurrentVerseIndex(prev);
+                setIsPlaying(true);
               }}
-              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              disabled={currentVerseIndex === 0}
+              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40"
             >
               <SkipBack className="w-4 h-4" />
             </motion.button>
@@ -381,10 +382,12 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
             <motion.button
               whileTap={{ scale: 0.88 }}
               onClick={() => {
-                const next = Math.min(chapter?.verses_count ?? activeVerse, activeVerse + 1);
-                handlePlayVerse(next);
+                const next = Math.min(verseAudioFiles.length - 1, currentVerseIndex + 1);
+                setCurrentVerseIndex(next);
+                setIsPlaying(true);
               }}
-              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              disabled={currentVerseIndex >= verseAudioFiles.length - 1}
+              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40"
             >
               <SkipForward className="w-4 h-4" />
             </motion.button>

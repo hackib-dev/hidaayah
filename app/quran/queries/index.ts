@@ -85,18 +85,19 @@ export const fetchChapterAudio = async (
   return response.data;
 };
 
-export const lookupVerseByTimestamp = async (
+export const fetchVerseAudioFiles = async (
   reciterId: number,
-  chapterNumber: number,
-  timestampMs: number
-): Promise<{ verse_number: number; verse_key: string } | null> => {
-  const response = await contentApi.get(`/audio/reciters/${reciterId}/lookup`, {
-    params: { chapter_number: chapterNumber, timestamp: Math.floor(timestampMs) }
+  chapterNumber: number
+): Promise<{ verse_key: string; url: string }[]> => {
+  const response = await contentApi.get<{
+    audio_files: { verse_key: string; url: string }[];
+  }>(`/recitations/${reciterId}/by_chapter/${chapterNumber}`, {
+    params: { per_page: 300 }
   });
-  const result = response.data?.result;
-  if (!result?.verse_key) return null;
-  const verse_number = parseInt(result.verse_key.split(':')[1], 10);
-  return { verse_number, verse_key: result.verse_key };
+  return (response.data.audio_files ?? []).map((f) => ({
+    verse_key: f.verse_key,
+    url: f.url.startsWith('//') ? `https:${f.url}` : f.url
+  }));
 };
 
 // ─── Translations ─────────────────────────────────────────────────────────────
