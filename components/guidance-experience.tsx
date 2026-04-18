@@ -127,7 +127,11 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
 
     searchByEmotion(emotion, situation)
       .then(async (res) => {
-        const verse = res.result?.verses?.[0];
+        // prelive returns results in `navigation`, production in `verses` — use whichever has data
+        const navItems = res.result?.navigation ?? [];
+        const verse =
+          res.result?.verses?.[0] ??
+          (navItems.find((n) => n.result_type === 'ayah' && n.key) || null);
         if (!verse) {
           setError('No guidance found. Please try again with different words.');
           return;
@@ -137,8 +141,8 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
         const surahNum = parseInt(chapter, 10);
         const verseNumber = parseInt(verseNum, 10);
 
-        // Pull related surah names from search navigation results
-        const relatedThemes = (res.result?.navigation ?? [])
+        // Pull related surah names from navigation, or fall back to other ayah keys as themes
+        const relatedThemes = navItems
           .filter((n) => n.result_type === 'surah' && n.name)
           .slice(0, 3)
           .map((n) => n.name);
@@ -146,7 +150,7 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
         // Set initial guidance so UI renders immediately
         setGuidance({
           verseKey: verse.key,
-          surahName: verse.name ?? `Surah ${surahNum}`,
+          surahName: `Surah ${surahNum}`,
           verseNumber,
           arabic: '',
           translation: '',
@@ -173,12 +177,16 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
               ? {
                   ...prev,
                   arabic: verseData.verse.text_uthmani ?? '',
-                  translation: verseData.verse.translations?.[0]?.text ?? verse.name ?? ''
+                  translation:
+                    verseData.verse.translations?.[0]?.text ??
+                    (verse.name ?? '').replace(/<[^>]*>/g, '')
                 }
               : prev
           );
         } else {
-          setGuidance((prev) => (prev ? { ...prev, translation: verse.name ?? '' } : prev));
+          setGuidance((prev) =>
+            prev ? { ...prev, translation: (verse.name ?? '').replace(/<[^>]*>/g, '') } : prev
+          );
         }
       })
       .catch(() => setError('Failed to fetch guidance. Please check your connection.'))
