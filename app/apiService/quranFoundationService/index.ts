@@ -25,8 +25,8 @@ const CONTENT_TOKEN_KEY = `qf_content_access_token_v2_${ENV_KEY}`;
 const CONTENT_EXPIRES_KEY = `qf_content_token_expires_at_v2_${ENV_KEY}`;
 const REFLECT_TOKEN_KEY = `qf_reflect_access_token_${ENV_KEY}`;
 const REFLECT_EXPIRES_KEY = `qf_reflect_token_expires_at_${ENV_KEY}`;
-export const USER_TOKEN_KEY = `qf_user_access_token_${ENV_KEY}`;
-export const USER_REFRESH_KEY = `qf_user_refresh_token_${ENV_KEY}`;
+export const USER_TOKEN_KEY = `qf_user_access_token_v2_${ENV_KEY}`;
+export const USER_REFRESH_KEY = `qf_user_refresh_token_v2_${ENV_KEY}`;
 
 // ─── Content token helpers ────────────────────────────────────────────────────
 export const storeToken = (token: string, expiresIn: number) => {
