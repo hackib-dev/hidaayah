@@ -110,8 +110,13 @@ function addRefreshInterceptor(instance: AxiosInstance, silent403 = false, retry
       const status = error.response?.status;
       const originalReq = error.config as InternalAxiosRequestConfig & { _retried?: boolean };
 
+      // prelive returns 403 with type "invalid_token" for expired tokens (not a scope error)
+      const responseData = error.response?.data as Record<string, unknown> | undefined;
+      const isExpiredToken = responseData?.type === 'invalid_token';
+
       const shouldRefresh =
-        (status === 401 || (retry500 && status === 500)) && !originalReq._retried;
+        (status === 401 || (retry500 && status === 500) || (status === 403 && isExpiredToken)) &&
+        !originalReq._retried;
 
       if (shouldRefresh) {
         originalReq._retried = true;
@@ -121,12 +126,16 @@ function addRefreshInterceptor(instance: AxiosInstance, silent403 = false, retry
           originalReq.headers['x-auth-token'] = tokenData.access_token;
           return instance(originalReq);
         } catch {
-          // Refresh failed — caller must handle re-auth
+          // Refresh token expired — clear stale tokens and force re-login
           logApiError(
             originalReq.url ?? 'unknown',
             status ?? 401,
-            'token refresh failed — re-auth required'
+            'token refresh failed — clearing session and redirecting to login'
           );
+          clearUserTokens();
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('qf:session-expired'));
+          }
           return Promise.reject(error);
         }
       }

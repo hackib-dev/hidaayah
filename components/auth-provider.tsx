@@ -61,6 +61,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) loadReflectProfile();
   }, [user, loadReflectProfile]);
 
+  // When token refresh fails, clear session and redirect to login
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      setUser(null);
+      setReflectProfile(null);
+      localStorage.removeItem(USER_STORAGE_KEY);
+      window.location.href = '/login';
+    };
+    window.addEventListener('qf:session-expired', handleSessionExpired);
+    return () => window.removeEventListener('qf:session-expired', handleSessionExpired);
+  }, []);
+
   const redirectToOAuth = async () => {
     const url = await buildAuthorizeUrl(REDIRECT_URI);
     window.location.href = url;
@@ -80,6 +92,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(USER_STORAGE_KEY);
     clearToken();
     clearUserTokens();
+    // Clear the httpOnly refresh token cookie server-side
+    fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => null);
   };
 
   return (

@@ -3,7 +3,6 @@ import {
   storeToken,
   getStoredToken,
   USER_TOKEN_KEY,
-  USER_REFRESH_KEY,
   logApiError
 } from './index';
 
@@ -143,23 +142,20 @@ export const exchangeCodeForToken = async (
 
   if (typeof window !== 'undefined') {
     localStorage.setItem(USER_TOKEN_KEY, data.access_token);
-    if (data.refresh_token) {
-      localStorage.setItem(USER_REFRESH_KEY, data.refresh_token);
-    }
+    // refresh_token is stored in httpOnly cookie by the proxy — never in localStorage
   }
   return data;
 };
 
 // ─── Refresh the access token ─────────────────────────────────────────────────
+// The refresh token lives in an httpOnly cookie set by /api/auth/token.
+// We send no refresh_token in the body — the proxy reads it from the cookie.
 export const refreshUserToken = async (): Promise<OAuthTokenResponse> => {
-  const refreshToken =
-    typeof window !== 'undefined' ? localStorage.getItem(USER_REFRESH_KEY) : null;
-  if (!refreshToken) throw new Error('No refresh token available — re-auth required');
-
   const res = await fetch(TOKEN_PROXY, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: refreshToken })
+    credentials: 'same-origin', // ensures the httpOnly cookie is sent
+    body: JSON.stringify({ grant_type: 'refresh_token' })
   });
 
   const data: OAuthTokenResponse & { error?: string; error_description?: string } =
@@ -173,9 +169,7 @@ export const refreshUserToken = async (): Promise<OAuthTokenResponse> => {
 
   if (typeof window !== 'undefined') {
     localStorage.setItem(USER_TOKEN_KEY, data.access_token);
-    if (data.refresh_token) {
-      localStorage.setItem(USER_REFRESH_KEY, data.refresh_token);
-    }
+    // new refresh_token (if rotated) is set as httpOnly cookie by the proxy
   }
   return data;
 };

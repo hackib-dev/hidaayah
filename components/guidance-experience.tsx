@@ -129,9 +129,21 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
       .then(async (res) => {
         // prelive returns results in `navigation`, production in `verses` — use whichever has data
         const navItems = res.result?.navigation ?? [];
+
+        // prelive only has chapters 1–2; filter to available chapters so downstream calls don't 404
+        const availableChapters = new Set([1, 2]);
+        const isAvailable = (key: string) => {
+          const ch = parseInt(key.split(':')[0], 10);
+          return availableChapters.has(ch);
+        };
+
         const verse =
+          res.result?.verses?.find((v) => isAvailable(v.key)) ??
           res.result?.verses?.[0] ??
-          (navItems.find((n) => n.result_type === 'ayah' && n.key) || null);
+          navItems.find((n) => n.result_type === 'ayah' && n.key && isAvailable(n.key)) ??
+          navItems.find((n) => n.result_type === 'ayah' && n.key) ??
+          null;
+
         if (!verse) {
           setError('No guidance found. Please try again with different words.');
           return;
