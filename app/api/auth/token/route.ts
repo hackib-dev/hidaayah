@@ -8,9 +8,9 @@ const isPrelive =
 
 const QF_ENV = isPrelive ? 'prelive' : 'production';
 
-const AUTH_BASE_URL =
-  process.env.NEXT_PUBLIC_QF_OAUTH_BASE_URL ||
-  (isPrelive ? 'https://prelive-oauth2.quran.foundation' : 'https://oauth2.quran.foundation');
+const AUTH_BASE_URL = isPrelive
+  ? 'https://prelive-oauth2.quran.foundation'
+  : 'https://oauth2.quran.foundation';
 
 // User auth client — authorization_code + refresh_token grants
 const AUTH_CLIENT_ID = process.env.NEXT_PUBLIC_QF_CLIENT_ID || '';
@@ -26,8 +26,8 @@ export async function POST(req: NextRequest) {
 
   const isContentGrant = grant_type === 'client_credentials';
 
-  // All grants use the same OAuth server and client
-  const oauthBase = AUTH_BASE_URL;
+  // Content client always uses production OAuth server regardless of QF_ENV
+  const oauthBase = isContentGrant ? 'https://oauth2.quran.foundation' : AUTH_BASE_URL;
   const clientId = isContentGrant ? CONTENT_CLIENT_ID : AUTH_CLIENT_ID;
   const clientSecret = isContentGrant ? CONTENT_CLIENT_SECRET : AUTH_CLIENT_SECRET;
 

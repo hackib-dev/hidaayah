@@ -23,7 +23,9 @@ export const qfEnv: QfEnv = inferredEnv();
 export const qfConfig = {
   authBaseUrl:
     process.env.NEXT_PUBLIC_QF_OAUTH_BASE_URL ||
-    (qfEnv === 'prelive' ? 'https://prelive.auth.quran.com' : 'https://oauth2.quran.foundation'),
+    (qfEnv === 'prelive'
+      ? 'https://prelive-oauth2.quran.foundation'
+      : 'https://oauth2.quran.foundation'),
   apiBaseUrl:
     qfEnv === 'prelive' ? 'https://apis-prelive.quran.foundation' : 'https://apis.quran.foundation',
   clientId: process.env.NEXT_PUBLIC_QF_CLIENT_ID || '',
