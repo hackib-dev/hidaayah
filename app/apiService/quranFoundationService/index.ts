@@ -22,6 +22,8 @@ const ENV_KEY = qfEnv; // "production" | "prelive"
 
 const CONTENT_TOKEN_KEY = `qf_content_access_token_${ENV_KEY}`;
 const CONTENT_EXPIRES_KEY = `qf_content_token_expires_at_${ENV_KEY}`;
+const REFLECT_TOKEN_KEY = `qf_reflect_access_token_${ENV_KEY}`;
+const REFLECT_EXPIRES_KEY = `qf_reflect_token_expires_at_${ENV_KEY}`;
 export const USER_TOKEN_KEY = `qf_user_access_token_${ENV_KEY}`;
 export const USER_REFRESH_KEY = `qf_user_refresh_token_${ENV_KEY}`;
 
@@ -74,6 +76,52 @@ export const ensureContentToken = async (): Promise<string> => {
   });
 
   return inflightTokenFetch;
+};
+
+// ─── Reflect token helpers (post-scoped client credentials) ──────────────────
+const getStoredReflectToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  const token = localStorage.getItem(REFLECT_TOKEN_KEY);
+  const expiresAt = localStorage.getItem(REFLECT_EXPIRES_KEY);
+  if (!token || !expiresAt) return null;
+  if (Date.now() > Number(expiresAt)) {
+    localStorage.removeItem(REFLECT_TOKEN_KEY);
+    localStorage.removeItem(REFLECT_EXPIRES_KEY);
+    return null;
+  }
+  return token;
+};
+
+const storeReflectToken = (token: string, expiresIn: number) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(REFLECT_TOKEN_KEY, token);
+  localStorage.setItem(REFLECT_EXPIRES_KEY, String(Date.now() + expiresIn * 1000));
+};
+
+let inflightReflectFetch: Promise<string> | null = null;
+
+const ensureReflectToken = async (): Promise<string> => {
+  const cached = getStoredReflectToken();
+  if (cached) return cached;
+
+  if (inflightReflectFetch) return inflightReflectFetch;
+
+  inflightReflectFetch = (async () => {
+    const res = await fetch('/api/auth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grant_type: 'reflect_credentials' })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.access_token)
+      throw new Error(data.error_description ?? 'reflect token failed');
+    storeReflectToken(data.access_token, data.expires_in);
+    return data.access_token as string;
+  })().finally(() => {
+    inflightReflectFetch = null;
+  });
+
+  return inflightReflectFetch;
 };
 
 // ─── Safe diagnostic logger (never logs tokens or secrets) ───────────────────
@@ -178,11 +226,23 @@ userApi.interceptors.request.use(addAuthHeaders(false));
 addRefreshInterceptor(userApi);
 
 // ─── Reflect API instance ─────────────────────────────────────────────────────
+// Uses the user token when logged in; falls back to a post-scoped client
+// credentials token so unauthenticated feed requests also work.
 export const reflectApi: AxiosInstance = Axios.create({
   baseURL: QF_REFLECT_BASE_URL,
   timeout: 30000
 });
-reflectApi.interceptors.request.use(addAuthHeaders(false));
+reflectApi.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+  config.headers['x-client-id'] = qfConfig.clientId;
+  const userToken = typeof window !== 'undefined' ? localStorage.getItem(USER_TOKEN_KEY) : null;
+  if (userToken) {
+    config.headers['x-auth-token'] = userToken;
+  } else {
+    const token = await ensureReflectToken().catch(() => null);
+    if (token) config.headers['x-auth-token'] = token;
+  }
+  return config;
+});
 // silent403=true: swallow 403s that are real scope errors, not token expiry
 // isExpiredToken check in the interceptor handles prelive's 403 invalid_token responses
 addRefreshInterceptor(reflectApi, true);

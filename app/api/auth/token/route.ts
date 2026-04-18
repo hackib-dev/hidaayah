@@ -34,18 +34,23 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { grant_type, code, redirect_uri, scope, code_verifier } = body;
 
+  // 'reflect_credentials' is a virtual grant — maps to client_credentials with post scope
+  // using the user auth client (which has post scope), not the content client.
+  const isReflectGrant = grant_type === 'reflect_credentials';
   const isContentGrant = grant_type === 'client_credentials';
   const isRefreshGrant = grant_type === 'refresh_token';
 
+  const resolvedGrantType = isReflectGrant ? 'client_credentials' : grant_type;
   const oauthBase = isContentGrant ? CONTENT_OAUTH_BASE : USER_OAUTH_BASE;
   const clientId = isContentGrant ? CONTENT_CLIENT_ID : AUTH_CLIENT_ID;
   const clientSecret = isContentGrant ? CONTENT_CLIENT_SECRET : AUTH_CLIENT_SECRET;
 
-  const params = new URLSearchParams({ grant_type, client_id: clientId });
+  const params = new URLSearchParams({ grant_type: resolvedGrantType, client_id: clientId });
 
   if (code) params.set('code', code);
   if (redirect_uri) params.set('redirect_uri', redirect_uri);
-  if (scope) params.set('scope', scope);
+  // reflect_credentials always requests 'post' scope; otherwise use provided scope
+  params.set('scope', isReflectGrant ? 'post' : (scope ?? ''));
   if (code_verifier) params.set('code_verifier', code_verifier);
 
   // For refresh grants, read token from httpOnly cookie — never from request body
