@@ -30,7 +30,8 @@ import {
 } from '@/app/quran/queries';
 import { fetchTafsirByChapter } from '@/app/guidance/queries';
 import { createBookmark, deleteBookmark, fetchBookmarks } from '@/app/reflections/queries';
-import type { Verse, Chapter, Reciter } from '@/app/quran/types';
+import { contentApi } from '@/app/apiService/quranFoundationService';
+import type { Verse, Word, Chapter, Reciter } from '@/app/quran/types';
 import type { TafsirEntry } from '@/app/guidance/types';
 import {
   QF_DEFAULT_TRANSLATION_ID,
@@ -38,6 +39,30 @@ import {
   QF_DEFAULT_MUSHAF_ID,
   QF_DEFAULT_RECITER_ID
 } from '@/config';
+
+type QuranFont = 'qpc_hafs' | 'uthmani' | 'indopak';
+
+const FONT_OPTIONS: { id: QuranFont; label: string; fontFamily: string; wordField: keyof Word }[] =
+  [
+    {
+      id: 'qpc_hafs',
+      label: 'QPC Hafs',
+      fontFamily: 'QPCHafs, var(--font-arabic)',
+      wordField: 'text_qpc_hafs'
+    },
+    {
+      id: 'uthmani',
+      label: 'Uthmani',
+      fontFamily: 'var(--font-arabic)',
+      wordField: 'text_uthmani'
+    },
+    {
+      id: 'indopak',
+      label: 'IndoPak',
+      fontFamily: 'IndoPak, var(--font-arabic)',
+      wordField: 'text_indopak'
+    }
+  ];
 
 interface QuranReaderProps {
   surahNumber: number;
@@ -74,6 +99,12 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
   const [selectedReciterId, setSelectedReciterId] = useState<number>(QF_DEFAULT_RECITER_ID);
   const [loadingReciters, setLoadingReciters] = useState(false);
   const [showReciterPicker, setShowReciterPicker] = useState(false);
+
+  // Font selection
+  const [selectedFont, setSelectedFont] = useState<QuranFont>('qpc_hafs');
+
+  // Footnotes
+  const [footnote, setFootnote] = useState<{ text: string } | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const verseRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -246,6 +277,19 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
     );
     if (idx !== -1) setCurrentVerseIndex(idx);
     setIsPlaying(true);
+  };
+
+  const handleTranslationClick = async (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName !== 'SUP') return;
+    const footnoteId = target.getAttribute('foot_note');
+    if (!footnoteId) return;
+    try {
+      const res = await contentApi.get<{ footNote: { text: string } }>(`/foot_notes/${footnoteId}`);
+      setFootnote({ text: res.data.footNote.text });
+    } catch {
+      // silently ignore footnote fetch errors
+    }
   };
 
   const selectedReciter = reciters.find((r) => r.id === selectedReciterId);
@@ -487,6 +531,30 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
                   </AnimatePresence>
                 </div>
 
+                {/* Font selector */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Type className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm text-foreground font-medium">Arabic Font</span>
+                  </div>
+                  <div className="flex gap-2">
+                    {FONT_OPTIONS.map((font) => (
+                      <button
+                        key={font.id}
+                        onClick={() => setSelectedFont(font.id)}
+                        className={cn(
+                          'flex-1 py-2 rounded-xl text-xs font-medium transition-colors',
+                          selectedFont === font.id
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                        )}
+                      >
+                        {font.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Arabic size */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -640,12 +708,29 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
                 </div>
               </div>
 
-              {/* Arabic */}
+              {/* Arabic — word-by-word with selected font */}
               <p
-                className={cn('text-foreground text-center leading-[2.5] mb-4', arabicSizeClass)}
-                style={{ fontFamily: 'var(--font-arabic)' }}
+                dir="rtl"
+                className={cn(
+                  'text-foreground text-center leading-[2.5] mb-4 wrap-break-word',
+                  arabicSizeClass
+                )}
               >
-                {verse.text_uthmani}
+                {verse.words?.length ? (
+                  verse.words
+                    .filter((word) => word.char_type_name !== 'end')
+                    .map((word) => {
+                      const fontOpt = FONT_OPTIONS.find((f) => f.id === selectedFont)!;
+                      return (
+                        <span key={word.id} style={{ fontFamily: fontOpt.fontFamily }}>
+                          {(word[fontOpt.wordField] as string) || word.text_uthmani}{' '}
+                        </span>
+                      );
+                    })
+                ) : (
+                  // Fallback to verse-level text if words not loaded
+                  <span style={{ fontFamily: 'var(--font-arabic)' }}>{verse.text_uthmani}</span>
+                )}
               </p>
 
               {/* Transliteration */}
@@ -655,12 +740,27 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
                 </p>
               )}
 
-              {/* Translation */}
+              {/* Translation — footnote <sup> clicks fetch /foot_notes/:id */}
               {translation && (
-                <p
-                  className="text-foreground/90 text-center font-serif leading-relaxed"
+                <div
+                  className="text-foreground/90 text-center font-serif leading-relaxed [&_sup]:text-xs [&_sup]:text-primary [&_sup]:cursor-pointer [&_sup]:hover:underline"
+                  onClick={handleTranslationClick}
                   dangerouslySetInnerHTML={{ __html: translation }}
                 />
+              )}
+
+              {/* Footnote popup */}
+              {footnote && (
+                <div className="mt-3 p-3 rounded-xl bg-secondary/60 border border-border text-sm text-foreground/80 leading-relaxed relative">
+                  <button
+                    onClick={() => setFootnote(null)}
+                    className="absolute top-2 right-2 text-muted-foreground hover:text-foreground text-xs"
+                  >
+                    ✕
+                  </button>
+                  <span className="font-semibold text-primary mr-1">Note:</span>
+                  <span dangerouslySetInnerHTML={{ __html: footnote.text }} />
+                </div>
               )}
 
               {/* Tafsir toggle */}

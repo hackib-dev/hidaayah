@@ -35,6 +35,11 @@ export interface Word {
   text_uthmani: string;
   text_indopak: string;
   text_imlaei: string;
+  text_qpc_hafs: string;
+  code_v2: string;
+  char_type_name: 'word' | 'end' | 'pause' | 'sajdah' | 'rub-el-hizb';
+  page_number: number;
+  line_number: number;
   audio_url: string;
   translation: WordTranslation;
   transliteration: WordTranslation;

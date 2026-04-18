@@ -33,6 +33,8 @@ export const fetchVersesByChapter = async (
       page: 1,
       per_page: 10,
       fields: 'text_uthmani',
+      word_fields: 'text_qpc_hafs,text_uthmani,char_type_name,page_number,line_number',
+      mushaf: 1,
       ...params,
       words: params.words ? 'true' : 'false'
     }
@@ -49,6 +51,8 @@ export const fetchVersesByJuz = async (
       language: 'en',
       page: 1,
       per_page: 10,
+      word_fields: 'text_qpc_hafs,text_uthmani,char_type_name,page_number,line_number',
+      mushaf: 1,
       ...params,
       words: params.words ? 'true' : 'false'
     }
@@ -64,6 +68,8 @@ export const fetchVerseByKey = async (
     params: {
       language: 'en',
       translations: '20', // Saheeh International (English) — resource ID 20
+      word_fields: 'text_qpc_hafs,text_uthmani,char_type_name,page_number,line_number',
+      mushaf: 1,
       ...params,
       words: params.words !== undefined ? (params.words ? 'true' : 'false') : 'true'
     }
