@@ -105,7 +105,7 @@ export default function ReflectionsPage() {
   }, [expandedId]);
 
   const handleSaveNew = async () => {
-    if (!newBody.trim() || saving) return;
+    if (newBody.trim().length < 6 || saving) return;
     setSaving(true);
 
     const references: { chapterId: number; from: number; to: number }[] = [];
@@ -295,6 +295,11 @@ export default function ReflectionsPage() {
                     placeholder="Write your reflection, insight, or thought..."
                     className="w-full min-h-28 p-3 rounded-xl bg-secondary/50 border border-border text-foreground text-sm placeholder:text-muted-foreground/60 resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow"
                   />
+                  {newBody.trim().length > 0 && newBody.trim().length < 6 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Minimum 6 characters ({6 - newBody.trim().length} more needed)
+                    </p>
+                  )}
                   <input
                     type="text"
                     value={newVerseRef}
@@ -316,10 +321,10 @@ export default function ReflectionsPage() {
                     </button>
                     <button
                       onClick={handleSaveNew}
-                      disabled={!newBody.trim() || saving}
+                      disabled={newBody.trim().length < 6 || saving}
                       className={cn(
                         'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all',
-                        newBody.trim() && !saving
+                        newBody.trim().length >= 6 && !saving
                           ? 'bg-gradient-to-r from-primary to-teal text-white shadow-sm hover:opacity-90'
                           : 'bg-muted text-muted-foreground cursor-not-allowed'
                       )}
