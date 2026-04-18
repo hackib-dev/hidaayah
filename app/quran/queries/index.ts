@@ -107,9 +107,14 @@ export const fetchVerseAudioFiles = async (
   }>(`/recitations/${reciterId}/by_chapter/${chapterNumber}`, {
     params: { per_page: 300 }
   });
+  const CDN = 'https://verses.quran.com/';
   return (response.data.audio_files ?? []).map((f) => ({
     verse_key: f.verse_key,
-    url: f.url.startsWith('//') ? `https:${f.url}` : f.url
+    url: f.url.startsWith('http')
+      ? f.url
+      : f.url.startsWith('//')
+        ? `https:${f.url}`
+        : `${CDN}${f.url}`
   }));
 };
 
