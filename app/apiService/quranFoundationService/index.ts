@@ -102,14 +102,18 @@ const addAuthHeaders =
 // ─── 401 auto-refresh interceptor for user APIs ───────────────────────────────
 // Retries once after refreshing the access token. Never loops.
 // silent403: when true, 403s are swallowed without logging (reflect API — scopes pending approval)
-function addRefreshInterceptor(instance: AxiosInstance, silent403 = false) {
+// retry500: when true, also retries on 500 — prelive returns 500 for expired tokens on some endpoints
+function addRefreshInterceptor(instance: AxiosInstance, silent403 = false, retry500 = false) {
   instance.interceptors.response.use(
     (res) => res,
     async (error: AxiosError) => {
       const status = error.response?.status;
       const originalReq = error.config as InternalAxiosRequestConfig & { _retried?: boolean };
 
-      if (status === 401 && !originalReq._retried) {
+      const shouldRefresh =
+        (status === 401 || (retry500 && status === 500)) && !originalReq._retried;
+
+      if (shouldRefresh) {
         originalReq._retried = true;
         try {
           const { refreshUserToken } = await import('./oauth');
@@ -118,7 +122,11 @@ function addRefreshInterceptor(instance: AxiosInstance, silent403 = false) {
           return instance(originalReq);
         } catch {
           // Refresh failed — caller must handle re-auth
-          logApiError(originalReq.url ?? 'unknown', 401, 'token refresh failed — re-auth required');
+          logApiError(
+            originalReq.url ?? 'unknown',
+            status ?? 401,
+            'token refresh failed — re-auth required'
+          );
           return Promise.reject(error);
         }
       }
@@ -164,5 +172,6 @@ export const reflectApi: AxiosInstance = Axios.create({
   timeout: 30000
 });
 reflectApi.interceptors.request.use(addAuthHeaders(false));
-// silent403=true: reflect scopes (post/like/save/views) are pending approval on this client
-addRefreshInterceptor(reflectApi, true);
+// silent403=true: reflect scopes are approved but 403s may appear on some endpoints
+// retry500=true: prelive returns 500 (not 401) for expired tokens on some reflect endpoints
+addRefreshInterceptor(reflectApi, true, true);

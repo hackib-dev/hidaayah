@@ -53,7 +53,7 @@ export const fetchClientCredentialsToken = async (): Promise<string> => {
   const res = await fetch(TOKEN_PROXY, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ grant_type: 'client_credentials', scope: 'content' })
+    body: JSON.stringify({ grant_type: 'client_credentials', scope: 'content search' })
   });
 
   const data: OAuthTokenResponse & { error?: string; error_description?: string } =
