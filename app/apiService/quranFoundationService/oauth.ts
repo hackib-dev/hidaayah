@@ -54,8 +54,8 @@ export const fetchClientCredentialsToken = async (): Promise<string> => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       grant_type: 'client_credentials',
-      scope: 'content search'
-      // scope: 'content'
+      // scope: 'content search'
+      scope: 'content'
     })
   });
 
