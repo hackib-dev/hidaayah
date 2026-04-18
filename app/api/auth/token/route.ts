@@ -26,10 +26,10 @@ export async function POST(req: NextRequest) {
 
   const isContentGrant = grant_type === 'client_credentials';
 
-  // Content client always uses production OAuth server regardless of QF_ENV
-  const oauthBase = isContentGrant ? 'https://oauth2.quran.foundation' : AUTH_BASE_URL;
-  const clientId = isContentGrant ? CONTENT_CLIENT_ID : AUTH_CLIENT_ID;
-  const clientSecret = isContentGrant ? CONTENT_CLIENT_SECRET : AUTH_CLIENT_SECRET;
+  // On prelive, all grants use the prelive OAuth server and the single prelive client
+  const oauthBase = AUTH_BASE_URL;
+  const clientId = isContentGrant && !isPrelive ? CONTENT_CLIENT_ID : AUTH_CLIENT_ID;
+  const clientSecret = isContentGrant && !isPrelive ? CONTENT_CLIENT_SECRET : AUTH_CLIENT_SECRET;
 
   const params = new URLSearchParams({ grant_type, client_id: clientId });
 
