@@ -9,7 +9,7 @@ const isPrelive =
 const QF_ENV = isPrelive ? 'prelive' : 'production';
 
 const AUTH_BASE_URL = isPrelive
-  ? 'https://prelive-oauth2.quran.foundation'
+  ? 'https://prelive.auth.quran.com'
   : 'https://oauth2.quran.foundation';
 
 // User auth client — authorization_code + refresh_token grants

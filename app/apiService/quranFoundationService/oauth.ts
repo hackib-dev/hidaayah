@@ -6,7 +6,7 @@ import {
   USER_REFRESH_KEY,
   logApiError
 } from './index';
-import { qfEnv } from './env';
+
 import type { OAuthTokenResponse } from '@/app/apiService/quranFoundationService/types';
 
 const TOKEN_PROXY = '/api/auth/token';
@@ -85,7 +85,8 @@ export const buildAuthorizeUrl = async (redirectUri: string): Promise<string> =>
     'activity_day',
     'goal',
     'streak',
-    'note'
+    'note',
+    'search'
   ].join(' ');
 
   const { codeVerifier, codeChallenge } = await generatePkcePair();
@@ -93,7 +94,7 @@ export const buildAuthorizeUrl = async (redirectUri: string): Promise<string> =>
 
   // Persist for callback validation — codeVerifier never logged or returned
   sessionStorage.setItem('oauth_state', state);
-  sessionStorage.setItem(`oauth_code_verifier_${qfEnv}`, codeVerifier);
+  sessionStorage.setItem('oauth_code_verifier', codeVerifier);
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -113,11 +114,11 @@ export const exchangeCodeForToken = async (
   code: string,
   redirectUri: string
 ): Promise<OAuthTokenResponse> => {
-  const codeVerifier = sessionStorage.getItem(`oauth_code_verifier_${qfEnv}`) || '';
+  const codeVerifier = sessionStorage.getItem('oauth_code_verifier') || '';
 
   // Clean up before the request so a partial failure doesn't leave stale keys
   sessionStorage.removeItem('oauth_state');
-  sessionStorage.removeItem(`oauth_code_verifier_${qfEnv}`);
+  sessionStorage.removeItem('oauth_code_verifier');
 
   const res = await fetch(TOKEN_PROXY, {
     method: 'POST',
