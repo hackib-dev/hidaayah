@@ -8,8 +8,9 @@ export const QF_CONTENT_BASE_URL =
 export const QF_AUTH_BASE_URL =
   process.env.NEXT_PUBLIC_QF_AUTH_BASE_URL || `${qfConfig.apiBaseUrl}/auth`;
 
+// Search API always uses production — there is no prelive search endpoint
 export const QF_SEARCH_BASE_URL =
-  process.env.NEXT_PUBLIC_QF_SEARCH_BASE_URL || `${qfConfig.apiBaseUrl}/search`;
+  process.env.NEXT_PUBLIC_QF_SEARCH_BASE_URL || 'https://apis.quran.foundation/search';
 
 export const QF_REFLECT_BASE_URL =
   process.env.NEXT_PUBLIC_QF_REFLECT_BASE_URL || `${qfConfig.apiBaseUrl}/quran-reflect`;
@@ -20,8 +21,8 @@ export const QF_OAUTH_BASE_URL = qfConfig.authBaseUrl;
 // Tokens are namespaced by environment so they are never mixed.
 const ENV_KEY = qfEnv; // "production" | "prelive"
 
-const CONTENT_TOKEN_KEY = `qf_content_access_token_${ENV_KEY}`;
-const CONTENT_EXPIRES_KEY = `qf_content_token_expires_at_${ENV_KEY}`;
+const CONTENT_TOKEN_KEY = `qf_content_access_token_v2_${ENV_KEY}`;
+const CONTENT_EXPIRES_KEY = `qf_content_token_expires_at_v2_${ENV_KEY}`;
 const REFLECT_TOKEN_KEY = `qf_reflect_access_token_${ENV_KEY}`;
 const REFLECT_EXPIRES_KEY = `qf_reflect_token_expires_at_${ENV_KEY}`;
 export const USER_TOKEN_KEY = `qf_user_access_token_${ENV_KEY}`;
