@@ -113,7 +113,10 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (!audioUrl) { audio.pause(); return; }
+    if (!audioUrl) {
+      audio.pause();
+      return;
+    }
     if (audio.src !== audioUrl) {
       audio.src = audioUrl;
       audio.load();

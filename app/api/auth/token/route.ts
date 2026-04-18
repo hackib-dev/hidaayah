@@ -7,9 +7,13 @@ const isPrelive =
 
 const QF_ENV = isPrelive ? 'prelive' : 'production';
 
-const AUTH_BASE_URL = isPrelive
+// User auth client uses prelive or production OAuth depending on QF_ENV
+const USER_OAUTH_BASE = isPrelive
   ? 'https://prelive-oauth2.quran.foundation'
   : 'https://oauth2.quran.foundation';
+
+// Content client always uses production OAuth (35b5c830 only exists there)
+const CONTENT_OAUTH_BASE = 'https://oauth2.quran.foundation';
 
 const AUTH_CLIENT_ID = process.env.NEXT_PUBLIC_QF_CLIENT_ID || '';
 const AUTH_CLIENT_SECRET = process.env.QF_CLIENT_SECRET || '';
@@ -33,7 +37,7 @@ export async function POST(req: NextRequest) {
   const isContentGrant = grant_type === 'client_credentials';
   const isRefreshGrant = grant_type === 'refresh_token';
 
-  const oauthBase = AUTH_BASE_URL;
+  const oauthBase = isContentGrant ? CONTENT_OAUTH_BASE : USER_OAUTH_BASE;
   const clientId = isContentGrant ? CONTENT_CLIENT_ID : AUTH_CLIENT_ID;
   const clientSecret = isContentGrant ? CONTENT_CLIENT_SECRET : AUTH_CLIENT_SECRET;
 

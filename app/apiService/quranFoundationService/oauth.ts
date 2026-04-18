@@ -52,7 +52,11 @@ export const fetchClientCredentialsToken = async (): Promise<string> => {
   const res = await fetch(TOKEN_PROXY, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ grant_type: 'client_credentials', scope: 'content search' })
+    body: JSON.stringify({
+      grant_type: 'client_credentials',
+      // scope: 'content search'
+      scope: 'content'
+    })
   });
 
   const data: OAuthTokenResponse & { error?: string; error_description?: string } =
@@ -84,8 +88,8 @@ export const buildAuthorizeUrl = async (redirectUri: string): Promise<string> =>
     'activity_day',
     'goal',
     'streak',
-    'note',
-    'search'
+    'note'
+    // 'search'
   ].join(' ');
 
   const { codeVerifier, codeChallenge } = await generatePkcePair();
