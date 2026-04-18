@@ -124,6 +124,55 @@ const ensureReflectToken = async (): Promise<string> => {
   return inflightReflectFetch;
 };
 
+// ─── Search token helpers (search-scoped client credentials) ─────────────────
+const SEARCH_TOKEN_KEY = `qf_search_access_token_${ENV_KEY}`;
+const SEARCH_EXPIRES_KEY = `qf_search_token_expires_at_${ENV_KEY}`;
+
+const getStoredSearchToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  const token = localStorage.getItem(SEARCH_TOKEN_KEY);
+  const expiresAt = localStorage.getItem(SEARCH_EXPIRES_KEY);
+  if (!token || !expiresAt) return null;
+  if (Date.now() > Number(expiresAt)) {
+    localStorage.removeItem(SEARCH_TOKEN_KEY);
+    localStorage.removeItem(SEARCH_EXPIRES_KEY);
+    return null;
+  }
+  return token;
+};
+
+const storeSearchToken = (token: string, expiresIn: number) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(SEARCH_TOKEN_KEY, token);
+  localStorage.setItem(SEARCH_EXPIRES_KEY, String(Date.now() + expiresIn * 1000));
+};
+
+let inflightSearchFetch: Promise<string> | null = null;
+
+const ensureSearchToken = async (): Promise<string> => {
+  const cached = getStoredSearchToken();
+  if (cached) return cached;
+
+  if (inflightSearchFetch) return inflightSearchFetch;
+
+  inflightSearchFetch = (async () => {
+    const res = await fetch('/api/auth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grant_type: 'search_credentials' })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.access_token)
+      throw new Error(data.error_description ?? 'search token failed');
+    storeSearchToken(data.access_token, data.expires_in);
+    return data.access_token as string;
+  })().finally(() => {
+    inflightSearchFetch = null;
+  });
+
+  return inflightSearchFetch;
+};
+
 // ─── Safe diagnostic logger (never logs tokens or secrets) ───────────────────
 export function logApiError(context: string, status: number | undefined, hint?: string) {
   // eslint-disable-next-line no-console
@@ -215,7 +264,12 @@ export const searchApi: AxiosInstance = Axios.create({
   baseURL: QF_SEARCH_BASE_URL,
   timeout: 30000
 });
-searchApi.interceptors.request.use(addAuthHeaders(true));
+searchApi.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+  config.headers['x-client-id'] = process.env.NEXT_PUBLIC_QF_SEARCH_CLIENT_ID || '';
+  const token = await ensureSearchToken().catch(() => null);
+  if (token) config.headers['x-auth-token'] = token;
+  return config;
+});
 
 // ─── User API instance (bookmarks, collections, streaks, activity) ────────────
 export const userApi: AxiosInstance = Axios.create({
