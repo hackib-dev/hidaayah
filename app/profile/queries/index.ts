@@ -63,32 +63,40 @@ export const deleteGoal = async (goalId: string): Promise<{ success: boolean }> 
 };
 
 // ─── Reflect User Profile ─────────────────────────────────────────────────────
-// /v1/users/profile requires a user-scoped access token (authorization_code flow).
-// When that token is missing or stale, fall back to /v1/users/{sub} which works
-// with a client-credentials token carrying the "user" scope.
+// Prefer /v1/users/profile (self, full data) with the user's access token.
+// If the user token is absent, fall back to /v1/users/{sub} using the reflectApi
+// (which carries a client-credentials token with the "user" scope).
 export const fetchReflectProfile = async (): Promise<ReflectProfile> => {
-  try {
-    const response = await reflectApi.get<ReflectProfile>('/v1/users/profile');
-    return response.data;
-  } catch {
-    // Fall back to public user endpoint using the sub stored in the session
-    const sub =
-      typeof window !== 'undefined'
-        ? (() => {
-            try {
-              const stored = localStorage.getItem('hidaayah_user');
-              return stored ? (JSON.parse(stored) as { sub?: string }).sub : undefined;
-            } catch {
-              return undefined;
-            }
-          })()
-        : undefined;
+  const userToken = typeof window !== 'undefined' ? localStorage.getItem(USER_TOKEN_KEY) : null;
 
-    if (!sub) throw new Error('No user session found');
+  const clientId = process.env.NEXT_PUBLIC_QF_CLIENT_ID || '';
 
-    const response = await reflectApi.get<ReflectProfile>(`/v1/users/${sub}`);
+  if (userToken) {
+    // User is logged in — call /profile directly with explicit headers to avoid
+    // any race condition with the reflectApi interceptor's token fetch.
+    const response = await reflectApi.get<ReflectProfile>('/v1/users/profile', {
+      headers: {
+        'x-auth-token': userToken,
+        'x-client-id': clientId
+      }
+    });
     return response.data;
   }
+
+  // No user token — read sub from session storage and fetch public profile
+  const sub = (() => {
+    try {
+      const stored = localStorage.getItem('hidaayah_user');
+      return stored ? (JSON.parse(stored) as { sub?: string }).sub : undefined;
+    } catch {
+      return undefined;
+    }
+  })();
+
+  if (!sub) throw new Error('No user session found');
+
+  const response = await reflectApi.get<ReflectProfile>(`/v1/users/${sub}`);
+  return response.data;
 };
 
 export const updateReflectProfile = async (
