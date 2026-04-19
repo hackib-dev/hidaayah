@@ -68,11 +68,13 @@ export async function POST(req: NextRequest) {
 
   const resolvedScope = isReflectGrant ? 'post' : isSearchGrant ? 'search' : (scope ?? ''); // prettier-ignore
 
-  const params = new URLSearchParams({ grant_type: resolvedGrantType, client_id: clientId });
+  // Confidential clients: client_id goes in Authorization: Basic header only — NOT in the body.
+  // Sending client_id in the body alongside Basic auth causes Hydra to return invalid_client.
+  const params = new URLSearchParams({ grant_type: resolvedGrantType });
 
   if (code) params.set('code', code);
   if (redirect_uri) params.set('redirect_uri', redirect_uri);
-  params.set('scope', resolvedScope);
+  if (resolvedScope) params.set('scope', resolvedScope);
   if (code_verifier) params.set('code_verifier', code_verifier);
 
   // For refresh grants, read token from httpOnly cookie — never from request body
