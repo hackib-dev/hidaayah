@@ -32,8 +32,12 @@ export const fetchActiveStreak = async (): Promise<StreakResponse> => {
 // ─── User Info (via OIDC userinfo endpoint) ───────────────────────────────────
 export const fetchUserInfo = async (): Promise<UserInfoResponse> => {
   const token = typeof window !== 'undefined' ? localStorage.getItem(USER_TOKEN_KEY) : null;
+  const clientId = process.env.NEXT_PUBLIC_QF_CLIENT_ID || '';
   const response = await Axios.get<UserInfoResponse>(`${QF_OAUTH_BASE_URL}/userinfo`, {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: {
+      'x-auth-token': token ?? '',
+      'x-client-id': clientId
+    }
   });
   return response.data;
 };
