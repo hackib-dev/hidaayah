@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       ? SEARCH_CLIENT_SECRET
       : AUTH_CLIENT_SECRET;
 
-  const resolvedScope = isReflectGrant ? 'post' : isSearchGrant ? 'search' : (scope ?? ''); // prettier-ignore
+  const resolvedScope = isReflectGrant ? 'post user' : isSearchGrant ? 'search' : (scope ?? ''); // prettier-ignore
 
   // Confidential clients: client_id goes in Authorization: Basic header only — NOT in the body.
   // Sending client_id in the body alongside Basic auth causes Hydra to return invalid_client.
