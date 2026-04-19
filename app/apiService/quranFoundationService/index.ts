@@ -288,11 +288,15 @@ export const reflectApi: AxiosInstance = Axios.create({
   timeout: 30000
 });
 reflectApi.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
-  config.headers['x-client-id'] = qfConfig.clientId;
   const userToken = typeof window !== 'undefined' ? localStorage.getItem(USER_TOKEN_KEY) : null;
   if (userToken) {
+    // Logged-in: use user client ID + user token
+    config.headers['x-client-id'] = qfConfig.clientId;
     config.headers['x-auth-token'] = userToken;
   } else {
+    // Unauthenticated: use reflect client ID + reflect credentials token
+    config.headers['x-client-id'] =
+      process.env.NEXT_PUBLIC_QF_REFLECT_CLIENT_ID || qfConfig.clientId;
     const token = await ensureReflectToken().catch(() => null);
     if (token) config.headers['x-auth-token'] = token;
   }

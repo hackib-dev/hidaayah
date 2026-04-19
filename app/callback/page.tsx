@@ -46,8 +46,12 @@ export default function CallbackPage() {
         try {
           const oauthBase =
             process.env.NEXT_PUBLIC_QF_OAUTH_BASE_URL || 'https://oauth2.quran.foundation';
+          const clientId = process.env.NEXT_PUBLIC_QF_CLIENT_ID || '';
           const res = await fetch(`${oauthBase}/userinfo`, {
-            headers: { Authorization: `Bearer ${tokenData.access_token}` }
+            headers: {
+              'x-auth-token': tokenData.access_token,
+              'x-client-id': clientId
+            }
           });
           if (res.ok) {
             const info = await res.json();

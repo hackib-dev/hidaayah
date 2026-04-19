@@ -76,6 +76,7 @@ export const fetchClientCredentialsToken = async (): Promise<string> => {
 export const buildAuthorizeUrl = async (redirectUri: string): Promise<string> => {
   const clientId = process.env.NEXT_PUBLIC_QF_CLIENT_ID || '';
   const scopes = [
+    'openid', // required — must be first
     'offline_access',
     'content',
     'user',
@@ -94,10 +95,12 @@ export const buildAuthorizeUrl = async (redirectUri: string): Promise<string> =>
 
   const { codeVerifier, codeChallenge } = await generatePkcePair();
   const state = randomString(16);
+  const nonce = randomString(16);
 
-  // Persist for callback validation — codeVerifier never logged or returned
+  // Persist for callback validation — codeVerifier and nonce never logged or returned
   sessionStorage.setItem('oauth_state', state);
   sessionStorage.setItem('oauth_code_verifier', codeVerifier);
+  sessionStorage.setItem('oauth_nonce', nonce);
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -105,6 +108,7 @@ export const buildAuthorizeUrl = async (redirectUri: string): Promise<string> =>
     redirect_uri: redirectUri,
     scope: scopes,
     state,
+    nonce,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256'
   });
