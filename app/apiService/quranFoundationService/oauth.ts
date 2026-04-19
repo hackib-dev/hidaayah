@@ -78,7 +78,6 @@ export const buildAuthorizeUrl = async (redirectUri: string): Promise<string> =>
   const scopes = [
     'openid', // required — must be first
     'offline_access',
-    'content',
     'user',
     'collection',
     'bookmark',
@@ -89,8 +88,8 @@ export const buildAuthorizeUrl = async (redirectUri: string): Promise<string> =>
     'activity_day',
     'goal',
     'streak',
-    'note',
-    'search'
+    'note'
+    // content + search use separate client credentials — never request here
   ].join(' ');
 
   const { codeVerifier, codeChallenge } = await generatePkcePair();
