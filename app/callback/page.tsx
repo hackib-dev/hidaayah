@@ -51,8 +51,6 @@ export default function CallbackPage() {
             const payload = JSON.parse(
               atob(tokenData.id_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
             );
-            // eslint-disable-next-line no-console
-            console.log('[QF id_token payload]', payload);
             sub = payload.sub || '';
             email = payload.email || '';
             name =
