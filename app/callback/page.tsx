@@ -38,33 +38,32 @@ export default function CallbackPage() {
     }
 
     exchangeCodeForToken(code, REDIRECT_URI)
-      .then(async (tokenData) => {
-        // Fetch user info from the OIDC userinfo endpoint
+      .then((tokenData) => {
+        // Decode the id_token JWT to get user info — no extra network call needed.
+        // The docs recommend this over calling /userinfo.
         let name = 'User';
         let email = '';
         let sub = '';
-        try {
-          const oauthBase =
-            process.env.NEXT_PUBLIC_QF_OAUTH_BASE_URL || 'https://oauth2.quran.foundation';
-          const clientId = process.env.NEXT_PUBLIC_QF_CLIENT_ID || '';
-          const res = await fetch(`${oauthBase}/userinfo`, {
-            headers: {
-              'x-auth-token': tokenData.access_token,
-              'x-client-id': clientId
-            }
-          });
-          if (res.ok) {
-            const info = await res.json();
+
+        if (tokenData.id_token) {
+          try {
+            // JWT is three base64url parts separated by dots — decode the payload (middle part)
+            const payload = JSON.parse(
+              atob(tokenData.id_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
+            );
+            // eslint-disable-next-line no-console
+            console.log('[QF id_token payload]', payload);
+            sub = payload.sub || '';
+            email = payload.email || '';
             name =
-              (info.first_name ? `${info.first_name} ${info.last_name ?? ''}`.trim() : null) ||
-              info.name ||
-              info.preferred_username ||
+              (payload.first_name
+                ? `${payload.first_name} ${payload.last_name ?? ''}`.trim()
+                : null) ||
+              payload.preferred_username ||
               'User';
-            email = info.email || '';
-            sub = info.sub || '';
+          } catch {
+            // Non-fatal — proceed with minimal user info
           }
-        } catch {
-          // Non-fatal — proceed with minimal user info
         }
 
         setUserFromToken({ name, email, sub });
