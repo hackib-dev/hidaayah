@@ -37,14 +37,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [reflectProfileLoading, setReflectProfileLoading] = useState(false);
 
   useEffect(() => {
+    let stored: string | null = null;
     try {
-      const stored = localStorage.getItem(USER_STORAGE_KEY);
+      stored = localStorage.getItem(USER_STORAGE_KEY);
       if (stored) setUser(JSON.parse(stored));
     } catch {}
     setLoading(false);
+
+    // Start fetching the reflect profile immediately if user is already in storage,
+    // so we don't wait for an extra render cycle before the request fires.
+    if (stored) {
+      setReflectProfileLoading(true);
+      fetchReflectProfile()
+        .then((p) => setReflectProfile(p ?? null))
+        .catch(() => setReflectProfile(null))
+        .finally(() => setReflectProfileLoading(false));
+    }
   }, []);
 
-  // Fetch reflect profile once when user is known
   const loadReflectProfile = useCallback(async () => {
     setReflectProfileLoading(true);
     try {
@@ -57,9 +67,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Only fires after a fresh login (user wasn't in storage on mount)
   useEffect(() => {
-    if (user) loadReflectProfile();
-  }, [user, loadReflectProfile]);
+    if (user && !reflectProfile && !reflectProfileLoading) loadReflectProfile();
+  }, [user, reflectProfile, reflectProfileLoading, loadReflectProfile]);
 
   // When token refresh fails, clear session and redirect to login
   useEffect(() => {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Agent } from 'https';
 
 // ─── Server-side proxy for Quran Foundation user + reflect APIs ───────────────
 // Basit (QF team) confirmed that direct browser calls from third-party origins
@@ -17,6 +18,9 @@ const QF_AUTH_BASE = `${API_BASE}/auth`;
 const QF_REFLECT_BASE = `${API_BASE}/quran-reflect`;
 
 const CLIENT_ID = process.env.NEXT_PUBLIC_QF_CLIENT_ID || '';
+
+// Reuse TCP connections across requests to avoid per-request TLS handshake overhead
+const agent = new Agent({ keepAlive: true });
 
 // Path prefix → upstream base URL
 function resolveUpstream(segments: string[]): { base: string; rest: string } | null {
@@ -40,14 +44,14 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
   const search = req.nextUrl.search;
   const upstreamUrl = `${resolved.base}/${resolved.rest}${search}`;
 
-  // Forward the auth token and client id from the incoming request headers
   const authToken = req.headers.get('x-auth-token') || '';
   const clientId = req.headers.get('x-client-id') || CLIENT_ID;
 
   const headers: Record<string, string> = {
     'x-auth-token': authToken,
     'x-client-id': clientId,
-    'Content-Type': req.headers.get('content-type') || 'application/json'
+    'Content-Type': req.headers.get('content-type') || 'application/json',
+    Connection: 'keep-alive'
   };
 
   const hasBody = req.method !== 'GET' && req.method !== 'HEAD';
@@ -56,7 +60,9 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
   const upstream = await fetch(upstreamUrl, {
     method: req.method,
     headers,
-    body
+    body,
+    // @ts-expect-error — Node.js fetch accepts agent for connection reuse
+    agent
   });
 
   const data = await upstream.text();
