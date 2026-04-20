@@ -114,7 +114,6 @@ export function VerseCard({
           &ldquo;{translation}&rdquo;
         </p>
 
-        {/* Actions */}
         <div className="flex items-center justify-center gap-3 pt-1">
           <motion.button
             whileTap={{ scale: 0.95 }}
