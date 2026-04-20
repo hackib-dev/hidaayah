@@ -5,15 +5,15 @@ import { qfConfig, qfEnv } from './env';
 export const QF_CONTENT_BASE_URL =
   process.env.NEXT_PUBLIC_QF_CONTENT_BASE_URL || `${qfConfig.apiBaseUrl}/content/api/v4`;
 
-export const QF_AUTH_BASE_URL =
-  process.env.NEXT_PUBLIC_QF_AUTH_BASE_URL || `${qfConfig.apiBaseUrl}/auth`;
+// User + reflect APIs go through our own server-side proxy (/api/qf/...) so
+// browser requests never hit apis-prelive.quran.foundation directly.
+// Basit (QF) confirmed third-party browser origins are blocked on prelive.
+export const QF_AUTH_BASE_URL = '/api/qf/auth';
+export const QF_REFLECT_BASE_URL = '/api/qf/reflect';
 
 // Search API always uses production — there is no prelive search endpoint
 export const QF_SEARCH_BASE_URL =
   process.env.NEXT_PUBLIC_QF_SEARCH_BASE_URL || 'https://apis.quran.foundation/search';
-
-export const QF_REFLECT_BASE_URL =
-  process.env.NEXT_PUBLIC_QF_REFLECT_BASE_URL || `${qfConfig.apiBaseUrl}/quran-reflect`;
 
 export const QF_OAUTH_BASE_URL = qfConfig.authBaseUrl;
 
