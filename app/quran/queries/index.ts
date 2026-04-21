@@ -6,6 +6,7 @@ import type {
   ListVersesParams,
   ListRecitersResponse
 } from '@/app/quran/types';
+import type { RandomAyahResponse } from '@/app/reflections/types';
 
 // ─── Chapters ─────────────────────────────────────────────────────────────────
 export const fetchChapters = async (language = 'en'): Promise<ListChaptersResponse> => {
@@ -128,6 +129,19 @@ export const fetchVerseAudioFiles = async (
 export const fetchTranslations = async (chapterNumber: number, resourceId = 131) => {
   const response = await contentApi.get(`/translations/${chapterNumber}`, {
     params: { resource_id: resourceId }
+  });
+  return response.data;
+};
+
+// ─── Random Ayah ──────────────────────────────────────────────────────────────
+export const fetchRandomAyah = async (): Promise<RandomAyahResponse> => {
+  const response = await contentApi.get<RandomAyahResponse>('/verses/random', {
+    params: {
+      language: 'en',
+      translations: '20',
+      fields: 'text_uthmani',
+      translation_fields: 'resource_name'
+    }
   });
   return response.data;
 };

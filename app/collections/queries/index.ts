@@ -27,6 +27,23 @@ export const fetchAllCollectionsWithItems = async (): Promise<GetCollectionRespo
   return response.data;
 };
 
+// ─── Fetch all user collections via cursor pagination ─────────────────────────
+export const fetchAllCollections = async (
+  baseParams: Omit<ListCollectionsParams, 'first' | 'after'> = {}
+): Promise<Collection[]> => {
+  const all: Collection[] = [];
+  let after: string | undefined;
+  do {
+    const res = await fetchCollections({ ...baseParams, first: 20, after });
+    all.push(...(res.data ?? []));
+    after =
+      res.pagination?.hasNextPage && res.pagination?.endCursor
+        ? res.pagination.endCursor
+        : undefined;
+  } while (after);
+  return all;
+};
+
 // ─── Create a collection ──────────────────────────────────────────────────────
 export const createCollection = async (
   params: CreateCollectionParams

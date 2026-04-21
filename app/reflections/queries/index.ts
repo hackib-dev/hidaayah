@@ -5,7 +5,14 @@ import type {
   ListBookmarksParams,
   ListBookmarksResponse,
   CreateBookmarkParams,
-  Bookmark
+  Bookmark,
+  UpsertReadingSessionParams,
+  ReadingSessionResponse,
+  ListReadingSessionsResponse,
+  CreateNoteParams,
+  UpdateNoteParams,
+  NoteResponse,
+  ListNotesResponse
 } from '@/app/reflections/types';
 import type {
   FetchReflectFeedParams,
@@ -161,4 +168,67 @@ export const fetchUserReflectPosts = async (
 export const fetchMyReflectionsCount = async (): Promise<number> => {
   const res = await fetchMyReflectPosts({ limit: 1, page: 1 }).catch(() => null);
   return res?.total ?? 0;
+};
+
+// ─── Reading Sessions ─────────────────────────────────────────────────────────
+export const upsertReadingSession = async (
+  params: UpsertReadingSessionParams
+): Promise<ReadingSessionResponse> => {
+  const response = await userApi.post<ReadingSessionResponse>('/v1/reading-sessions', params);
+  return response.data;
+};
+
+export const fetchReadingSessions = async (
+  params: { first?: number; after?: string } = {}
+): Promise<ListReadingSessionsResponse> => {
+  const response = await userApi.get<ListReadingSessionsResponse>('/v1/reading-sessions', {
+    params
+  });
+  return response.data;
+};
+
+// Returns the most recent reading session (last position in the Quran)
+export const fetchLastReadingSession = async (): Promise<
+  ListReadingSessionsResponse['data'][0] | null
+> => {
+  const res = await fetchReadingSessions({ first: 1 }).catch(() => null);
+  return res?.data?.[0] ?? null;
+};
+
+// ─── Notes ────────────────────────────────────────────────────────────────────
+export const fetchNotes = async (
+  params: { limit?: number; cursor?: string; sortBy?: 'newest' | 'oldest' } = {}
+): Promise<ListNotesResponse> => {
+  const response = await userApi.get<ListNotesResponse>('/v1/notes', { params });
+  return response.data;
+};
+
+// Fetch notes for a specific verse by fetching all notes and filtering client-side
+// The API's /by_verse/ and range filter endpoints require additional scopes not in the token
+export const fetchNotesByVerse = async (verseKey: string): Promise<ListNotesResponse> => {
+  const response = await userApi.get<ListNotesResponse>('/v1/notes', { params: { limit: 50 } });
+  const [chapter, verseNum] = verseKey.split(':');
+  const rangePrefix = `${chapter}:${verseNum}-${chapter}:${verseNum}`;
+  const filtered = (response.data?.data ?? []).filter((note) =>
+    note.ranges?.some((r) => r === rangePrefix)
+  );
+  return { ...response.data, data: filtered };
+};
+
+export const createNote = async (params: CreateNoteParams): Promise<NoteResponse> => {
+  const response = await userApi.post<NoteResponse>('/v1/notes', params);
+  return response.data;
+};
+
+export const updateNote = async (
+  noteId: string,
+  params: UpdateNoteParams
+): Promise<NoteResponse> => {
+  const response = await userApi.patch<NoteResponse>(`/v1/notes/${noteId}`, params);
+  return response.data;
+};
+
+export const deleteNote = async (noteId: string): Promise<{ success: boolean }> => {
+  const response = await userApi.delete<{ success: boolean }>(`/v1/notes/${noteId}`);
+  return response.data;
 };

@@ -15,12 +15,28 @@ export default function QuranPage() {
   const [view, setView] = useState<'list' | 'reader'>('list');
 
   // Open directly to surah/verse if provided via query params
+  // Supports: ?surah=2&verse=255  OR  ?verse=2:255  OR  ?chapter=2&verse=255
   useEffect(() => {
-    const surah = searchParams.get('surah');
-    const verse = searchParams.get('verse');
-    if (surah) {
-      setSelectedSurah(parseInt(surah, 10));
-      setScrollToVerse(verse ? parseInt(verse, 10) : undefined);
+    const surahParam = searchParams.get('surah') ?? searchParams.get('chapter');
+    const verseParam = searchParams.get('verse');
+
+    let surahNumber: number | null = surahParam ? parseInt(surahParam, 10) : null;
+    let verseNumber: number | undefined;
+
+    if (verseParam) {
+      if (verseParam.includes(':')) {
+        // Full verse key e.g. "2:255"
+        const [chapter, verse] = verseParam.split(':');
+        surahNumber = parseInt(chapter, 10);
+        verseNumber = parseInt(verse, 10);
+      } else {
+        verseNumber = parseInt(verseParam, 10);
+      }
+    }
+
+    if (surahNumber && !isNaN(surahNumber)) {
+      setSelectedSurah(surahNumber);
+      setScrollToVerse(verseNumber);
       setView('reader');
     }
   }, [searchParams]);

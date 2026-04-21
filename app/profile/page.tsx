@@ -37,11 +37,16 @@ export default function ProfilePage() {
   const isDarkMode = theme === 'dark';
   const [notifications, setNotifications] = useState(true);
 
-  // Real stats
+  // Real stats — each loads independently
   const [currentStreak, setCurrentStreak] = useState<number | null>(null);
   const [longestStreak, setLongestStreak] = useState<number | null>(null);
+  const [streakLoading, setStreakLoading] = useState(true);
+
   const [savedCount, setSavedCount] = useState<number | null>(null);
+  const [savedLoading, setSavedLoading] = useState(true);
+
   const [reflectionsCount, setReflectionsCount] = useState<number | null>(null);
+  const [reflectionsLoading, setReflectionsLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -51,21 +56,29 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!user) return;
-    Promise.all([
-      // Single streaks call sorted by days desc covers both current and longest
-      fetchStreaks({ sortOrder: 'desc', orderBy: 'days', first: 20 }).catch(() => null),
-      // Probe with first=1 — only need the total count, not all bookmark data
-      fetchBookmarks({ type: 'ayah', mushafId: QF_DEFAULT_MUSHAF_ID, first: 1 }).catch(() => null),
-      fetchMyReflectionsCount().catch(() => 0)
-    ]).then(([streaksRes, bookmarksRes, count]) => {
-      const streaks = streaksRes?.data ?? [];
-      const active = streaks.find((s) => s.status === 'ACTIVE');
-      const longest = streaks[0]; // sorted by days desc
-      setCurrentStreak(active?.days ?? 0);
-      setLongestStreak(longest?.days ?? 0);
-      setSavedCount(bookmarksRes?.data?.length ?? 0);
-      setReflectionsCount(count ?? 0);
-    });
+
+    fetchStreaks({ sortOrder: 'desc', orderBy: 'days', first: 20 })
+      .then((res) => {
+        const streaks = res?.data ?? [];
+        const active = streaks.find((s) => s.status === 'ACTIVE');
+        setCurrentStreak(active?.days ?? 0);
+        setLongestStreak(streaks[0]?.days ?? 0);
+      })
+      .catch(() => {
+        setCurrentStreak(0);
+        setLongestStreak(0);
+      })
+      .finally(() => setStreakLoading(false));
+
+    fetchBookmarks({ type: 'ayah', mushafId: QF_DEFAULT_MUSHAF_ID, first: 1 })
+      .then((res) => setSavedCount(res?.data?.length ?? 0))
+      .catch(() => setSavedCount(0))
+      .finally(() => setSavedLoading(false));
+
+    fetchMyReflectionsCount()
+      .then((count) => setReflectionsCount(count ?? 0))
+      .catch(() => setReflectionsCount(0))
+      .finally(() => setReflectionsLoading(false));
   }, [user]);
 
   const toggleDarkMode = () => {
@@ -176,7 +189,8 @@ export default function ProfilePage() {
                 label: 'Streak',
                 bg: 'bg-rose-muted',
                 iconColor: 'text-rose',
-                border: 'border-rose/15'
+                border: 'border-rose/15',
+                isLoading: streakLoading
               },
               {
                 icon: BookOpen,
@@ -184,7 +198,8 @@ export default function ProfilePage() {
                 label: 'Reflections',
                 bg: 'bg-gold-muted',
                 iconColor: 'text-accent',
-                border: 'border-accent/15'
+                border: 'border-accent/15',
+                isLoading: reflectionsLoading
               },
               {
                 icon: BookmarkIcon,
@@ -192,7 +207,8 @@ export default function ProfilePage() {
                 label: 'Saved',
                 bg: 'bg-teal-muted',
                 iconColor: 'text-teal',
-                border: 'border-teal/15'
+                border: 'border-teal/15',
+                isLoading: savedLoading
               },
               {
                 icon: Target,
@@ -200,7 +216,8 @@ export default function ProfilePage() {
                 label: 'Best',
                 bg: 'bg-violet-muted',
                 iconColor: 'text-violet',
-                border: 'border-violet/15'
+                border: 'border-violet/15',
+                isLoading: streakLoading
               }
             ].map((stat, index) => (
               <motion.div
@@ -218,7 +235,13 @@ export default function ProfilePage() {
                 >
                   <stat.icon className="w-4 h-4" />
                 </div>
-                <p className="text-lg md:text-xl font-bold text-foreground">{stat.value ?? '—'}</p>
+                {stat.isLoading ? (
+                  <div className="h-7 w-8 rounded-md bg-current/20 animate-pulse mx-auto mb-0.5" />
+                ) : (
+                  <p className="text-lg md:text-xl font-bold text-foreground">
+                    {stat.value ?? '—'}
+                  </p>
+                )}
                 <p className="text-[10px] md:text-xs text-muted-foreground font-semibold">
                   {stat.label}
                 </p>

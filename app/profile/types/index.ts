@@ -64,8 +64,46 @@ export interface GoalsResponse {
 
 export interface CreateGoalParams {
   type: string;
-  target: number;
-  unit: string;
+  amount: number | string;
+  category: string;
+  duration?: number;
+}
+
+export interface UpdateGoalParams {
+  type?: string;
+  amount?: number | string;
+  category?: string;
+  duration?: number;
+}
+
+// ─── Today's Goal Plan ────────────────────────────────────────────────────────
+export interface GoalPlanRange {
+  verseFrom: string;
+  verseTo: string;
+  chapterId: number;
+  from: number;
+  to: number;
+}
+
+export interface TodayGoalPlan {
+  hasGoal: true;
+  id: string;
+  type: string;
+  date: string;
+  mushafId: number;
+  ranges: GoalPlanRange[];
+  pagesRead: number;
+  versesRead: number;
+  secondsRead: number;
+  manuallyAddedSeconds: number;
+  dailyTargetPages?: number;
+  dailyTargetSeconds?: number;
+  dailyTargetVerses?: number;
+}
+
+export interface TodayGoalPlanResponse {
+  success: boolean;
+  data: (TodayGoalPlan & { hasGoal?: boolean }) | { hasGoal: false } | null;
 }
 
 // ─── Reflect User Profile ─────────────────────────────────────────────────────

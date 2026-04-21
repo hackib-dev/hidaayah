@@ -13,7 +13,10 @@ import type {
   CreateGoalParams,
   Goal,
   ReflectProfile,
-  UpdateReflectProfileParams
+  UpdateReflectProfileParams,
+  TodayGoalPlan,
+  TodayGoalPlanResponse,
+  UpdateGoalParams
 } from '@/app/profile/types';
 
 // ─── Streak ───────────────────────────────────────────────────────────────────
@@ -51,15 +54,86 @@ export const fetchGoals = async (
 };
 
 export const createGoal = async (
-  params: CreateGoalParams
+  params: CreateGoalParams,
+  mushafId = 1
 ): Promise<{ success: boolean; data: Goal }> => {
-  const response = await userApi.post<{ success: boolean; data: Goal }>('/v1/goals', params);
+  const response = await userApi.post<{ success: boolean; data: Goal }>('/v1/goals', params, {
+    params: { mushafId }
+  });
   return response.data;
 };
 
-export const deleteGoal = async (goalId: string): Promise<{ success: boolean }> => {
-  const response = await userApi.delete<{ success: boolean }>(`/v1/goals/${goalId}`);
+export const deleteGoal = async (
+  goalId: string,
+  category: string
+): Promise<{ success: boolean }> => {
+  const response = await userApi.delete<{ success: boolean }>(`/v1/goals/${goalId}`, {
+    params: { category }
+  });
   return response.data;
+};
+
+export interface GoalEstimateDay {
+  amount: number;
+  date: string;
+}
+
+export const generateGoalEstimate = async (params: {
+  type: string;
+  amount: number | string;
+  mushafId?: number;
+  duration?: number;
+}): Promise<GoalEstimateDay[] | null> => {
+  type EstimateResponse = {
+    success: boolean;
+    data: { week: GoalEstimateDay[] };
+  };
+  const response = await userApi
+    .get<EstimateResponse>('/v1/goals/estimate', {
+      params: { mushafId: 1, ...params }
+    })
+    .catch(() => null);
+  return response?.data?.data?.week ?? null;
+};
+
+export const updateGoal = async (
+  goalId: string,
+  params: UpdateGoalParams,
+  mushafId = 1
+): Promise<{ success: boolean; data: Goal }> => {
+  const response = await userApi.put<{ success: boolean; data: Goal }>(
+    `/v1/goals/${goalId}`,
+    params,
+    { params: { mushafId } }
+  );
+  return response.data;
+};
+
+export const fetchTodayGoalPlan = async (type = 'QURAN_PAGES'): Promise<TodayGoalPlan | null> => {
+  const response = await userApi.get<TodayGoalPlanResponse>('/v1/goals/get-todays-plan', {
+    params: { type, mushafId: 1 }
+  });
+  const d = response.data?.data;
+  if (!d || (d as { hasGoal?: boolean }).hasGoal === false) return null;
+  return d as TodayGoalPlan;
+};
+
+// Tries all goal types in parallel and returns whichever one has an active plan today.
+// Necessary because GET /v1/goals requires a scope the token doesn't have.
+export const fetchTodayGoalPlanAuto = async (): Promise<TodayGoalPlan | null> => {
+  const GOAL_TYPES = [
+    'QURAN_PAGES',
+    'QURAN_TIME',
+    'QURAN_RANGE',
+    'QURAN_READING_PROGRAM',
+    'RAMADAN_CHALLENGE'
+  ];
+
+  const results = await Promise.all(
+    GOAL_TYPES.map((type) => fetchTodayGoalPlan(type).catch(() => null))
+  );
+
+  return results.find((r) => r !== null) ?? null;
 };
 
 // ─── Reflect User Profile ─────────────────────────────────────────────────────

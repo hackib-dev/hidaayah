@@ -23,7 +23,9 @@ import {
   Lock,
   Bookmark,
   Trash2,
-  Check
+  Check,
+  StickyNote,
+  Link as LinkIcon
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -33,11 +35,14 @@ import {
   togglePostSave,
   deletePost,
   editPost,
-  trackPostView
+  trackPostView,
+  fetchNotes,
+  deleteNote
 } from '@/app/reflections/queries';
 import { fetchActiveStreak } from '@/app/profile/queries';
 import { reflectApi } from '@/app/apiService/quranFoundationService';
 import type { ReflectPost } from '@/app/reflections/types/reflect-posts';
+import type { Note } from '@/app/reflections/types';
 
 function formatDate(dateString: string) {
   const date = new Date(dateString);
@@ -61,8 +66,12 @@ export default function ReflectionsPage() {
   const { user } = useAuth();
   const [posts, setPosts] = useState<ReflectPost[]>([]);
   const [total, setTotal] = useState(0);
+  const [postsPage, setPostsPage] = useState(1);
+  const [postsTotalPages, setPostsTotalPages] = useState(1);
+  const [postsLoading, setPostsLoading] = useState(true);
+  const [postsLoadingMore, setPostsLoadingMore] = useState(false);
   const [streakDays, setStreakDays] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [streakLoading, setStreakLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | number | null>(null);
 
@@ -84,20 +93,70 @@ export default function ReflectionsPage() {
   const [savingId, setSavingId] = useState<string | number | null>(null);
   const [deletingId, setDeletingId] = useState<string | number | null>(null);
 
+  // Tab
+  const [activeTab, setActiveTab] = useState<'reflections' | 'notes'>('notes');
+
+  // Notes tab
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [notesLoading, setNotesLoading] = useState(true);
+  const [notesLoadingMore, setNotesLoadingMore] = useState(false);
+  const [notesCursor, setNotesCursor] = useState<string | undefined>(undefined);
+  const [notesHasMore, setNotesHasMore] = useState(false);
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
+
   useEffect(() => {
     if (!user) return;
 
-    Promise.all([
-      fetchMyReflectPosts({ limit: 20, page: 1 }).catch(() => null),
-      fetchActiveStreak().catch(() => null)
-    ])
-      .then(([postsRes, streakRes]) => {
-        setPosts(postsRes?.data ?? []);
-        setTotal(postsRes?.total ?? 0);
-        setStreakDays(streakRes?.data?.[0]?.days ?? 0);
+    fetchNotes({ limit: 20 })
+      .then((res) => {
+        setNotes(res?.data ?? []);
+        setNotesCursor(res?.pagination?.endCursor ?? undefined);
+        setNotesHasMore(res?.pagination?.hasNextPage ?? false);
       })
-      .finally(() => setLoading(false));
+      .catch(() => null)
+      .finally(() => setNotesLoading(false));
+
+    fetchMyReflectPosts({ limit: 20, page: 1 })
+      .then((res) => {
+        setPosts(res?.data ?? []);
+        setTotal(res?.total ?? 0);
+        setPostsPage(1);
+        setPostsTotalPages(res?.pages ?? 1);
+      })
+      .catch(() => null)
+      .finally(() => setPostsLoading(false));
+
+    fetchActiveStreak()
+      .then((res) => setStreakDays(res?.data?.[0]?.days ?? 0))
+      .catch(() => setStreakDays(0))
+      .finally(() => setStreakLoading(false));
   }, [user]);
+
+  const loadMorePosts = () => {
+    if (postsLoadingMore || postsPage >= postsTotalPages) return;
+    const nextPage = postsPage + 1;
+    setPostsLoadingMore(true);
+    fetchMyReflectPosts({ limit: 20, page: nextPage })
+      .then((res) => {
+        setPosts((prev) => [...prev, ...(res?.data ?? [])]);
+        setPostsPage(nextPage);
+      })
+      .catch(() => null)
+      .finally(() => setPostsLoadingMore(false));
+  };
+
+  const loadMoreNotes = () => {
+    if (notesLoadingMore || !notesHasMore) return;
+    setNotesLoadingMore(true);
+    fetchNotes({ limit: 20, cursor: notesCursor })
+      .then((res) => {
+        setNotes((prev) => [...prev, ...(res?.data ?? [])]);
+        setNotesCursor(res?.pagination?.endCursor ?? undefined);
+        setNotesHasMore(res?.pagination?.hasNextPage ?? false);
+      })
+      .catch(() => null)
+      .finally(() => setNotesLoadingMore(false));
+  };
 
   // Track view when a post is expanded
   useEffect(() => {
@@ -350,22 +409,32 @@ export default function ReflectionsPage() {
             className="grid grid-cols-3 gap-3"
           >
             <div className="p-3 md:p-4 rounded-2xl bg-gradient-to-br from-card to-teal-muted border border-teal/15 text-center">
-              <p className="text-xl md:text-2xl font-bold text-foreground">
-                {loading ? '—' : total}
-              </p>
+              {postsLoading ? (
+                <div className="h-7 w-8 rounded bg-border animate-pulse mx-auto mb-1" />
+              ) : (
+                <p className="text-xl md:text-2xl font-bold text-foreground">{total}</p>
+              )}
               <p className="text-xs text-muted-foreground font-semibold">Total</p>
             </div>
             <div className="p-3 md:p-4 rounded-2xl bg-gradient-to-br from-card to-gold-muted border border-accent/15 text-center">
-              <p className="text-xl md:text-2xl font-bold text-foreground">
-                {loading ? '—' : posts.filter((p) => p.isLiked).length}
-              </p>
+              {postsLoading ? (
+                <div className="h-7 w-8 rounded bg-border animate-pulse mx-auto mb-1" />
+              ) : (
+                <p className="text-xl md:text-2xl font-bold text-foreground">
+                  {posts.filter((p) => p.isLiked).length}
+                </p>
+              )}
               <p className="text-xs text-muted-foreground font-semibold">Liked</p>
             </div>
             <div className="p-3 md:p-4 rounded-2xl bg-gradient-to-br from-card to-rose-muted border border-rose/15 text-center">
-              <div className="flex items-center justify-center gap-1 text-rose">
-                <Flame className="w-4 h-4" />
-                <span className="text-xl md:text-2xl font-bold">{streakDays ?? '—'}</span>
-              </div>
+              {streakLoading ? (
+                <div className="h-7 w-8 rounded bg-border animate-pulse mx-auto mb-1" />
+              ) : (
+                <div className="flex items-center justify-center gap-1 text-rose">
+                  <Flame className="w-4 h-4" />
+                  <span className="text-xl md:text-2xl font-bold">{streakDays ?? 0}</span>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground font-semibold">Streak</p>
             </div>
           </motion.div>
@@ -388,15 +457,163 @@ export default function ReflectionsPage() {
             </div>
           </motion.div>
 
-          {/* Loading */}
-          {loading && (
-            <div className="flex items-center justify-center py-12">
-              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          {/* Tab switcher */}
+          <div className="flex rounded-xl border border-border bg-card overflow-hidden text-sm font-semibold">
+            <button
+              onClick={() => setActiveTab('notes')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 transition-colors ${
+                activeTab === 'notes'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-secondary'
+              }`}
+            >
+              <StickyNote className="w-3.5 h-3.5" />
+              Notes {!notesLoading && notes.length > 0 && `(${notes.length})`}
+            </button>
+            <button
+              onClick={() => setActiveTab('reflections')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 transition-colors ${
+                activeTab === 'reflections'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-secondary'
+              }`}
+            >
+              <Heart className="w-3.5 h-3.5" />
+              Reflections
+            </button>
+          </div>
+
+          {/* Notes tab */}
+          {activeTab === 'notes' && (
+            <div className="space-y-3">
+              {notesLoading ? (
+                [1, 2, 3].map((i) => (
+                  <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-2">
+                    <div className="h-3 w-1/3 rounded bg-border animate-pulse" />
+                    <div className="h-3 w-full rounded bg-border animate-pulse" />
+                    <div className="h-3 w-4/5 rounded bg-border animate-pulse" />
+                  </div>
+                ))
+              ) : notes.length === 0 ? (
+                <div className="text-center py-12 space-y-2">
+                  <StickyNote className="w-8 h-8 text-muted-foreground mx-auto" />
+                  <p className="text-sm font-semibold text-foreground">No notes yet</p>
+                  <p className="text-xs text-muted-foreground">
+                    Open any verse in the Quran reader and tap the pen icon to add a note.
+                  </p>
+                  <Link
+                    href="/quran"
+                    className="inline-flex items-center gap-1.5 mt-2 text-xs font-semibold text-primary hover:underline"
+                  >
+                    <LinkIcon className="w-3 h-3" /> Go to Quran
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  {notes.map((note) => {
+                    const verseRef = note.ranges?.[0]
+                      ? (() => {
+                          const m = note.ranges![0].match(/^(\d+):(\d+)-/);
+                          return m ? `${m[1]}:${m[2]}` : null;
+                        })()
+                      : null;
+                    return (
+                      <motion.div
+                        key={note.id}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="rounded-xl border border-border bg-card p-4 space-y-2 group"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm text-foreground/90 leading-relaxed flex-1">
+                            {note.body}
+                          </p>
+                          <button
+                            disabled={deletingNoteId === note.id}
+                            onClick={async () => {
+                              setDeletingNoteId(note.id);
+                              await deleteNote(note.id).catch(() => null);
+                              setNotes((prev) => prev.filter((n) => n.id !== note.id));
+                              setDeletingNoteId(null);
+                            }}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+                          >
+                            {deletingNoteId === note.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          {verseRef ? (
+                            <Link
+                              href={`/quran?verse=${verseRef}`}
+                              className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                            >
+                              <LinkIcon className="w-3 h-3" />
+                              {verseRef}
+                            </Link>
+                          ) : (
+                            <span />
+                          )}
+                          <span className="text-[11px] text-muted-foreground">
+                            {new Date(note.createdAt).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+
+                  {notesHasMore && (
+                    <button
+                      onClick={loadMoreNotes}
+                      disabled={notesLoadingMore}
+                      className="w-full py-3 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors flex items-center justify-center gap-2"
+                    >
+                      {notesLoadingMore ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" /> Loading...
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="w-4 h-4" /> Load more notes
+                        </>
+                      )}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Loading skeleton for posts */}
+          {activeTab === 'reflections' && postsLoading && (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="rounded-2xl border border-border bg-card p-4 space-y-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-full bg-border animate-pulse" />
+                    <div className="space-y-1.5">
+                      <div className="h-2.5 w-24 rounded bg-border animate-pulse" />
+                      <div className="h-2 w-16 rounded bg-border animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-3 w-full rounded bg-border animate-pulse" />
+                    <div className="h-3 w-4/5 rounded bg-border animate-pulse" />
+                    <div className="h-3 w-2/3 rounded bg-border animate-pulse" />
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
           {/* Posts List */}
-          {!loading && (
+          {activeTab === 'reflections' && !postsLoading && (
             <div className="space-y-6">
               {Object.entries(groupedPosts).map(([date, datePosts]) => (
                 <div key={date} className="space-y-3">
@@ -674,11 +891,29 @@ export default function ReflectionsPage() {
                   </div>
                 </div>
               ))}
+
+              {!searchQuery && postsPage < postsTotalPages && (
+                <button
+                  onClick={loadMorePosts}
+                  disabled={postsLoadingMore}
+                  className="w-full py-3 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors flex items-center justify-center gap-2"
+                >
+                  {postsLoadingMore ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> Loading...
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-4 h-4" /> Load more reflections
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           )}
 
           {/* Empty State */}
-          {!loading && filteredPosts.length === 0 && (
+          {activeTab === 'reflections' && !postsLoading && filteredPosts.length === 0 && (
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}

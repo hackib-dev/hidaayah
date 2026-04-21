@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { Search, ChevronRight, Sparkles, FolderOpen, Plus, Loader2, X } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { fetchCollections, createCollection } from '@/app/collections/queries';
+import { fetchAllCollections, createCollection } from '@/app/collections/queries';
 import type { Collection } from '@/app/collections/types';
 
 export default function CollectionsPage() {
@@ -33,8 +33,8 @@ export default function CollectionsPage() {
   useEffect(() => {
     if (!user) return;
     setCollectionsLoading(true);
-    fetchCollections({ sortBy: 'alphabetical', first: 20 })
-      .then((res) => setUserCollections(res.data ?? []))
+    fetchAllCollections({ sortBy: 'alphabetical' })
+      .then((data) => setUserCollections(data))
       .catch(() => setUserCollections([]))
       .finally(() => setCollectionsLoading(false));
   }, [user]);

@@ -19,7 +19,11 @@ import {
   Minus,
   Plus,
   Loader2,
-  Mic
+  Mic,
+  PenLine,
+  Trash2,
+  Check,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -29,9 +33,19 @@ import {
   fetchVerseReciters
 } from '@/app/quran/queries';
 import { fetchTafsirByChapter } from '@/app/guidance/queries';
-import { createBookmark, deleteBookmark, fetchBookmarks } from '@/app/reflections/queries';
+import {
+  createBookmark,
+  deleteBookmark,
+  fetchBookmarks,
+  fetchNotesByVerse,
+  createNote,
+  updateNote,
+  deleteNote,
+  upsertReadingSession
+} from '@/app/reflections/queries';
 import { contentApi } from '@/app/apiService/quranFoundationService';
 import type { Verse, Word, Chapter, Reciter } from '@/app/quran/types';
+import type { Note } from '@/app/reflections/types';
 import type { TafsirEntry } from '@/app/guidance/types';
 import {
   QF_DEFAULT_TRANSLATION_ID,
@@ -106,6 +120,19 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
   // Footnotes
   const [footnote, setFootnote] = useState<{ text: string } | null>(null);
 
+  // Notes: verseKey → Note[]
+  const [verseNotes, setVerseNotes] = useState<Record<string, Note[]>>({});
+  const [showNotes, setShowNotes] = useState<string | null>(null); // active verseKey
+  const [noteInput, setNoteInput] = useState('');
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteText, setEditingNoteText] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+
+  // Reading session tracking
+  const sessionStartRef = useRef<number>(Date.now());
+  const firstVerseRef = useRef<string | null>(null);
+  const lastVerseRef = useRef<string | null>(null);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const verseRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
@@ -170,13 +197,16 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
     setChapter(null);
     setTafsirs({});
 
+    // Load enough verses to include the target verse on first fetch
+    const initialPerPage = scrollToVerse ? Math.max(20, scrollToVerse + 5) : 20;
+
     Promise.all([
       fetchChapter(surahNumber),
       fetchVersesByChapter(surahNumber, {
         translations: String(QF_DEFAULT_TRANSLATION_ID),
         words: true,
         page: 1,
-        per_page: 20
+        per_page: Math.min(initialPerPage, 50)
       }),
       fetchBookmarks({
         type: 'ayah',
@@ -289,6 +319,101 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
       setFootnote({ text: res.data.footNote.text });
     } catch {
       // silently ignore footnote fetch errors
+    }
+  };
+
+  // Reading session: record first/last verse seen and flush on unmount
+  useEffect(() => {
+    if (verses.length === 0) return;
+    const firstKey = `${surahNumber}:${verses[0].verse_number}`;
+    if (!firstVerseRef.current) firstVerseRef.current = firstKey;
+    lastVerseRef.current = `${surahNumber}:${verses[verses.length - 1].verse_number}`;
+  }, [verses, surahNumber]);
+
+  useEffect(() => {
+    sessionStartRef.current = Date.now();
+    firstVerseRef.current = null;
+    lastVerseRef.current = null;
+    return () => {
+      const duration = Math.round((Date.now() - sessionStartRef.current) / 1000);
+      const from = firstVerseRef.current;
+      const to = lastVerseRef.current;
+      if (from && to && duration >= 5) {
+        upsertReadingSession({
+          verseFrom: from,
+          verseTo: to,
+          duration,
+          mushafId: QF_DEFAULT_MUSHAF_ID,
+          chapterNumber: parseInt(from.split(':')[0], 10)
+        }).catch(() => null);
+      }
+    };
+  }, [surahNumber]);
+
+  const loadVerseNotes = async (verseKey: string) => {
+    if (verseNotes[verseKey] !== undefined) return;
+    const res = await fetchNotesByVerse(verseKey).catch(() => null);
+    setVerseNotes((prev) => ({ ...prev, [verseKey]: res?.data ?? [] }));
+  };
+
+  const toggleNotes = (verseKey: string) => {
+    if (showNotes === verseKey) {
+      setShowNotes(null);
+    } else {
+      setShowNotes(verseKey);
+      loadVerseNotes(verseKey);
+    }
+    setNoteInput('');
+    setEditingNoteId(null);
+    setEditingNoteText('');
+  };
+
+  const handleSaveNote = async (verseKey: string) => {
+    if (!noteInput.trim()) return;
+    setSavingNote(true);
+    try {
+      const [chapter, verse] = verseKey.split(':');
+      const res = await createNote({
+        body: noteInput.trim(),
+        saveToQR: false,
+        ranges: [`${chapter}:${verse}-${chapter}:${verse}`]
+      });
+      if (res?.data) {
+        setVerseNotes((prev) => ({ ...prev, [verseKey]: [...(prev[verseKey] ?? []), res.data] }));
+        setNoteInput('');
+      }
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
+  const handleUpdateNote = async (verseKey: string, noteId: string) => {
+    if (!editingNoteText.trim()) return;
+    setSavingNote(true);
+    try {
+      const res = await updateNote(noteId, { body: editingNoteText.trim() });
+      if (res?.data) {
+        setVerseNotes((prev) => ({
+          ...prev,
+          [verseKey]: (prev[verseKey] ?? []).map((n) => (n.id === noteId ? res.data : n))
+        }));
+        setEditingNoteId(null);
+        setEditingNoteText('');
+      }
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
+  const handleDeleteNote = async (verseKey: string, noteId: string) => {
+    await deleteNote(noteId).catch(() => null);
+    setVerseNotes((prev) => ({
+      ...prev,
+      [verseKey]: (prev[verseKey] ?? []).filter((n) => n.id !== noteId)
+    }));
+    if (editingNoteId === noteId) {
+      setEditingNoteId(null);
+      setEditingNoteText('');
     }
   };
 
@@ -618,6 +743,10 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
           const isHighlighted =
             scrollToVerse === verse.verse_number || activeVerse === verse.verse_number;
 
+          const verseKey = verse.verse_key ?? `${surahNumber}:${verse.verse_number}`;
+          const notesOpen = showNotes === verseKey;
+          const notes = verseNotes[verseKey] ?? [];
+
           return (
             <motion.div
               key={verse.id}
@@ -686,6 +815,18 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
                     )}
                   >
                     <Bookmark className={cn('w-4 h-4', isBookmarked && 'fill-current')} />
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.88 }}
+                    onClick={() => toggleNotes(verseKey)}
+                    className={cn(
+                      'p-2 rounded-xl transition-colors',
+                      notesOpen
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                    )}
+                  >
+                    <PenLine className="w-4 h-4" />
                   </motion.button>
                   <motion.button
                     whileTap={{ scale: 0.88 }}
@@ -801,6 +942,112 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
                         <p className="text-sm text-muted-foreground text-center">
                           Tafsir not available for this verse.
                         </p>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Notes panel */}
+              <AnimatePresence>
+                {notesOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.22 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-4 p-4 rounded-xl bg-secondary/40 border border-border space-y-3">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+                        Your Notes
+                      </p>
+
+                      {/* Existing notes */}
+                      {notes.length === 0 && verseNotes[verseKey] !== undefined && (
+                        <p className="text-xs text-muted-foreground">
+                          No notes yet. Add one below.
+                        </p>
+                      )}
+                      {notes.map((note) => (
+                        <div key={note.id} className="space-y-1">
+                          {editingNoteId === note.id ? (
+                            <div className="space-y-2">
+                              <textarea
+                                value={editingNoteText}
+                                onChange={(e) => setEditingNoteText(e.target.value)}
+                                rows={3}
+                                className="w-full text-sm rounded-lg border border-border bg-card px-3 py-2 text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                              />
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleUpdateNote(verseKey, note.id)}
+                                  disabled={savingNote}
+                                  className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+                                >
+                                  <Check className="w-3 h-3" /> Save
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setEditingNoteId(null);
+                                    setEditingNoteText('');
+                                  }}
+                                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  <X className="w-3 h-3" /> Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-start justify-between gap-2 group">
+                              <p className="text-sm text-foreground/80 leading-relaxed flex-1">
+                                {note.body}
+                              </p>
+                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                <button
+                                  onClick={() => {
+                                    setEditingNoteId(note.id);
+                                    setEditingNoteText(note.body);
+                                  }}
+                                  className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  <PenLine className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteNote(verseKey, note.id)}
+                                  className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      {/* New note input */}
+                      {editingNoteId === null && (
+                        <div className="space-y-2">
+                          <textarea
+                            value={noteInput}
+                            onChange={(e) => setNoteInput(e.target.value)}
+                            placeholder="Write a note on this verse…"
+                            rows={2}
+                            className="w-full text-sm rounded-lg border border-border bg-card px-3 py-2 text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                          <button
+                            onClick={() => handleSaveNote(verseKey)}
+                            disabled={savingNote || !noteInput.trim()}
+                            className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors disabled:opacity-40"
+                          >
+                            {savingNote ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Check className="w-3 h-3" />
+                            )}
+                            Save note
+                          </button>
+                        </div>
                       )}
                     </div>
                   </motion.div>
