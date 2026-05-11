@@ -208,9 +208,7 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
 
         const [primary, ...rest] = results;
         setGuidance((prev) =>
-          prev
-            ? { ...prev, arabic: primary.arabic, translation: primary.translation }
-            : prev
+          prev ? { ...prev, arabic: primary.arabic, translation: primary.translation } : prev
         );
         setPrimaryAudioUrl(primary.audioUrl);
         setVerseCards(rest);
