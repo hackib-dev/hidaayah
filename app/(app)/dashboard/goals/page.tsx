@@ -369,11 +369,14 @@ export default function GoalsPage() {
                     <div className="space-y-1.5">
                       <div className="flex flex-wrap gap-1.5">
                         {plan.dailyTargetRanges.map((r) => {
-                          const toNum2 = (vk: string) => { const [ch, v] = vk.split(':').map(Number); return ch * 10000 + v; };
+                          const toNum2 = (vk: string) => {
+                            const [ch, v] = vk.split(':').map(Number);
+                            return ch * 10000 + v;
+                          };
                           const [rFrom, rTo] = r.split('-').map(toNum2);
                           const tSize = rTo - rFrom + 1;
                           let covered = 0;
-                          for (const read of (plan.ranges ?? [])) {
+                          for (const read of plan.ranges ?? []) {
                             const [readFrom, readTo] = read.split('-').map(toNum2);
                             const oFrom = Math.max(readFrom, rFrom);
                             const oTo = Math.min(readTo, rTo);
@@ -404,16 +407,15 @@ export default function GoalsPage() {
                     </div>
                   )}
 
-                  {!done &&
-                    plan.remainingDailyTargetRanges?.[0] && (
-                      <Link
-                        href={`/dashboard/quran?verse=${plan.remainingDailyTargetRanges[0].split('-')[0]}`}
-                        className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:underline"
-                      >
-                        <ArrowRight className="w-3 h-3" />
-                        Continue reading
-                      </Link>
-                    )}
+                  {!done && plan.remainingDailyTargetRanges?.[0] && (
+                    <Link
+                      href={`/dashboard/quran?verse=${plan.remainingDailyTargetRanges[0].split('-')[0]}`}
+                      className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:underline"
+                    >
+                      <ArrowRight className="w-3 h-3" />
+                      Continue reading
+                    </Link>
+                  )}
                 </div>
               );
             })}
@@ -463,7 +465,8 @@ export default function GoalsPage() {
 
                 {goalType === 'QURAN_RANGE' && (
                   <p className="text-[11px] text-muted-foreground">
-                    Format: <span className="font-mono">surah:verse-surah:verse</span> — e.g. <span className="font-mono">2:1-2:50</span>
+                    Format: <span className="font-mono">surah:verse-surah:verse</span> — e.g.{' '}
+                    <span className="font-mono">2:1-2:50</span>
                   </p>
                 )}
                 <div className="flex gap-2">

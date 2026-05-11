@@ -130,11 +130,11 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
   const [savingNote, setSavingNote] = useState(false);
 
   // Reading tracking
-  const activeSecondsRef = useRef(0);          // focused reading seconds accumulated
+  const activeSecondsRef = useRef(0); // focused reading seconds accumulated
   const verseQueueRef = useRef<Set<string>>(new Set()); // verse keys seen this batch
   const lastVisibleVerseRef = useRef<{ chapter: number; verse: number } | null>(null);
   const sessionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const focusedRef = useRef(true);             // whether tab is in focus
+  const focusedRef = useRef(true); // whether tab is in focus
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const verseRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -374,8 +374,9 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
     }
     ranges.push(`${start.ch}:${start.v}-${prev.ch}:${prev.v}`);
 
-    logActivityDay({ type: 'QURAN', seconds: secs, ranges, mushafId: QF_DEFAULT_MUSHAF_ID })
-      .catch(() => null);
+    logActivityDay({ type: 'QURAN', seconds: secs, ranges, mushafId: QF_DEFAULT_MUSHAF_ID }).catch(
+      () => null
+    );
   };
 
   // IntersectionObserver: track which verse is visible, debounce reading-session update
@@ -409,8 +410,12 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
 
   // Focus tracking: count active seconds while tab is focused
   useEffect(() => {
-    const onFocus = () => { focusedRef.current = true; };
-    const onBlur = () => { focusedRef.current = false; };
+    const onFocus = () => {
+      focusedRef.current = true;
+    };
+    const onBlur = () => {
+      focusedRef.current = false;
+    };
     window.addEventListener('focus', onFocus);
     window.addEventListener('blur', onBlur);
     return () => {
@@ -437,7 +442,6 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
       flushActivity();
       if (sessionDebounceRef.current) clearTimeout(sessionDebounceRef.current);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [surahNumber]);
 
   const loadVerseNotes = async (verseKey: string) => {

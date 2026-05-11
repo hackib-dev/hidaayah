@@ -101,9 +101,7 @@ export default function CollectionDetailPage() {
           );
         } catch {
           setItems((prev) =>
-            prev.map((item, idx) =>
-              idx === i ? { ...item, loading: false, error: true } : item
-            )
+            prev.map((item, idx) => (idx === i ? { ...item, loading: false, error: true } : item))
           );
         }
       });
