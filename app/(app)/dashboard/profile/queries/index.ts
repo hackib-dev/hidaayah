@@ -150,7 +150,7 @@ export const fetchAllTodayGoalPlans = async (): Promise<TodayGoalPlan[]> => {
 // ─── Reflect User Profile ─────────────────────────────────────────────────────
 // Prefer /v1/users/profile (self, full data) with the user's access token.
 // If the user token is absent, fall back to /v1/users/{sub} using the reflectApi
-// (which carries a client-credentials token with the "user" scope).
+// (which carries a client-credentials token with the "user" scope)
 export const fetchReflectProfile = async (): Promise<ReflectProfile | null> => {
   const userToken = typeof window !== 'undefined' ? localStorage.getItem(USER_TOKEN_KEY) : null;
   const clientId = process.env.NEXT_PUBLIC_QF_CLIENT_ID || '';
