@@ -6,7 +6,7 @@ import HidaayahLogo from '@/components/HidaayahLogo';
 import { useEffect } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { useAppState } from '@/components/app-state-provider';
-import { ArrowRight, BookOpen, Compass, BookText, Bookmark, Moon, Sun } from 'lucide-react';
+import { ArrowRight, Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { motion } from 'framer-motion';
 

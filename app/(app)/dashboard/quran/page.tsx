@@ -4,13 +4,17 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Navigation } from '@/components/navigation';
 import { QuranReader } from '@/components/quran-reader';
+import { MushafPageView } from '@/components/mushaf-page-view';
 import { SurahList } from '@/components/surah-list';
 import { RecitationFormatSelector } from '@/components/recitation-format-selector';
 import { JuzRecitationView } from '@/components/recitation-juz-view';
 import { HizbRecitationView } from '@/components/recitation-hizb-view';
 import { PageRecitationView } from '@/components/recitation-page-view';
-import { ChevronLeft, BookText } from 'lucide-react';
+import { ChevronLeft, BookText, AlignJustify, BookOpen } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { fetchChapter } from '@/app/(app)/dashboard/quran/queries';
+import type { Chapter } from '@/app/(app)/dashboard/quran/types';
 import type { RecitationFormat, RecitationProgress } from '@/types/recitation';
 
 const PROGRESS_KEY = 'hidaayah_recitation_progress';
@@ -37,6 +41,8 @@ export default function QuranPage() {
   const [selectedSurah, setSelectedSurah] = useState<number | null>(null);
   const [scrollToVerse, setScrollToVerse] = useState<number | undefined>();
   const [view, setView] = useState<'list' | 'reader'>('list');
+  const [readerMode, setReaderMode] = useState<'translation' | 'mushaf'>('translation');
+  const [chapterInfo, setChapterInfo] = useState<Chapter | null>(null);
   const [progress, setProgress] = useState<RecitationProgress[]>([]);
 
   // Load persisted progress
@@ -69,16 +75,30 @@ export default function QuranPage() {
     }
   }, [searchParams]);
 
+  // Fetch chapter info when surah is set from query params
+  useEffect(() => {
+    if (selectedSurah && view === 'reader' && !chapterInfo) {
+      fetchChapter(selectedSurah)
+        .then((res) => setChapterInfo(res.chapter ?? null))
+        .catch(() => null);
+    }
+  }, [selectedSurah, view, chapterInfo]);
+
   const openReader = useCallback((surahNumber: number, verseNumber?: number) => {
     setSelectedSurah(surahNumber);
     setScrollToVerse(verseNumber);
+    setChapterInfo(null);
     setView('reader');
+    fetchChapter(surahNumber)
+      .then((res) => setChapterInfo(res.chapter ?? null))
+      .catch(() => null);
   }, []);
 
   const handleBack = () => {
     setView('list');
     setSelectedSurah(null);
     setScrollToVerse(undefined);
+    setChapterInfo(null);
   };
 
   // ─── Juz handlers ──────────────────────────────────────────────────────────
@@ -87,7 +107,6 @@ export default function QuranPage() {
     const surahNum = parseInt(chapter, 10);
     const verseNum = parseInt(verse, 10);
 
-    // Upsert progress
     setProgress((prev) => {
       const existing = prev.find((p) => p.format === 'juz' && p.unitNumber === juzNumber);
       const updated: RecitationProgress = existing
@@ -179,9 +198,6 @@ export default function QuranPage() {
       return next;
     });
 
-    // Navigate to the Quran reader via page — use QF page-based verse endpoint
-    // For now, navigate to the surah that starts on that page (approximated)
-    // A real integration would use /verses/by_page/:page_number
     router.push(`/dashboard/quran?page=${pageNumber}`);
   };
 
@@ -303,25 +319,62 @@ export default function QuranPage() {
                 transition={{ duration: 0.3 }}
                 className="py-4"
               >
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleBack}
-                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4 touch-target font-semibold"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  <span>
-                    {format === 'surah'
-                      ? 'All Surahs'
-                      : format === 'juz'
-                        ? 'All Juz'
-                        : format === 'hizb'
-                          ? 'All Hizb'
-                          : 'All Pages'}
-                  </span>
-                </motion.button>
+                <div className="flex items-center justify-between mb-4">
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleBack}
+                    className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors touch-target font-semibold"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>
+                      {format === 'surah'
+                        ? 'All Surahs'
+                        : format === 'juz'
+                          ? 'All Juz'
+                          : format === 'hizb'
+                            ? 'All Hizb'
+                            : 'All Pages'}
+                    </span>
+                  </motion.button>
 
-                {selectedSurah && (
+                  {/* View mode toggle */}
+                  <div className="flex items-center gap-1 p-1 rounded-xl bg-secondary">
+                    <button
+                      onClick={() => setReaderMode('translation')}
+                      className={cn(
+                        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+                        readerMode === 'translation'
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <AlignJustify className="w-3.5 h-3.5" />
+                      Translation
+                    </button>
+                    <button
+                      onClick={() => setReaderMode('mushaf')}
+                      className={cn(
+                        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+                        readerMode === 'mushaf'
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      Mushaf
+                    </button>
+                  </div>
+                </div>
+
+                {selectedSurah && readerMode === 'translation' && (
                   <QuranReader surahNumber={selectedSurah} scrollToVerse={scrollToVerse} />
+                )}
+
+                {selectedSurah && readerMode === 'mushaf' && (
+                  <MushafPageView
+                    startPage={chapterInfo?.pages?.[0] ?? 1}
+                    chapterName={chapterInfo?.name_simple}
+                  />
                 )}
               </motion.div>
             )}

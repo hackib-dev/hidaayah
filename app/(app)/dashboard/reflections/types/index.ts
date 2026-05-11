@@ -112,11 +112,8 @@ export interface ListReadingSessionsResponse {
 }
 
 export interface UpsertReadingSessionParams {
-  verseFrom: string;
-  verseTo: string;
-  duration: number;
-  mushafId: number;
   chapterNumber: number;
+  verseNumber: number;
 }
 
 // ─── Notes ────────────────────────────────────────────────────────────────────

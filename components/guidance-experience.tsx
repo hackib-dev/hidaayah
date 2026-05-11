@@ -602,7 +602,7 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
           {guidance.relatedThemes.map((theme) => (
             <motion.div key={theme} whileTap={{ scale: 0.95 }}>
               <Link
-                href={`/collections/${theme}`}
+                href={`/dashboard/collections/${theme}`}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors text-sm font-semibold"
               >
                 <span className="capitalize">{theme}</span>

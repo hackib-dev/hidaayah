@@ -16,8 +16,13 @@ export const fetchCollections = async (
 };
 
 // ─── Get a single collection with its bookmarks ───────────────────────────────
-export const fetchCollection = async (collectionId: string): Promise<GetCollectionResponse> => {
-  const response = await userApi.get<GetCollectionResponse>(`/v1/collections/${collectionId}`);
+export const fetchCollection = async (
+  collectionId: string,
+  params: { first?: number; after?: string; last?: number; before?: string } = {}
+): Promise<GetCollectionResponse> => {
+  const response = await userApi.get<GetCollectionResponse>(`/v1/collections/${collectionId}`, {
+    params: { first: 20, ...params }
+  });
   return response.data;
 };
 

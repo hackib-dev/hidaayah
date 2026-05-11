@@ -75,21 +75,6 @@ export default function SignupPage() {
             )}
           </button>
         </div>
-
-        <div className="text-center space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Already have an account?{' '}
-            <Link href="/login" className="text-primary font-semibold hover:underline">
-              Sign in
-            </Link>
-          </p>
-          <Link
-            href="/dashboard"
-            className="block text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Continue without an account →
-          </Link>
-        </div>
       </motion.div>
     </div>
   );
