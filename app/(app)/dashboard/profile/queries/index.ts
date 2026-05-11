@@ -19,7 +19,7 @@ import type {
   UpdateGoalParams
 } from '@/app/(app)/dashboard/profile/types';
 
-// ─── Streak ───────────────────────────────────────────────────────────────────
+// ─── Streak ──────────────────────
 export const fetchStreaks = async (params: FetchStreakParams = {}): Promise<StreakResponse> => {
   const response = await userApi.get<StreakResponse>('/v1/streaks', {
     params: { type: 'QURAN', sortOrder: 'desc', ...params }
