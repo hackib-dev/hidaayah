@@ -548,7 +548,7 @@ export default function ReflectionsPage() {
                         <div className="flex items-center justify-between">
                           {verseRef ? (
                             <Link
-                              href={`/quran?verse=${verseRef}`}
+                              href={`/dashboard/quran?verse=${verseRef}`}
                               className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
                             >
                               <LinkIcon className="w-3 h-3" />

@@ -129,10 +129,12 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
   const [editingNoteText, setEditingNoteText] = useState('');
   const [savingNote, setSavingNote] = useState(false);
 
-  // Reading session tracking
-  const sessionStartRef = useRef<number>(Date.now());
-  const firstVerseRef = useRef<string | null>(null);
-  const lastVerseRef = useRef<string | null>(null);
+  // Reading tracking
+  const activeSecondsRef = useRef(0);          // focused reading seconds accumulated
+  const verseQueueRef = useRef<Set<string>>(new Set()); // verse keys seen this batch
+  const lastVisibleVerseRef = useRef<{ chapter: number; verse: number } | null>(null);
+  const sessionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const focusedRef = useRef(true);             // whether tab is in focus
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const verseRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -198,16 +200,13 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
     setChapter(null);
     setTafsirs({});
 
-    // Load enough verses to include the target verse on first fetch
-    const initialPerPage = scrollToVerse ? Math.max(20, scrollToVerse + 5) : 20;
-
     Promise.all([
       fetchChapter(surahNumber),
       fetchVersesByChapter(surahNumber, {
         translations: String(QF_DEFAULT_TRANSLATION_ID),
         words: true,
         page: 1,
-        per_page: Math.min(initialPerPage, 50)
+        per_page: 50
       }),
       fetchBookmarks({
         type: 'ayah',
@@ -216,22 +215,42 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
         first: 20
       }).catch(() => null)
     ])
-      .then(([chapterRes, versesRes, bookmarksRes]) => {
+      .then(async ([chapterRes, versesRes, bookmarksRes]) => {
         setChapter(chapterRes.chapter);
-        setVerses(versesRes.verses);
-        setTotalPages(versesRes.pagination.total_pages);
+        const totalPgs = versesRes.pagination.total_pages;
+        setTotalPages(totalPgs);
+
         const map: Record<number, string> = {};
         for (const bm of bookmarksRes?.data ?? []) {
           if (bm.verseNumber !== null) map[bm.verseNumber] = bm.id;
         }
         setBookmarkedVerses(map);
 
+        // If we need to scroll to a verse beyond the first 50, load pages until it's present
+        let allVerses = versesRes.verses;
+        let lastLoadedPage = 1;
+        if (scrollToVerse && scrollToVerse > 50 && totalPgs > 1) {
+          while (allVerses.length < scrollToVerse && lastLoadedPage < totalPgs) {
+            lastLoadedPage += 1;
+            const more = await fetchVersesByChapter(surahNumber, {
+              translations: String(QF_DEFAULT_TRANSLATION_ID),
+              words: true,
+              page: lastLoadedPage,
+              per_page: 50
+            });
+            allVerses = [...allVerses, ...more.verses];
+          }
+        }
+
+        setVerses(allVerses);
+        setPage(lastLoadedPage);
+
         if (scrollToVerse) {
           setTimeout(() => {
             document
               .getElementById(`verse-${surahNumber}-${scrollToVerse}`)
               ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }, 300);
+          }, 400);
         }
       })
       .catch(() => setError('Failed to load surah. Please try again.'))
@@ -246,10 +265,14 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
       translations: String(QF_DEFAULT_TRANSLATION_ID),
       words: true,
       page: nextPage,
-      per_page: 20
+      per_page: 50
     })
       .then((res) => {
-        setVerses((prev) => [...prev, ...res.verses]);
+        setVerses((prev) => {
+          const existingKeys = new Set(prev.map((v) => v.verse_key));
+          const newVerses = res.verses.filter((v) => !existingKeys.has(v.verse_key));
+          return [...prev, ...newVerses];
+        });
         setPage(nextPage);
       })
       .finally(() => setLoadingMore(false));
@@ -323,38 +346,98 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
     }
   };
 
-  // Reading session: record first/last verse seen and flush on unmount
+  // ─── Reading tracking ────────────────────────────────────────────────────────
+  // Flush accumulated seconds + verse queue to activity-days API.
+  const flushActivity = () => {
+    const secs = activeSecondsRef.current;
+    const keys = Array.from(verseQueueRef.current);
+    if (secs < 1 || keys.length === 0) return;
+    activeSecondsRef.current = 0;
+    verseQueueRef.current = new Set();
+
+    // Build ranges: sort verse keys and merge consecutive verses
+    const sorted = keys
+      .map((k) => ({ ch: parseInt(k.split(':')[0], 10), v: parseInt(k.split(':')[1], 10) }))
+      .sort((a, b) => a.ch - b.ch || a.v - b.v);
+
+    const ranges: string[] = [];
+    let start = sorted[0];
+    let prev = sorted[0];
+    for (let i = 1; i < sorted.length; i++) {
+      const cur = sorted[i];
+      const consecutive = cur.ch === prev.ch && cur.v === prev.v + 1;
+      if (!consecutive) {
+        ranges.push(`${start.ch}:${start.v}-${prev.ch}:${prev.v}`);
+        start = cur;
+      }
+      prev = cur;
+    }
+    ranges.push(`${start.ch}:${start.v}-${prev.ch}:${prev.v}`);
+
+    logActivityDay({ type: 'QURAN', seconds: secs, ranges, mushafId: QF_DEFAULT_MUSHAF_ID })
+      .catch(() => null);
+  };
+
+  // IntersectionObserver: track which verse is visible, debounce reading-session update
   useEffect(() => {
     if (verses.length === 0) return;
-    const firstKey = `${surahNumber}:${verses[0].verse_number}`;
-    if (!firstVerseRef.current) firstVerseRef.current = firstKey;
-    lastVerseRef.current = `${surahNumber}:${verses[verses.length - 1].verse_number}`;
-  }, [verses, surahNumber]);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const el = entry.target as HTMLElement;
+          const key = el.dataset.verseKey;
+          if (!key) continue;
+          verseQueueRef.current.add(key);
+          const [ch, v] = key.split(':').map(Number);
+          lastVisibleVerseRef.current = { chapter: ch, verse: v };
 
+          // Debounced reading-session update (location only)
+          if (sessionDebounceRef.current) clearTimeout(sessionDebounceRef.current);
+          sessionDebounceRef.current = setTimeout(() => {
+            upsertReadingSession({ chapterNumber: ch, verseNumber: v }).catch(() => null);
+          }, 2000);
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    const els = Object.values(verseRefs.current).filter(Boolean) as HTMLDivElement[];
+    els.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [verses]);
+
+  // Focus tracking: count active seconds while tab is focused
   useEffect(() => {
-    sessionStartRef.current = Date.now();
-    firstVerseRef.current = null;
-    lastVerseRef.current = null;
+    const onFocus = () => { focusedRef.current = true; };
+    const onBlur = () => { focusedRef.current = false; };
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('blur', onBlur);
     return () => {
-      const duration = Math.round((Date.now() - sessionStartRef.current) / 1000);
-      const from = firstVerseRef.current;
-      const to = lastVerseRef.current;
-      if (from && to && duration >= 5) {
-        upsertReadingSession({
-          verseFrom: from,
-          verseTo: to,
-          duration,
-          mushafId: QF_DEFAULT_MUSHAF_ID,
-          chapterNumber: parseInt(from.split(':')[0], 10)
-        }).catch(() => null);
-        logActivityDay({
-          type: 'QURAN',
-          seconds: duration,
-          ranges: [`${from}-${to}`],
-          mushafId: QF_DEFAULT_MUSHAF_ID
-        }).catch(() => null);
-      }
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', onBlur);
     };
+  }, []);
+
+  // Tick every second to accumulate focused reading time
+  useEffect(() => {
+    const tick = setInterval(() => {
+      if (focusedRef.current) activeSecondsRef.current += 1;
+    }, 1000);
+    return () => clearInterval(tick);
+  }, []);
+
+  // Periodic flush every 10 seconds + final flush on unmount/surah change
+  useEffect(() => {
+    activeSecondsRef.current = 0;
+    verseQueueRef.current = new Set();
+    const interval = setInterval(flushActivity, 10_000);
+    return () => {
+      clearInterval(interval);
+      flushActivity();
+      if (sessionDebounceRef.current) clearTimeout(sessionDebounceRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [surahNumber]);
 
   const loadVerseNotes = async (verseKey: string) => {
@@ -756,8 +839,9 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
 
           return (
             <motion.div
-              key={verse.id}
+              key={verse.verse_key}
               id={`verse-${surahNumber}-${verse.verse_number}`}
+              data-verse-key={verseKey}
               ref={(el) => {
                 verseRefs.current[verse.verse_number] = el;
               }}

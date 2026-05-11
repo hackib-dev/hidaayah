@@ -59,6 +59,9 @@ export default function GoalsPage() {
   const [editTarget, setEditTarget] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
 
+  const RANGE_RE = /^\d+:\d+-\d+:\d+$/;
+  const rangeValid = goalType !== 'QURAN_RANGE' || RANGE_RE.test(goalTarget.replace(/\s/g, ''));
+
   const [deletingGoalId, setDeletingGoalId] = useState<string | null>(null);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
 
@@ -83,28 +86,83 @@ export default function GoalsPage() {
   }, [user]);
 
   const goalInfoFor = (plan: TodayGoalPlan) => {
-    const pct = Math.min(100, Math.round(plan.progress * 100));
-    if (plan.goalType === 'QURAN_TIME' && plan.dailyTargetSeconds) {
+    // progress field semantics differ by type:
+    //   QURAN_PAGES  → progress = pages read
+    //   QURAN_TIME   → progress = minutes read
+    //   QURAN_RANGE  → progress = 0 (useless); use remainingDailyTargetRanges overlap instead
+
+    if (plan.goalType === 'QURAN_PAGES' && plan.dailyTargetPages) {
+      const pagesRead = plan.pagesRead;
+      const pct = Math.min(100, Math.round((pagesRead / plan.dailyTargetPages) * 100));
       return {
-        progressMin: Math.round(plan.secondsRead / 60),
-        targetMin: Math.round(plan.dailyTargetSeconds / 60),
-        pct,
-        label: 'min',
-        isRange: false
-      };
-    }
-    if (plan.goalType === 'QURAN_RANGE') {
-      return { pct, label: 'verses', isRange: true, progressMin: undefined, targetMin: undefined };
-    }
-    if (plan.dailyTargetPages) {
-      return {
-        progressMin: Math.floor(plan.pagesRead),
+        progressMin: Math.round(pagesRead * 10) / 10,
         targetMin: plan.dailyTargetPages,
         pct,
         label: 'pages',
         isRange: false
       };
     }
+
+    if (plan.goalType === 'QURAN_TIME' && plan.dailyTargetSeconds) {
+      const minutesRead = plan.secondsRead / 60;
+      const targetMin = plan.dailyTargetSeconds / 60;
+      const pct = Math.min(100, Math.round((minutesRead / targetMin) * 100));
+      return {
+        progressMin: Math.round(minutesRead * 10) / 10,
+        targetMin: Math.round(targetMin),
+        pct,
+        label: 'min',
+        isRange: false
+      };
+    }
+
+    if (plan.goalType === 'QURAN_RANGE') {
+      const targets = plan.dailyTargetRanges ?? [];
+      const readRanges = plan.ranges ?? [];
+
+      const toNum = (vk: string) => {
+        const [ch, v] = vk.split(':').map(Number);
+        return ch * 10000 + v;
+      };
+      const parseRange = (r: string) => {
+        const [from, to] = r.split('-');
+        return { from: toNum(from), to: toNum(to ?? from) };
+      };
+
+      const parsedRead = readRanges.map(parseRange);
+
+      // For each target range, count how many of its verses were actually read
+      let totalVerses = 0;
+      let readVerses = 0;
+      for (const t of targets) {
+        const target = parseRange(t);
+        const tSize = target.to - target.from + 1;
+        totalVerses += tSize;
+        for (const rr of parsedRead) {
+          const overlapFrom = Math.max(rr.from, target.from);
+          const overlapTo = Math.min(rr.to, target.to);
+          if (overlapFrom <= overlapTo) readVerses += overlapTo - overlapFrom + 1;
+        }
+      }
+      // Cap at target size (can't read more than 100% of target)
+      readVerses = Math.min(readVerses, totalVerses);
+
+      const doneCount = targets.filter((t) => {
+        const target = parseRange(t);
+        // A target is done if all its verses are covered by read ranges
+        let covered = 0;
+        for (const rr of parsedRead) {
+          const overlapFrom = Math.max(rr.from, target.from);
+          const overlapTo = Math.min(rr.to, target.to);
+          if (overlapFrom <= overlapTo) covered += overlapTo - overlapFrom + 1;
+        }
+        return covered >= target.to - target.from + 1;
+      }).length;
+      const total = targets.length;
+      const pct = totalVerses > 0 ? Math.min(100, Math.round((readVerses / totalVerses) * 100)) : 0;
+      return { pct, label: 'ranges', isRange: true, progressMin: doneCount, targetMin: total };
+    }
+
     return null;
   };
 
@@ -195,9 +253,7 @@ export default function GoalsPage() {
                         </span>
                       ) : info ? (
                         <span className="text-xs text-muted-foreground">
-                          {info.isRange
-                            ? `${plan.versesRead} verses · ${pct}%`
-                            : `${info.progressMin} / ${info.targetMin} ${info.label}`}
+                          {`${info.progressMin} / ${info.targetMin} ${info.label} · ${pct}%`}
                         </span>
                       ) : null}
                       <button
@@ -313,11 +369,21 @@ export default function GoalsPage() {
                     <div className="space-y-1.5">
                       <div className="flex flex-wrap gap-1.5">
                         {plan.dailyTargetRanges.map((r) => {
-                          const isDone = !plan.remainingDailyTargetRanges?.includes(r);
+                          const toNum2 = (vk: string) => { const [ch, v] = vk.split(':').map(Number); return ch * 10000 + v; };
+                          const [rFrom, rTo] = r.split('-').map(toNum2);
+                          const tSize = rTo - rFrom + 1;
+                          let covered = 0;
+                          for (const read of (plan.ranges ?? [])) {
+                            const [readFrom, readTo] = read.split('-').map(toNum2);
+                            const oFrom = Math.max(readFrom, rFrom);
+                            const oTo = Math.min(readTo, rTo);
+                            if (oFrom <= oTo) covered += oTo - oFrom + 1;
+                          }
+                          const isDone = covered >= tSize;
                           return (
                             <Link
                               key={r}
-                              href={`/quran?verse=${r.split('-')[0]}`}
+                              href={`/dashboard/quran?verse=${r.split('-')[0]}`}
                               className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors ${
                                 isDone
                                   ? 'bg-emerald-600/10 text-emerald-700 dark:text-emerald-400'
@@ -339,10 +405,9 @@ export default function GoalsPage() {
                   )}
 
                   {!done &&
-                    plan.goalType !== 'QURAN_RANGE' &&
                     plan.remainingDailyTargetRanges?.[0] && (
                       <Link
-                        href={`/quran?verse=${plan.remainingDailyTargetRanges[0].split('-')[0]}`}
+                        href={`/dashboard/quran?verse=${plan.remainingDailyTargetRanges[0].split('-')[0]}`}
                         className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:underline"
                       >
                         <ArrowRight className="w-3 h-3" />
@@ -396,6 +461,11 @@ export default function GoalsPage() {
                   ))}
                 </select>
 
+                {goalType === 'QURAN_RANGE' && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Format: <span className="font-mono">surah:verse-surah:verse</span> — e.g. <span className="font-mono">2:1-2:50</span>
+                  </p>
+                )}
                 <div className="flex gap-2">
                   {goalType === 'QURAN_RANGE' ? (
                     <input
@@ -423,7 +493,7 @@ export default function GoalsPage() {
                     />
                   )}
                   <button
-                    disabled={estimateLoading || !goalTarget}
+                    disabled={estimateLoading || !goalTarget || !rangeValid}
                     onClick={async () => {
                       setEstimateLoading(true);
                       try {
@@ -431,7 +501,7 @@ export default function GoalsPage() {
                           goalType === 'QURAN_TIME'
                             ? Number(goalTarget) * 60
                             : goalType === 'QURAN_RANGE'
-                              ? goalTarget
+                              ? goalTarget.replace(/\s/g, '')
                               : Number(goalTarget);
                         const result = await generateGoalEstimate({
                           type: goalType,
@@ -448,7 +518,7 @@ export default function GoalsPage() {
                     {estimateLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Preview'}
                   </button>
                   <button
-                    disabled={creatingGoal || !goalTarget}
+                    disabled={creatingGoal || !goalTarget || !rangeValid}
                     onClick={async () => {
                       setCreatingGoal(true);
                       try {
@@ -456,7 +526,7 @@ export default function GoalsPage() {
                           goalType === 'QURAN_TIME'
                             ? Number(goalTarget) * 60
                             : goalType === 'QURAN_RANGE'
-                              ? goalTarget
+                              ? goalTarget.replace(/\s/g, '')
                               : Number(goalTarget);
                         await createGoal({ type: goalType, amount, category: 'QURAN' });
                         await refreshAll();
