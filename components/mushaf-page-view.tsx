@@ -151,7 +151,7 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [font, setFont] = useState<MushafFont>('qcf_v2');
   const [theme, setTheme] = useState<PageTheme>('cream');
-  const [fontSize, setFontSize] = useState<'sm' | 'md' | 'lg'>('md');
+  const [fontSize, setFontSize] = useState<'sm' | 'md' | 'lg'>('sm');
 
   // Audio
   const [audioFiles, setAudioFiles] = useState<{ verse_key: string; url: string }[]>([]);
