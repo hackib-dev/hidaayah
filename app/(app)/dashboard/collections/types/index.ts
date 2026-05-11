@@ -21,6 +21,7 @@ export interface ListCollectionsResponse {
 export interface GetCollectionResponse {
   success: boolean;
   data: CollectionWithBookmarks;
+  pagination?: CursorPagination;
 }
 
 export interface CreateCollectionParams {

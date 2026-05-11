@@ -237,7 +237,7 @@ export default function HomePage() {
               <CardSkeleton rows={2} />
             ) : lastVerse ? (
               <Link
-                href={`/quran?verse=${lastVerse}`}
+                href={`/dashboard/quran?verse=${lastVerse}`}
                 className="flex items-center justify-between rounded-xl border border-border bg-card p-4 hover:bg-secondary/40 transition-colors"
               >
                 <div className="flex items-center gap-3">
@@ -325,7 +325,7 @@ export default function HomePage() {
                       {ayahPlaying ? 'Pause' : 'Play'}
                     </button>
                     <Link
-                      href={`/quran?verse=${randomAyah.verse_key}`}
+                      href={`/dashboard/quran?verse=${randomAyah.verse_key}`}
                       className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       Read in context →

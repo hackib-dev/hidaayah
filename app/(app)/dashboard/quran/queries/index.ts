@@ -78,6 +78,24 @@ export const fetchVerseByKey = async (
   return response.data;
 };
 
+export const fetchVersesByPage = async (
+  pageNumber: number,
+  params: ListVersesParams = {}
+): Promise<ListVersesResponse> => {
+  const response = await contentApi.get<ListVersesResponse>(`/verses/by_page/${pageNumber}`, {
+    params: {
+      language: 'en',
+      fields: 'chapter_id,verse_key,verse_number,page_number,juz_number',
+      word_fields:
+        'code_v2,text_qpc_hafs,text_uthmani,text_indopak,char_type_name,page_number,line_number',
+      mushaf: 1,
+      ...params,
+      words: 'true'
+    }
+  });
+  return response.data;
+};
+
 // ─── Audio ────────────────────────────────────────────────────────────────────
 export const fetchReciters = async (): Promise<ListRecitersResponse> => {
   const response = await contentApi.get<ListRecitersResponse>('/resources/chapter_reciters');

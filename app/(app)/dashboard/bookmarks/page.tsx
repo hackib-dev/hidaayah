@@ -119,7 +119,7 @@ export default function BookmarksPage() {
                         Surah {surahKey}
                       </h2>
                       <Link
-                        href={`/quran?surah=${surahKey}`}
+                        href={`/dashboard/quran?surah=${surahKey}`}
                         className="flex items-center gap-1 text-xs text-primary font-semibold hover:underline"
                       >
                         Read
@@ -160,7 +160,7 @@ export default function BookmarksPage() {
 
                               <div className="flex items-center gap-2">
                                 <Link
-                                  href={`/quran?surah=${surahKey}&verse=${bm.verseNumber ?? ''}`}
+                                  href={`/dashboard/quran?surah=${surahKey}&verse=${bm.verseNumber ?? ''}`}
                                   className="p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                                 >
                                   <BookOpen className="w-4 h-4" />
