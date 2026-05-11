@@ -179,7 +179,7 @@ export default function CollectionsPage() {
                     whileTap={{ scale: 0.96 }}
                   >
                     <Link
-                      href={`/collections/${collection.id}`}
+                      href={`/dashboard/collections/${collection.id}`}
                       className="group rounded-2xl border border-border bg-card p-4 transition-colors duration-200 block hover:border-primary/30"
                     >
                       <div className="space-y-2.5">
@@ -230,7 +230,7 @@ export default function CollectionsPage() {
                       whileTap={{ scale: 0.97 }}
                     >
                       <Link
-                        href={`/collections/${collection.id}`}
+                        href={`/dashboard/collections/${collection.id}`}
                         className={cn(
                           'group rounded-2xl border bg-card p-5 transition-colors duration-200 block',
                           collection.border
@@ -286,7 +286,7 @@ export default function CollectionsPage() {
                     whileTap={{ scale: 0.96 }}
                   >
                     <Link
-                      href={`/collections/${collection.id}`}
+                      href={`/dashboard/collections/${collection.id}`}
                       className={cn(
                         'group rounded-2xl border bg-card p-4 transition-colors duration-200 block',
                         collection.border
