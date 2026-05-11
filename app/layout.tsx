@@ -30,21 +30,20 @@ export const metadata: Metadata = {
   description:
     'Transform life moments into spiritual growth. Real-time Quranic guidance that connects divine wisdom to your lived experience.',
   keywords: ['Quran', 'Islamic', 'Spiritual', 'Guidance', 'Reflection', 'Muslim', 'Tafsir'],
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Hidaayah'
+  },
   icons: {
-    icon: [
-      { url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
-      { url: '/icon-dark-32x32.png', media: '(prefers-color-scheme: dark)' },
-      { url: '/icon.svg', type: 'image/svg+xml' }
-    ],
-    apple: '/apple-icon.png'
+    icon: [{ url: '/icons/favicon.svg', type: 'image/svg+xml' }],
+    apple: '/icon-192x192.png'
   }
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f7f5f2' },
-    { media: '(prefers-color-scheme: dark)', color: '#1a1a2e' }
-  ],
+  themeColor: '#2a6b5f',
   width: 'device-width',
   initialScale: 1
 };

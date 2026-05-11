@@ -8,6 +8,7 @@ import { LogOut, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Home, Compass, BookOpen, Bookmark, BookText } from 'lucide-react';
 import { motion } from 'framer-motion';
+import HidaayahLogo from '@/components/HidaayahLogo';
 
 export function Navigation() {
   const pathname = usePathname();
@@ -33,14 +34,9 @@ export function Navigation() {
       <nav className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
         <div className="w-full max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <motion.div
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.95 }}
-              className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-sm"
-            >
-              <span className="text-primary-foreground font-serif text-lg font-bold">H</span>
+            <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }}>
+              <HidaayahLogo size={36} />
             </motion.div>
-            <span className="text-lg font-bold text-foreground tracking-tight">Hidaayah</span>
           </Link>
 
           <div className="flex items-center gap-1">
@@ -164,10 +160,7 @@ export function Navigation() {
       <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border safe-area-top">
         <div className="flex items-center justify-between px-4 h-14">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shadow-sm">
-              <span className="text-primary-foreground font-serif text-base font-bold">H</span>
-            </div>
-            <span className="text-base font-bold text-foreground tracking-tight">Hidaayah</span>
+            <HidaayahLogo size={30} />
           </Link>
           {user && (
             <button

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth-provider';
+import HidaayahLogo from '@/components/HidaayahLogo';
 import { ArrowRight, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -35,10 +36,7 @@ export default function SignupPage() {
         {/* Logo */}
         <div className="text-center space-y-2">
           <Link href="/" className="inline-flex items-center gap-2 mb-2">
-            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-serif text-base font-bold">H</span>
-            </div>
-            <span className="font-bold text-foreground text-lg tracking-tight">Hidaayah</span>
+            <HidaayahLogo size={36} />
           </Link>
           <h1 className="text-xl font-serif font-bold text-foreground">Create your account</h1>
           <p className="text-sm text-muted-foreground">Begin your spiritual journey</p>

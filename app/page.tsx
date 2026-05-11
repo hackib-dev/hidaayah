@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import HidaayahLogo from '@/components/HidaayahLogo';
 import { useEffect } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { useAppState } from '@/components/app-state-provider';
@@ -36,12 +37,7 @@ export default function LandingPage() {
       {/* Nav */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-serif text-sm font-bold">H</span>
-            </div>
-            <span className="font-bold text-foreground tracking-tight">Hidaayah</span>
-          </div>
+          <HidaayahLogo size={30} />
           <div className="flex items-center gap-2">
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -233,12 +229,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-border py-8 px-5">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-serif text-xs font-bold">H</span>
-            </div>
-            <span className="font-semibold text-foreground">Hidaayah</span>
-          </div>
+          <HidaayahLogo size={24} />
           <p>Built with sincerity. May it be of benefit.</p>
         </div>
       </footer>

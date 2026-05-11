@@ -64,15 +64,17 @@ export default function GoalsPage() {
 
   useEffect(() => {
     if (!user) return;
-    const seen = new Set<string>();
     const GOAL_TYPES = ['QURAN_PAGES', 'QURAN_TIME', 'QURAN_RANGE'] as const;
     setLoadingTypes(GOAL_TYPES.length);
+    setPlans([]);
     GOAL_TYPES.forEach((type) => {
       fetchTodayGoalPlan(type)
         .then((plan) => {
-          if (plan && !seen.has(plan.goalId)) {
-            seen.add(plan.goalId);
-            setPlans((prev) => [...prev, { ...plan, goalType: type }]);
+          if (plan) {
+            setPlans((prev) => {
+              if (prev.some((p) => p.goalId === plan.goalId)) return prev;
+              return [...prev, { ...plan, goalType: type }];
+            });
           }
         })
         .catch(() => null)

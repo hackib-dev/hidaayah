@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { useInitialRender } from '@/hooks';
 import { DASHBOARD_ROUTE } from '@/config';
 import { BiUser } from 'react-icons/bi';
-// import MarbleLogo from '@/public/SidebarLogo.svg';
+import HidaayahLogo from '@/components/HidaayahLogo';
 import TopBarDropdownMenu from '../Topbar/DropDown';
 import { X } from 'lucide-react';
 
@@ -48,8 +48,7 @@ const Sidebar: FC<SidebarProps> = ({ isSidebarOpen = true, onToggleSidebar }) =>
         {/* Header with Logo */}
         <div className="flex items-center justify-between  p-4 z-50">
           <div className="flex items-center gap-2">
-            {/* <MarbleLogo /> */}
-            <p>Logo</p>
+            <HidaayahLogo size={32} />
           </div>
           <X onClick={onToggleSidebar} className="md:hidden" />
         </div>
