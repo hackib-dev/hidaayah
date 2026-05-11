@@ -86,7 +86,8 @@ export const fetchVersesByPage = async (
     params: {
       language: 'en',
       fields: 'chapter_id,verse_key,verse_number,page_number,juz_number',
-      word_fields: 'code_v2,text_qpc_hafs,text_uthmani,text_indopak,char_type_name,page_number,line_number',
+      word_fields:
+        'code_v2,text_qpc_hafs,text_uthmani,text_indopak,char_type_name,page_number,line_number',
       mushaf: 1,
       ...params,
       words: 'true'
