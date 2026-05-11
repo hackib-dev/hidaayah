@@ -6,7 +6,7 @@ import { useAuth } from '@/components/auth-provider';
 import { useRouter } from 'next/navigation';
 import { LogOut, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Home, Compass, BookOpen, Bookmark, BookText } from 'lucide-react';
+import { Home, Compass, BookOpen, Bookmark, BookText, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import HidaayahLogo from '@/components/HidaayahLogo';
 
@@ -24,6 +24,7 @@ export function Navigation() {
     { href: user ? '/dashboard' : '/', label: 'Home', icon: Home },
     { href: '/dashboard/quran', label: 'Quran', icon: BookText },
     { href: '/dashboard/guidance', label: 'Guidance', icon: Compass },
+    { href: '/dashboard/circles', label: 'Circles', icon: Users },
     { href: '/dashboard/reflections', label: 'Journal', icon: BookOpen },
     { href: '/dashboard/bookmarks', label: 'Saved', icon: Bookmark }
   ];
