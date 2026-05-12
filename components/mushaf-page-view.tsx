@@ -201,7 +201,9 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
     fetchHizbs()
       .then((res) => {
         const seen = new Set<number>();
-        setHizbs((res.hizbs ?? []).filter((h) => !seen.has(h.hizb_number) && seen.add(h.hizb_number)));
+        setHizbs(
+          (res.hizbs ?? []).filter((h) => !seen.has(h.hizb_number) && seen.add(h.hizb_number))
+        );
       })
       .catch(() => null);
   }, []);
@@ -400,13 +402,16 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
                 const juz = juzs.find((j) => j.juz_number === num);
                 if (!juz) return;
                 const firstEntry = Object.entries(juz.verse_mapping)[0];
-                if (firstEntry) navigateToVerseKey(`${firstEntry[0]}:${firstEntry[1].split('-')[0]}`);
+                if (firstEntry)
+                  navigateToVerseKey(`${firstEntry[0]}:${firstEntry[1].split('-')[0]}`);
                 setSidebarOpen(false);
               }}
               disabled={navigating}
               className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
             >
-              <option value="" disabled>Jump to Juz…</option>
+              <option value="" disabled>
+                Jump to Juz…
+              </option>
               {juzs.map((j) => (
                 <option key={j.juz_number} value={j.juz_number}>
                   Juz {j.juz_number}
@@ -425,13 +430,16 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
                 const hizb = hizbs.find((h) => h.hizb_number === num);
                 if (!hizb) return;
                 const firstEntry = Object.entries(hizb.verse_mapping)[0];
-                if (firstEntry) navigateToVerseKey(`${firstEntry[0]}:${firstEntry[1].split('-')[0]}`);
+                if (firstEntry)
+                  navigateToVerseKey(`${firstEntry[0]}:${firstEntry[1].split('-')[0]}`);
                 setSidebarOpen(false);
               }}
               disabled={navigating}
               className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
             >
-              <option value="" disabled>Jump to Hizb…</option>
+              <option value="" disabled>
+                Jump to Hizb…
+              </option>
               {hizbs.map((h) => (
                 <option key={h.hizb_number} value={h.hizb_number}>
                   Hizb {h.hizb_number}
@@ -587,7 +595,6 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
           ))}
         </div>
       </div>
-
     </div>
   );
 
@@ -597,7 +604,9 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
       <div className="flex flex-col items-center flex-1 min-w-0">
         {/* Page label + mobile toggle */}
         <div className="w-full flex items-center justify-between px-1 py-1.5 mb-2">
-          <span className="text-xs text-muted-foreground font-medium">{currentChapterName ?? ''}</span>
+          <span className="text-xs text-muted-foreground font-medium">
+            {currentChapterName ?? ''}
+          </span>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground font-medium tabular-nums">
               صفحة {page}
@@ -635,71 +644,72 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-        <div
-          ref={containerRef}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-          className="w-full rounded-2xl shadow-md overflow-y-auto relative"
-          style={{
-            background: themeConfig.bg,
-            border: `1px solid ${themeConfig.border}`,
-            aspectRatio: '1 / 1.41',
-          }}
-        >
-          {loading ? (
-            <div className="flex items-center justify-center h-full absolute inset-0">
-              <Loader2
-                className="w-6 h-6 animate-spin"
-                style={{ color: themeConfig.text, opacity: 0.4 }}
-              />
-            </div>
-          ) : (
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={`${page}-${font}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="min-h-full flex flex-col justify-center px-4 py-6"
-                dir="rtl"
-              >
-                {sortedLines.map(([lineNum, words]) => (
-                  <div
-                    key={lineNum}
-                    className="flex justify-center items-baseline flex-wrap"
-                    style={{ lineHeight: lineHeightMap[fontSize] }}
-                  >
-                    {words.map((word, wi) => (
-                      <span
-                        key={`${word.verseKey}-${word.position}-${wi}`}
-                        onClick={() => {
-                          if (activeVerseKey === word.verseKey) setIsPlaying((p) => !p);
-                          else playVerse(word.verseKey);
-                        }}
-                        className="cursor-pointer transition-colors duration-150 px-px"
-                        style={{
-                          ...getWordStyle(word),
-                          color: activeVerseKey === word.verseKey ? '#16a34a' : themeConfig.text
-                        }}
-                        dangerouslySetInnerHTML={{ __html: getWordText(word) }}
-                      />
-                    ))}
-                  </div>
-                ))}
-                {verses.length === 0 && (
-                  <p
-                    className="text-center py-12 text-sm"
-                    style={{ color: themeConfig.text, opacity: 0.5 }}
-                  >
-                    No content found for this page.
-                  </p>
-                )}
-              </motion.div>
-            </AnimatePresence>
-          )}
+          <div
+            ref={containerRef}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            className="w-full rounded-2xl shadow-md overflow-y-auto relative"
+            style={{
+              background: themeConfig.bg,
+              border: `1px solid ${themeConfig.border}`,
+              aspectRatio: '1 / 1.41'
+            }}
+          >
+            {loading ? (
+              <div className="flex items-center justify-center h-full absolute inset-0">
+                <Loader2
+                  className="w-6 h-6 animate-spin"
+                  style={{ color: themeConfig.text, opacity: 0.4 }}
+                />
+              </div>
+            ) : (
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={`${page}-${font}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="min-h-full flex flex-col justify-center px-4 py-6"
+                  dir="rtl"
+                >
+                  {sortedLines.map(([lineNum, words]) => (
+                    <div
+                      key={lineNum}
+                      className="flex justify-center items-baseline flex-wrap"
+                      style={{ lineHeight: lineHeightMap[fontSize] }}
+                    >
+                      {words.map((word, wi) => (
+                        <span
+                          key={`${word.verseKey}-${word.position}-${wi}`}
+                          onClick={() => {
+                            if (activeVerseKey === word.verseKey) setIsPlaying((p) => !p);
+                            else playVerse(word.verseKey);
+                          }}
+                          className="cursor-pointer transition-colors duration-150 px-px"
+                          style={{
+                            ...getWordStyle(word),
+                            color: activeVerseKey === word.verseKey ? '#16a34a' : themeConfig.text
+                          }}
+                          dangerouslySetInnerHTML={{ __html: getWordText(word) }}
+                        />
+                      ))}
+                    </div>
+                  ))}
+                  {verses.length === 0 && (
+                    <p
+                      className="text-center py-12 text-sm"
+                      style={{ color: themeConfig.text, opacity: 0.5 }}
+                    >
+                      No content found for this page.
+                    </p>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            )}
+          </div>
         </div>
-        </div>{/* end group/page wrapper */}
+        {/* end group/page wrapper */}
 
         {/* Page counter */}
         <span className="mt-3 text-xs text-muted-foreground tabular-nums">
@@ -743,7 +753,11 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <div onClick={(e) => { if ((e.target as HTMLElement).closest('select') === null) setSidebarOpen(false); }}>
+              <div
+                onClick={(e) => {
+                  if ((e.target as HTMLElement).closest('select') === null) setSidebarOpen(false);
+                }}
+              >
                 <SidebarContent />
               </div>
             </motion.div>

@@ -63,7 +63,9 @@ export function JuzRecitationView({
       <div className="p-4 rounded-2xl bg-card border border-border flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold text-foreground">Juz Progress</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{completedCount} of {total} completed</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {completedCount} of {total} completed
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-24 h-2 rounded-full bg-secondary overflow-hidden">
@@ -111,7 +113,9 @@ export function JuzRecitationView({
                 <div
                   className={cn(
                     'w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0',
-                    isCompleted ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'
+                    isCompleted
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-primary/10 text-primary'
                   )}
                 >
                   {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : juz.juz_number}

@@ -13,7 +13,12 @@ import { PageRecitationView } from '@/components/recitation-page-view';
 import { ChevronLeft, BookText, AlignJustify, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { fetchChapter, fetchJuzs, fetchHizbs, fetchPageForVerseKey } from '@/app/(app)/dashboard/quran/queries';
+import {
+  fetchChapter,
+  fetchJuzs,
+  fetchHizbs,
+  fetchPageForVerseKey
+} from '@/app/(app)/dashboard/quran/queries';
 import type { Chapter, Juz, Hizb } from '@/app/(app)/dashboard/quran/types';
 import type { RecitationFormat, RecitationProgress } from '@/types/recitation';
 
@@ -101,7 +106,9 @@ export default function QuranPage() {
       if (verseNumber) {
         const verseKey = `${surahNumber}:${verseNumber}`;
         fetchPageForVerseKey(verseKey)
-          .then((p) => { if (p) setSelectedPage(p); })
+          .then((p) => {
+            if (p) setSelectedPage(p);
+          })
           .catch(() => null);
       }
     }

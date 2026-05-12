@@ -32,7 +32,9 @@ export function HizbRecitationView({
     fetchHizbs()
       .then((res) => {
         const seen = new Set<number>();
-        setHizbs((res.hizbs ?? []).filter((h) => !seen.has(h.hizb_number) && seen.add(h.hizb_number)));
+        setHizbs(
+          (res.hizbs ?? []).filter((h) => !seen.has(h.hizb_number) && seen.add(h.hizb_number))
+        );
       })
       .catch(() => null)
       .finally(() => setLoading(false));
@@ -56,7 +58,9 @@ export function HizbRecitationView({
       <div className="p-4 rounded-2xl bg-card border border-border flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold text-foreground">Hizb Progress</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{completedCount} of {total} completed</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {completedCount} of {total} completed
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-24 h-2 rounded-full bg-secondary overflow-hidden">
