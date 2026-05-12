@@ -9,6 +9,8 @@ import {
   Share2,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Pencil,
   Check,
   BookOpen,
@@ -19,7 +21,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { fetchTafsirByAyah } from '@/app/(app)/dashboard/guidance/queries';
+import { searchByEmotion, fetchTafsirByAyah } from '@/app/(app)/dashboard/guidance/queries';
 import { createBookmark } from '@/app/(app)/dashboard/reflections/queries';
 import { fetchVerseByKey, fetchVerseAudioFiles } from '@/app/(app)/dashboard/quran/queries';
 import { reflectApi } from '@/app/apiService/quranFoundationService';
@@ -41,13 +43,6 @@ interface GuidanceResult {
   color: string;
 }
 
-interface VerseCard {
-  verseKey: string;
-  arabic: string;
-  translation: string;
-  audioUrl: string | null;
-}
-
 const THEME_COLORS: Record<string, string> = {
   anxious: 'from-violet-muted to-teal-muted',
   grateful: 'from-gold-muted to-rose-muted',
@@ -58,54 +53,16 @@ const THEME_COLORS: Record<string, string> = {
   default: 'from-teal-muted to-violet-muted'
 };
 
-const REFLECTION_PROMPTS: Record<string, string[]> = {
-  anxious: [
-    'What specific burden feels overwhelming right now?',
-    'How might this challenge be preparing you for something greater?',
-    "What would trusting Allah's plan look like in this moment?"
-  ],
-  grateful: [
-    'What blessing are you most grateful for today?',
-    'How can you express this gratitude through action?',
-    'Who in your life deserves your thanks?'
-  ],
-  lost: [
-    'What direction in life feels most unclear right now?',
-    'What small step could you take toward clarity?',
-    'How has Allah guided you through confusion before?'
-  ],
-  hopeful: [
-    'What hope is blooming in your heart?',
-    'How can you nurture this hope through action?',
-    'What past difficulty taught you to hope?'
-  ],
-  struggling: [
-    'What ease exists alongside your current difficulty?',
-    'How might this struggle be shaping you?',
-    'What would you tell someone else facing this challenge?'
-  ],
-  peaceful: [
-    'What brought you this feeling of peace?',
-    'How can you cultivate more moments like this?',
-    'What does remembrance of Allah look like in your daily life?'
-  ],
-  default: [
-    'What healing do you seek from the Quran today?',
-    'How has the Quran provided guidance in your life?',
-    'What verse has touched your heart most deeply?'
-  ]
-};
-
 export function GuidanceExperience({ emotion, situation }: GuidanceExperienceProps) {
-  const [guidance, setGuidance] = useState<GuidanceResult | null>(null);
-  const [verseCards, setVerseCards] = useState<VerseCard[]>([]);
+  const [candidates, setCandidates] = useState<GuidanceResult[]>([]);
+  const [verseIndex, setVerseIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadingTafsir, setLoadingTafsir] = useState(false);
 
-  const [playingKey, setPlayingKey] = useState<string | null>(null);
-  const [primaryAudioUrl, setPrimaryAudioUrl] = useState<string | null>(null);
-  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audioUrls, setAudioUrls] = useState<Record<string, string>>({});
+  const [bookmarked, setBookmarked] = useState<Record<string, boolean>>({});
   const [showTafsir, setShowTafsir] = useState(false);
   const [reflection, setReflection] = useState('');
   const [savedReflection, setSavedReflection] = useState(false);
@@ -115,103 +72,145 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
 
   const emotionKey = emotion.toLowerCase();
   const color = THEME_COLORS[emotionKey] ?? THEME_COLORS.default;
-  const prompts = REFLECTION_PROMPTS[emotionKey] ?? REFLECTION_PROMPTS.default;
 
-  const playAudio = (url: string, verseKey: string) => {
-    if (playingKey === verseKey) {
-      audioRef.current?.pause();
-      setPlayingKey(null);
+  const guidance = candidates[verseIndex] ?? null;
+  const audioUrl = guidance ? (audioUrls[guidance.verseKey] ?? null) : null;
+  const isBookmarked = guidance ? (bookmarked[guidance.verseKey] ?? false) : false;
+
+  // Sync play/pause/src to audio element imperatively
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (!audioUrl) {
+      audio.pause();
       return;
     }
-    if (audioRef.current) {
-      audioRef.current.pause();
+    if (audio.src !== audioUrl) {
+      audio.src = audioUrl;
+      audio.load();
     }
-    const audio = new Audio(url);
-    audioRef.current = audio;
-    audio.onended = () => setPlayingKey(null);
-    audio.play().catch(() => setPlayingKey(null));
-    setPlayingKey(verseKey);
-  };
+    if (isPlaying) audio.play().catch(() => setIsPlaying(false));
+    else audio.pause();
+  }, [isPlaying, audioUrl]);
+
+  // Reset playback when switching verses
+  useEffect(() => {
+    setIsPlaying(false);
+    setShowTafsir(false);
+  }, [verseIndex]);
 
   useEffect(() => {
     setLoading(true);
     setError(null);
-    setGuidance(null);
-    setVerseCards([]);
+    setCandidates([]);
+    setVerseIndex(0);
     setShowTafsir(false);
-    setPlayingKey(null);
-    setPrimaryAudioUrl(null);
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
+    setIsPlaying(false);
+    setAudioUrls({});
+    setBookmarked({});
+    setSavedReflection(false);
+    setReflection('');
 
-    const userText = [emotion, situation].filter(Boolean).join(' — ');
+    searchByEmotion(emotion, situation)
+      .then(async (res) => {
+        const navItems = res.result?.navigation ?? [];
 
-    fetch('/api/guidance/suggest', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: userText })
-    })
-      .then((r) => r.json())
-      .then(async ({ verseKeys, error: aiError }: { verseKeys?: string[]; error?: string }) => {
-        if (aiError || !verseKeys?.length) {
+        // Collect unique ayah keys: prefer verses array, supplement from navigation ayah items
+        const seenKeys = new Set<string>();
+        const verseEntries: Array<{ key: string; name: string }> = [];
+
+        for (const v of res.result?.verses ?? []) {
+          if (v.key && !seenKeys.has(v.key)) {
+            seenKeys.add(v.key);
+            verseEntries.push({ key: v.key, name: v.name ?? '' });
+          }
+        }
+        for (const n of navItems) {
+          const key = String(n.key);
+          if (n.result_type === 'ayah' && key && !seenKeys.has(key)) {
+            seenKeys.add(key);
+            verseEntries.push({ key, name: n.name ?? '' });
+          }
+        }
+
+        // Show up to 5 candidates so user can cycle; dedupe by surah to avoid 5 verses from Al-Baqarah
+        const dedupedBySurah = new Map<number, { key: string; name: string }>();
+        for (const entry of verseEntries) {
+          const surahNum = parseInt(entry.key.split(':')[0], 10);
+          if (!dedupedBySurah.has(surahNum)) dedupedBySurah.set(surahNum, entry);
+        }
+        const topVerses = [...dedupedBySurah.values()].slice(0, 5);
+
+        if (topVerses.length === 0) {
           setError('No guidance found. Please try again with different words.');
           return;
         }
 
-        const primaryKey = verseKeys[0];
-        const [chapter, verseNum] = primaryKey.split(':');
-        const surahNum = parseInt(chapter, 10);
-        const verseNumber = parseInt(verseNum, 10);
+        const relatedThemes = navItems
+          .filter((n) => n.result_type === 'surah' && n.name)
+          .slice(0, 3)
+          .map((n) => n.name);
+        const themes = relatedThemes.length > 0 ? relatedThemes : ['patience', 'trust', 'hope'];
 
-        // Set primary guidance immediately so UI renders
-        setGuidance({
-          verseKey: primaryKey,
-          surahName: `Surah ${surahNum}`,
-          verseNumber,
-          arabic: '',
-          translation: '',
-          tafsir: null,
-          relatedThemes: ['patience', 'trust', 'hope'],
-          color
+        // Seed candidates immediately with placeholders so UI renders at once
+        const initial: GuidanceResult[] = topVerses.map(({ key, name }) => {
+          const [ch, vn] = key.split(':');
+          return {
+            verseKey: key,
+            surahName: `Surah ${ch}`,
+            verseNumber: parseInt(vn, 10),
+            arabic: '',
+            translation: name.replace(/<[^>]*>/g, ''),
+            tafsir: null,
+            relatedThemes: themes,
+            color
+          };
         });
+        setCandidates(initial);
 
-        // Fetch all verse data + audio in parallel
-        const results = await Promise.all(
-          verseKeys.map(async (key) => {
-            const [ch] = key.split(':');
-            const chNum = parseInt(ch, 10);
-            const vNum = parseInt(key.split(':')[1], 10);
+        // Fetch verse text + audio for all candidates in parallel
+        const enriched = await Promise.all(
+          topVerses.map(async ({ key, name }, i) => {
+            const [ch, vn] = key.split(':');
+            const surahNum = parseInt(ch, 10);
+            const verseNumber = parseInt(vn, 10);
 
-            const [verseData, audioFiles] = await Promise.all([
+            const [verseData, verseAudioFiles] = await Promise.all([
               fetchVerseByKey(key, {
                 translations: String(QF_DEFAULT_TRANSLATION_ID),
                 fields: 'text_uthmani',
                 words: false
               }).catch(() => null),
-              fetchVerseAudioFiles(QF_DEFAULT_RECITER_ID, chNum).catch(() => null)
+              fetchVerseAudioFiles(QF_DEFAULT_RECITER_ID, surahNum).catch(() => null)
             ]);
 
-            const audioFile = audioFiles?.find(
-              (f) => parseInt(f.verse_key.split(':')[1], 10) === vNum
+            const verseAudio = verseAudioFiles?.find(
+              (f) => parseInt(f.verse_key.split(':')[1], 10) === verseNumber
             );
 
             return {
-              verseKey: key,
+              index: i,
+              key,
               arabic: verseData?.verse.text_uthmani ?? '',
-              translation: verseData?.verse.translations?.[0]?.text?.replace(/<[^>]*>/g, '') ?? '',
-              audioUrl: audioFile?.url ?? null
-            } as VerseCard;
+              translation: verseData?.verse.translations?.[0]?.text ?? name.replace(/<[^>]*>/g, ''),
+              audioUrl: verseAudio?.url ?? null
+            };
           })
         );
 
-        const [primary, ...rest] = results;
-        setGuidance((prev) =>
-          prev ? { ...prev, arabic: primary.arabic, translation: primary.translation } : prev
-        );
-        setPrimaryAudioUrl(primary.audioUrl);
-        setVerseCards(rest);
+        // Apply enriched data
+        const audioMap: Record<string, string> = {};
+        setCandidates((prev) => {
+          const next = [...prev];
+          for (const e of enriched) {
+            if (next[e.index]) {
+              next[e.index] = { ...next[e.index], arabic: e.arabic, translation: e.translation };
+            }
+            if (e.audioUrl) audioMap[e.key] = e.audioUrl;
+          }
+          return next;
+        });
+        setAudioUrls(audioMap);
       })
       .catch(() => setError('Failed to fetch guidance. Please check your connection.'))
       .finally(() => setLoading(false));
@@ -222,14 +221,17 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
       setShowTafsir((v) => !v);
       return;
     }
-
     setShowTafsir(true);
     setLoadingTafsir(true);
     try {
       const res = await fetchTafsirByAyah(169, guidance.verseKey); // 169 = Ibn Kathir EN
       // by_ayah returns { tafsir: {...} } singular
       const text = res.tafsir?.text || null;
-      setGuidance((prev) => (prev ? { ...prev, tafsir: text } : prev));
+      setCandidates((prev) => {
+        const next = [...prev];
+        if (next[verseIndex]) next[verseIndex] = { ...next[verseIndex], tafsir: text };
+        return next;
+      });
     } finally {
       setLoadingTafsir(false);
     }
@@ -244,7 +246,7 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
       verseNumber: guidance.verseNumber,
       mushaf: QF_DEFAULT_MUSHAF_ID
     }).catch(() => null);
-    setIsBookmarked(true);
+    setBookmarked((prev) => ({ ...prev, [guidance.verseKey]: true }));
   };
 
   if (loading) {
@@ -312,9 +314,34 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
                 Divine guidance for your heart
               </span>
             </div>
-            <span className="px-2.5 py-1 rounded-xl bg-primary/10 text-primary text-xs font-bold">
-              {guidance.verseKey}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-1 rounded-xl bg-primary/10 text-primary text-xs font-bold">
+                {guidance.verseKey}
+              </span>
+              {candidates.length > 1 && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setVerseIndex((i) => Math.max(0, i - 1))}
+                    disabled={verseIndex === 0}
+                    className="p-1 rounded-lg hover:bg-secondary disabled:opacity-30 transition-colors"
+                    aria-label="Previous verse"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {verseIndex + 1}/{candidates.length}
+                  </span>
+                  <button
+                    onClick={() => setVerseIndex((i) => Math.min(candidates.length - 1, i + 1))}
+                    disabled={verseIndex === candidates.length - 1}
+                    className="p-1 rounded-lg hover:bg-secondary disabled:opacity-30 transition-colors"
+                    aria-label="Next verse"
+                  >
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Translation (shown while Arabic loads) */}
@@ -342,29 +369,32 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
             &ldquo;{guidance.translation}&rdquo;
           </p>
 
+          {/* Hidden audio element — always mounted, src managed imperatively */}
+          <audio ref={audioRef} onEnded={() => setIsPlaying(false)} />
+
           {/* Controls */}
           <div className="flex items-center justify-center gap-3 pt-2">
             <motion.button
               whileTap={{ scale: 0.93 }}
-              onClick={() => {
-                if (primaryAudioUrl) playAudio(primaryAudioUrl, guidance.verseKey);
-              }}
-              disabled={!primaryAudioUrl}
+              onClick={() => setIsPlaying((p) => !p)}
+              disabled={loading || !audioUrl}
               className={cn(
                 'flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold transition-all duration-200 text-sm',
-                playingKey === guidance?.verseKey
+                isPlaying
                   ? 'bg-primary text-primary-foreground shadow-sm'
-                  : primaryAudioUrl
+                  : audioUrl
                     ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                    : 'bg-secondary text-muted-foreground opacity-50 cursor-not-allowed'
+                    : 'bg-secondary text-muted-foreground cursor-not-allowed opacity-60'
               )}
             >
-              {playingKey === guidance?.verseKey ? (
+              {isPlaying ? (
                 <Pause className="w-4 h-4" />
+              ) : !audioUrl && !loading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Play className="w-4 h-4" />
               )}
-              <span>{playingKey === guidance?.verseKey ? 'Pause' : 'Listen'}</span>
+              <span>{isPlaying ? 'Pause' : 'Listen'}</span>
             </motion.button>
 
             <motion.button
@@ -445,27 +475,7 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
           <h3 className="font-bold text-foreground text-sm">Reflect &amp; Internalize</h3>
         </div>
 
-        <div className="space-y-2.5">
-          <p className="text-xs text-muted-foreground font-semibold">Consider these questions:</p>
-          <ul className="space-y-2">
-            {prompts.map((prompt, index) => (
-              <motion.li
-                key={index}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="flex items-start gap-2.5 text-sm text-foreground/80"
-              >
-                <span className="w-5 h-5 rounded-lg bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
-                  {index + 1}
-                </span>
-                <span>{prompt}</span>
-              </motion.li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="space-y-3 pt-3 border-t border-border">
+        <div className="space-y-3">
           <label className="text-xs font-bold text-foreground">Your reflection:</label>
           <textarea
             value={reflection}
@@ -537,63 +547,6 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
           )}
         </div>
       </div>
-
-      {/* More AI-suggested verses */}
-      {verseCards.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="font-bold text-foreground text-sm">More verses for your moment</h3>
-          <div className="space-y-3">
-            {verseCards.map((card, i) => (
-              <motion.div
-                key={card.verseKey}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.08 }}
-                className="rounded-2xl border border-border bg-card p-4 space-y-3"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-primary">{card.verseKey}</span>
-                  {card.audioUrl && (
-                    <button
-                      onClick={() => playAudio(card.audioUrl!, card.verseKey)}
-                      className={cn(
-                        'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors',
-                        playingKey === card.verseKey
-                          ? 'bg-primary/15 text-primary'
-                          : 'bg-secondary text-muted-foreground hover:text-foreground'
-                      )}
-                    >
-                      {playingKey === card.verseKey ? (
-                        <Pause className="w-3.5 h-3.5" />
-                      ) : (
-                        <Play className="w-3.5 h-3.5" />
-                      )}
-                      {playingKey === card.verseKey ? 'Pause' : 'Play'}
-                    </button>
-                  )}
-                </div>
-                {card.arabic && (
-                  <p
-                    className="text-lg text-right leading-loose text-foreground"
-                    style={{ fontFamily: 'var(--font-arabic)' }}
-                  >
-                    {card.arabic}
-                  </p>
-                )}
-                <p className="text-sm text-muted-foreground font-serif italic leading-relaxed">
-                  &ldquo;{card.translation}&rdquo;
-                </p>
-                <Link
-                  href={`/dashboard/quran?verse=${card.verseKey}`}
-                  className="text-xs text-primary hover:underline"
-                >
-                  Read in context →
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Related Themes */}
       <div className="space-y-3">

@@ -3,19 +3,33 @@ import type { ContentPagination } from '@/app/apiService/quranFoundationService/
 // ─── Search ───────────────────────────────────────────────────────────────────
 export type SearchMode = 'quick' | 'advanced';
 
+export type SearchResultType =
+  | 'surah'
+  | 'juz'
+  | 'hizb'
+  | 'rub_el_hizb'
+  | 'ayah'
+  | 'page'
+  | 'range'
+  | 'quran_range'
+  | 'search_page';
+
 export interface SearchNavigationResult {
-  result_type: 'surah' | 'juz' | 'hizb' | 'rub_el_hizb' | 'ayah' | 'page' | 'range';
-  key: string;
+  result_type: SearchResultType;
+  key: string | number;
   name: string;
-  arabic: string;
-  isArabic: boolean;
+  arabic?: string;
+  isArabic?: boolean;
+  isTransliteration?: boolean;
 }
 
 export interface SearchVerseResult {
-  result_type: string;
+  result_type: SearchResultType;
   key: string;
   name: string;
-  isArabic: boolean;
+  arabic?: string;
+  isArabic?: boolean;
+  isTransliteration?: boolean;
 }
 
 export interface SearchResult {
@@ -37,7 +51,10 @@ export interface SearchParams {
   highlight?: '0' | '1';
   navigationalResultsNumber?: number;
   versesResultsNumber?: number;
+  indexes?: string;
   translation_ids?: string;
+  page?: number;
+  size?: number;
 }
 
 // ─── Tafsir ───────────────────────────────────────────────────────────────────
