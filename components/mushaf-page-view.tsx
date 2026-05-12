@@ -19,9 +19,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   fetchVersesByPage,
   fetchVerseAudioFiles,
-  fetchVerseReciters
+  fetchReciters,
+  fetchJuzs,
+  fetchHizbs,
+  fetchPageForVerseKey,
+  fetchChapter
 } from '@/app/(app)/dashboard/quran/queries';
-import type { Verse, Word, Reciter } from '@/app/(app)/dashboard/quran/types';
+import type { Verse, Word, Reciter, Juz, Hizb } from '@/app/(app)/dashboard/quran/types';
 import { cn } from '@/lib/utils';
 import { QF_DEFAULT_RECITER_ID } from '@/config';
 
@@ -161,6 +165,12 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
   const [reciters, setReciters] = useState<Reciter[]>([]);
   const [selectedReciterId, setSelectedReciterId] = useState(QF_DEFAULT_RECITER_ID);
   const [loadingAudio, setLoadingAudio] = useState(false);
+  const [juzs, setJuzs] = useState<Juz[]>([]);
+  const [hizbs, setHizbs] = useState<Hizb[]>([]);
+  const [selectedJuz, setSelectedJuz] = useState<number | ''>('');
+  const [selectedHizb, setSelectedHizb] = useState<number | ''>('');
+  const [navigating, setNavigating] = useState(false);
+  const [currentChapterName, setCurrentChapterName] = useState<string | undefined>(chapterName);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -177,12 +187,34 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
     setPage(startPage);
   }, [startPage]);
 
-  // Fetch reciters once
+  // Fetch reciters, juzs, hizbs once
   useEffect(() => {
-    fetchVerseReciters()
+    fetchReciters()
       .then((res) => setReciters(res.reciters ?? []))
       .catch(() => null);
+    fetchJuzs()
+      .then((res) => {
+        const seen = new Set<number>();
+        setJuzs((res.juzs ?? []).filter((j) => !seen.has(j.juz_number) && seen.add(j.juz_number)));
+      })
+      .catch(() => null);
+    fetchHizbs()
+      .then((res) => {
+        const seen = new Set<number>();
+        setHizbs((res.hizbs ?? []).filter((h) => !seen.has(h.hizb_number) && seen.add(h.hizb_number)));
+      })
+      .catch(() => null);
   }, []);
+
+  const navigateToVerseKey = async (verseKey: string) => {
+    setNavigating(true);
+    try {
+      const p = await fetchPageForVerseKey(verseKey);
+      if (p) goTo(p);
+    } finally {
+      setNavigating(false);
+    }
+  };
 
   // Load page verses + fonts
   useEffect(() => {
@@ -207,6 +239,15 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
       .catch(() => null)
       .finally(() => setLoading(false));
   }, [page]);
+
+  // Update chapter name from first verse on the page
+  useEffect(() => {
+    if (verses.length === 0) return;
+    const chapterId = verses[0].chapter_id || parseInt(verses[0].verse_key.split(':')[0], 10);
+    fetchChapter(chapterId)
+      .then((res) => setCurrentChapterName(res.chapter?.name_simple ?? chapterName))
+      .catch(() => null);
+  }, [verses, chapterName]);
 
   // Fetch audio separately — re-runs when page verses load OR reciter changes
   useEffect(() => {
@@ -342,6 +383,65 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
 
   const SidebarContent = () => (
     <div className="flex flex-col gap-3">
+      {/* Navigate */}
+      {(juzs.length > 0 || hizbs.length > 0) && (
+        <div className="rounded-2xl border border-border bg-card p-3 space-y-2">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+            Navigate
+          </p>
+          {juzs.length > 0 && (
+            <select
+              value={selectedJuz}
+              onChange={(e) => {
+                if (!e.target.value) return;
+                const num = Number(e.target.value);
+                setSelectedJuz(num);
+                setSelectedHizb('');
+                const juz = juzs.find((j) => j.juz_number === num);
+                if (!juz) return;
+                const firstEntry = Object.entries(juz.verse_mapping)[0];
+                if (firstEntry) navigateToVerseKey(`${firstEntry[0]}:${firstEntry[1].split('-')[0]}`);
+                setSidebarOpen(false);
+              }}
+              disabled={navigating}
+              className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+            >
+              <option value="" disabled>Jump to Juz…</option>
+              {juzs.map((j) => (
+                <option key={j.juz_number} value={j.juz_number}>
+                  Juz {j.juz_number}
+                </option>
+              ))}
+            </select>
+          )}
+          {hizbs.length > 0 && (
+            <select
+              value={selectedHizb}
+              onChange={(e) => {
+                if (!e.target.value) return;
+                const num = Number(e.target.value);
+                setSelectedHizb(num);
+                setSelectedJuz('');
+                const hizb = hizbs.find((h) => h.hizb_number === num);
+                if (!hizb) return;
+                const firstEntry = Object.entries(hizb.verse_mapping)[0];
+                if (firstEntry) navigateToVerseKey(`${firstEntry[0]}:${firstEntry[1].split('-')[0]}`);
+                setSidebarOpen(false);
+              }}
+              disabled={navigating}
+              className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+            >
+              <option value="" disabled>Jump to Hizb…</option>
+              {hizbs.map((h) => (
+                <option key={h.hizb_number} value={h.hizb_number}>
+                  Hizb {h.hizb_number}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
+
       {/* Audio player */}
       <div className="rounded-2xl border border-border bg-card p-3 space-y-3">
         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
@@ -396,6 +496,7 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
               setIsPlaying(false);
               setCurrentVerseKey(null);
               setActiveVerseKey(null);
+              setSidebarOpen(false);
             }}
             className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           >
@@ -486,6 +587,7 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
           ))}
         </div>
       </div>
+
     </div>
   );
 
@@ -495,7 +597,7 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
       <div className="flex flex-col items-center flex-1 min-w-0">
         {/* Page label + mobile toggle */}
         <div className="w-full flex items-center justify-between px-1 py-1.5 mb-2">
-          <span className="text-xs text-muted-foreground font-medium">{chapterName ?? ''}</span>
+          <span className="text-xs text-muted-foreground font-medium">{currentChapterName ?? ''}</span>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground font-medium tabular-nums">
               صفحة {page}
@@ -515,20 +617,37 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
           </div>
         </div>
 
-        {/* Mushaf page */}
+        {/* Mushaf page — arrows overlaid on hover */}
+        <div className="relative w-full group/page">
+          {/* Prev arrow */}
+          <button
+            onClick={() => goTo(page - 1)}
+            disabled={page <= 1}
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 w-9 h-9 rounded-full bg-background border border-border shadow flex items-center justify-center text-muted-foreground hover:text-foreground transition-all opacity-0 group-hover/page:opacity-100 disabled:opacity-0"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          {/* Next arrow */}
+          <button
+            onClick={() => goTo(page + 1)}
+            disabled={page >= TOTAL_PAGES}
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 w-9 h-9 rounded-full bg-background border border-border shadow flex items-center justify-center text-muted-foreground hover:text-foreground transition-all opacity-0 group-hover/page:opacity-100 disabled:opacity-0"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
         <div
           ref={containerRef}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
-          className="w-full rounded-2xl shadow-md overflow-hidden"
+          className="w-full rounded-2xl shadow-md overflow-y-auto relative"
           style={{
             background: themeConfig.bg,
             border: `1px solid ${themeConfig.border}`,
-            minHeight: 480
+            aspectRatio: '1 / 1.41',
           }}
         >
           {loading ? (
-            <div className="flex items-center justify-center h-64">
+            <div className="flex items-center justify-center h-full absolute inset-0">
               <Loader2
                 className="w-6 h-6 animate-spin"
                 style={{ color: themeConfig.text, opacity: 0.4 }}
@@ -542,7 +661,7 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="px-4 py-6"
+                className="min-h-full flex flex-col justify-center px-4 py-6"
                 dir="rtl"
               >
                 {sortedLines.map(([lineNum, words]) => (
@@ -580,29 +699,12 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
             </AnimatePresence>
           )}
         </div>
+        </div>{/* end group/page wrapper */}
 
-        {/* Page navigation */}
-        <div className="flex items-center gap-3 mt-4">
-          <button
-            onClick={() => goTo(page - 1)}
-            disabled={page <= 1}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-secondary transition-colors disabled:opacity-30"
-          >
-            <ChevronRight className="w-4 h-4" />
-            Prev
-          </button>
-          <span className="text-sm text-muted-foreground tabular-nums">
-            {page} / {TOTAL_PAGES}
-          </span>
-          <button
-            onClick={() => goTo(page + 1)}
-            disabled={page >= TOTAL_PAGES}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-secondary transition-colors disabled:opacity-30"
-          >
-            Next
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-        </div>
+        {/* Page counter */}
+        <span className="mt-3 text-xs text-muted-foreground tabular-nums">
+          {page} / {TOTAL_PAGES}
+        </span>
       </div>
 
       {/* ── Desktop sidebar (lg+) — always visible ─────────────── */}
@@ -641,7 +743,9 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <SidebarContent />
+              <div onClick={(e) => { if ((e.target as HTMLElement).closest('select') === null) setSidebarOpen(false); }}>
+                <SidebarContent />
+              </div>
             </motion.div>
           </>
         )}

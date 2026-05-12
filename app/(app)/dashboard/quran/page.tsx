@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Navigation } from '@/components/navigation';
 import { QuranReader } from '@/components/quran-reader';
 import { MushafPageView } from '@/components/mushaf-page-view';
@@ -13,8 +13,8 @@ import { PageRecitationView } from '@/components/recitation-page-view';
 import { ChevronLeft, BookText, AlignJustify, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { fetchChapter } from '@/app/(app)/dashboard/quran/queries';
-import type { Chapter } from '@/app/(app)/dashboard/quran/types';
+import { fetchChapter, fetchJuzs, fetchHizbs, fetchPageForVerseKey } from '@/app/(app)/dashboard/quran/queries';
+import type { Chapter, Juz, Hizb } from '@/app/(app)/dashboard/quran/types';
 import type { RecitationFormat, RecitationProgress } from '@/types/recitation';
 
 const PROGRESS_KEY = 'hidaayah_recitation_progress';
@@ -35,19 +35,43 @@ function saveProgress(progress: RecitationProgress[]) {
 
 export default function QuranPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   const [format, setFormat] = useState<RecitationFormat>('surah');
   const [selectedSurah, setSelectedSurah] = useState<number | null>(null);
   const [scrollToVerse, setScrollToVerse] = useState<number | undefined>();
   const [view, setView] = useState<'list' | 'reader'>('list');
-  const [readerMode, setReaderMode] = useState<'translation' | 'mushaf'>('translation');
+  const [readerMode, setReaderMode] = useState<'translation' | 'mushaf'>('mushaf');
   const [chapterInfo, setChapterInfo] = useState<Chapter | null>(null);
+  const [selectedPage, setSelectedPage] = useState<number | null>(null);
   const [progress, setProgress] = useState<RecitationProgress[]>([]);
+  const [juzs, setJuzs] = useState<Juz[]>([]);
+  const [hizbs, setHizbs] = useState<Hizb[]>([]);
+  const [selectedJump, setSelectedJump] = useState<{ juz: number | ''; hizb: number | '' }>({
+    juz: '',
+    hizb: ''
+  });
 
   // Load persisted progress
   useEffect(() => {
     setProgress(loadProgress());
+  }, []);
+
+  // Fetch juzs and hizbs for jump navigation
+  useEffect(() => {
+    fetchJuzs()
+      .then((res) => {
+        const seen = new Set<number>();
+        setJuzs((res.juzs ?? []).filter((j) => !seen.has(j.juz_number) && seen.add(j.juz_number)));
+      })
+      .catch(() => null);
+    fetchHizbs()
+      .then((res) => {
+        const seen = new Set<number>();
+        setHizbs(
+          (res.hizbs ?? []).filter((h) => !seen.has(h.hizb_number) && seen.add(h.hizb_number))
+        );
+      })
+      .catch(() => null);
   }, []);
 
   // Open directly to surah/verse if provided via query params
@@ -72,6 +96,14 @@ export default function QuranPage() {
       setSelectedSurah(surahNumber);
       setScrollToVerse(verseNumber);
       setView('reader');
+
+      // If a specific verse is given, look up its page and open mushaf there
+      if (verseNumber) {
+        const verseKey = `${surahNumber}:${verseNumber}`;
+        fetchPageForVerseKey(verseKey)
+          .then((p) => { if (p) setSelectedPage(p); })
+          .catch(() => null);
+      }
     }
   }, [searchParams]);
 
@@ -97,6 +129,7 @@ export default function QuranPage() {
   const handleBack = () => {
     setView('list');
     setSelectedSurah(null);
+    setSelectedPage(null);
     setScrollToVerse(undefined);
     setChapterInfo(null);
   };
@@ -198,7 +231,31 @@ export default function QuranPage() {
       return next;
     });
 
-    router.push(`/dashboard/quran?page=${pageNumber}`);
+    setSelectedPage(pageNumber);
+    setReaderMode('mushaf');
+    setView('reader');
+  };
+
+  const handleTogglePage = (pageNumber: number) => {
+    setProgress((prev) => {
+      const existing = prev.find((p) => p.format === 'page' && p.unitNumber === pageNumber);
+      // If already selected (in progress), deselect — remove it entirely
+      if (existing && !existing.completedAt) {
+        const next = prev.filter((p) => !(p.format === 'page' && p.unitNumber === pageNumber));
+        saveProgress(next);
+        return next;
+      }
+      // Not selected yet — add it as in-progress
+      const updated: RecitationProgress = {
+        format: 'page',
+        unitNumber: pageNumber,
+        lastReadAt: new Date().toISOString(),
+        percentComplete: 0
+      };
+      const next = [...prev, updated];
+      saveProgress(next);
+      return next;
+    });
   };
 
   const handleMarkPageComplete = (pageNumber: number) => {
@@ -257,6 +314,62 @@ export default function QuranPage() {
                       exit={{ opacity: 0, y: -8 }}
                       transition={{ duration: 0.2 }}
                     >
+                      {(juzs.length > 0 || hizbs.length > 0) && (
+                        <div className="flex gap-3 mb-4">
+                          {juzs.length > 0 && (
+                            <select
+                              value={selectedJump.juz}
+                              onChange={(e) => {
+                                if (!e.target.value) return;
+                                const num = Number(e.target.value);
+                                setSelectedJump({ juz: num, hizb: '' });
+                                const juz = juzs.find((j) => j.juz_number === num);
+                                if (!juz) return;
+                                const firstEntry = Object.entries(juz.verse_mapping)[0];
+                                if (!firstEntry) return;
+                                const [chapter, range] = firstEntry;
+                                handleSelectJuz(num, `${chapter}:${range.split('-')[0]}`);
+                              }}
+                              className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                            >
+                              <option value="" disabled>
+                                Jump to Juz…
+                              </option>
+                              {juzs.map((j) => (
+                                <option key={j.juz_number} value={j.juz_number}>
+                                  Juz {j.juz_number}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                          {hizbs.length > 0 && (
+                            <select
+                              value={selectedJump.hizb}
+                              onChange={(e) => {
+                                if (!e.target.value) return;
+                                const num = Number(e.target.value);
+                                setSelectedJump({ juz: '', hizb: num });
+                                const hizb = hizbs.find((h) => h.hizb_number === num);
+                                if (!hizb) return;
+                                const firstEntry = Object.entries(hizb.verse_mapping)[0];
+                                if (!firstEntry) return;
+                                const [chapter, range] = firstEntry;
+                                handleSelectHizb(num, `${chapter}:${range.split('-')[0]}`);
+                              }}
+                              className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                            >
+                              <option value="" disabled>
+                                Jump to Hizb…
+                              </option>
+                              {hizbs.map((h) => (
+                                <option key={h.hizb_number} value={h.hizb_number}>
+                                  Hizb {h.hizb_number}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      )}
                       <SurahList onSelectSurah={(n) => openReader(n)} />
                     </motion.div>
                   )}
@@ -304,6 +417,7 @@ export default function QuranPage() {
                       <PageRecitationView
                         progress={progress}
                         onSelectPage={handleSelectPage}
+                        onTogglePage={handleTogglePage}
                         onMarkComplete={handleMarkPageComplete}
                       />
                     </motion.div>
@@ -340,18 +454,6 @@ export default function QuranPage() {
                   {/* View mode toggle */}
                   <div className="flex items-center gap-1 p-1 rounded-xl bg-secondary">
                     <button
-                      onClick={() => setReaderMode('translation')}
-                      className={cn(
-                        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-                        readerMode === 'translation'
-                          ? 'bg-background text-foreground shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground'
-                      )}
-                    >
-                      <AlignJustify className="w-3.5 h-3.5" />
-                      Translation
-                    </button>
-                    <button
                       onClick={() => setReaderMode('mushaf')}
                       className={cn(
                         'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
@@ -363,6 +465,18 @@ export default function QuranPage() {
                       <BookOpen className="w-3.5 h-3.5" />
                       Mushaf
                     </button>
+                    <button
+                      onClick={() => setReaderMode('translation')}
+                      className={cn(
+                        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+                        readerMode === 'translation'
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <AlignJustify className="w-3.5 h-3.5" />
+                      Translation
+                    </button>
                   </div>
                 </div>
 
@@ -370,9 +484,9 @@ export default function QuranPage() {
                   <QuranReader surahNumber={selectedSurah} scrollToVerse={scrollToVerse} />
                 )}
 
-                {selectedSurah && readerMode === 'mushaf' && (
+                {readerMode === 'mushaf' && (selectedSurah || selectedPage) && (
                   <MushafPageView
-                    startPage={chapterInfo?.pages?.[0] ?? 1}
+                    startPage={selectedPage ?? chapterInfo?.pages?.[0] ?? 1}
                     chapterName={chapterInfo?.name_simple}
                   />
                 )}

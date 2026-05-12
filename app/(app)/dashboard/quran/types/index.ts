@@ -110,6 +110,52 @@ export interface ListVersesParams {
   per_page?: number;
 }
 
+// ─── Juz / Hizb ──────────────────────────────────────────────────────────────────
+export interface JuzVerseMapping {
+  verse_key: string;
+  verse_id: number;
+}
+
+export interface Juz {
+  id: number;
+  juz_number: number;
+  verse_mapping: Record<string, string>;
+  first_verse_id: number;
+  last_verse_id: number;
+  verses_count: number;
+}
+
+export interface ListJuzsResponse {
+  juzs: Juz[];
+}
+
+export interface Hizb {
+  id: number;
+  hizb_number: number;
+  verse_mapping: Record<string, string>;
+  first_verse_id: number;
+  last_verse_id: number;
+  verses_count: number;
+}
+
+export interface ListHizbsResponse {
+  hizbs: Hizb[];
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+export interface MushafPage {
+  id: number;
+  page_number: number;
+  verse_mapping: Record<string, string>;
+  first_verse_id: number;
+  last_verse_id: number;
+  verses_count: number;
+}
+
+export interface ListPagesResponse {
+  pages: MushafPage[];
+}
+
 // ─── Reciter / Audio ─────────────────────────────────────────────────────────────
 export interface Reciter {
   id: number;

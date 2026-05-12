@@ -4,7 +4,10 @@ import type {
   ListVersesResponse,
   GetVerseResponse,
   ListVersesParams,
-  ListRecitersResponse
+  ListRecitersResponse,
+  ListJuzsResponse,
+  ListHizbsResponse,
+  ListPagesResponse
 } from '@/app/(app)/dashboard/quran/types';
 import type { RandomAyahResponse } from '@/app/(app)/dashboard/reflections/types';
 
@@ -141,6 +144,30 @@ export const fetchVerseAudioFiles = async (
         ? `https:${f.url}`
         : `${CDN}${f.url}`
   }));
+};
+
+// ─── Navigation helpers ───────────────────────────────────────────────────────
+export const fetchPages = async (): Promise<ListPagesResponse> => {
+  const response = await contentApi.get<ListPagesResponse>('/pages', { params: { mushaf: 1 } });
+  return response.data;
+};
+
+export const fetchJuzs = async (): Promise<ListJuzsResponse> => {
+  const response = await contentApi.get<ListJuzsResponse>('/juzs', { params: { mushaf: 1 } });
+  return response.data;
+};
+
+export const fetchHizbs = async (): Promise<ListHizbsResponse> => {
+  const response = await contentApi.get<ListHizbsResponse>('/hizbs');
+  return response.data;
+};
+
+export const fetchPageForVerseKey = async (verseKey: string): Promise<number | null> => {
+  const response = await contentApi.get<{ pages: Record<string, unknown> }>('/pages/lookup', {
+    params: { mushaf: 1, from: verseKey, to: verseKey }
+  });
+  const firstKey = Object.keys(response.data.pages ?? {})[0];
+  return firstKey ? Number(firstKey) : null;
 };
 
 // ─── Translations ─────────────────────────────────────────────────────────────
