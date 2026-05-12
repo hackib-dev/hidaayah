@@ -13,7 +13,6 @@ import {
   ChevronDown,
   ChevronUp,
   Bookmark,
-  Share2,
   Settings2,
   Type,
   Minus,
@@ -26,6 +25,11 @@ import {
   X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
+import { VerseShare } from './verse-share';
+import { trackSurahReading } from '@/lib/recitationTracking';
+import { recordGardenActivity } from '@/lib/gardenTracking';
+import { useReciterPreference } from '@/components/reciter-preference-provider';
 import {
   fetchVersesByChapter,
   fetchChapter,
@@ -85,15 +89,14 @@ interface QuranReaderProps {
 }
 
 export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
+  const { defaultReciterId, setDefaultReciterId } = useReciterPreference();
+
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [verses, setVerses] = useState<Verse[]>([]);
   const [tafsirs, setTafsirs] = useState<Record<number, string>>({});
   const [bookmarkedVerses, setBookmarkedVerses] = useState<Record<number, string>>({}); // verseNumber → bookmarkId
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loadingMore, setLoadingMore] = useState(false);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeVerse, setActiveVerse] = useState<number>(1);
@@ -111,7 +114,6 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
 
   // Reciters
   const [reciters, setReciters] = useState<Reciter[]>([]);
-  const [selectedReciterId, setSelectedReciterId] = useState<number>(QF_DEFAULT_RECITER_ID);
   const [loadingReciters, setLoadingReciters] = useState(false);
   const [showReciterPicker, setShowReciterPicker] = useState(false);
 
@@ -159,11 +161,11 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
     setActiveVerse(1);
     setLoadingAudio(true);
 
-    fetchVerseAudioFiles(selectedReciterId, surahNumber)
+    fetchVerseAudioFiles(defaultReciterId, surahNumber)
       .then((files) => setVerseAudioFiles(files))
       .catch(() => null)
       .finally(() => setLoadingAudio(false));
-  }, [selectedReciterId, surahNumber]);
+  }, [defaultReciterId, surahNumber]);
 
   // When currentVerseIndex changes, update activeVerse and scroll to it
   useEffect(() => {
@@ -191,23 +193,16 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
     else audio.pause();
   }, [isPlaying, isMuted, audioUrl]);
 
-  // Load chapter info + first page of verses
+  // Load chapter info + ALL verses at once
   useEffect(() => {
     setLoading(true);
     setError(null);
-    setPage(1);
     setVerses([]);
     setChapter(null);
     setTafsirs({});
 
     Promise.all([
       fetchChapter(surahNumber),
-      fetchVersesByChapter(surahNumber, {
-        translations: String(QF_DEFAULT_TRANSLATION_ID),
-        words: true,
-        page: 1,
-        per_page: 50
-      }),
       fetchBookmarks({
         type: 'ayah',
         mushafId: QF_DEFAULT_MUSHAF_ID,
@@ -215,10 +210,8 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
         first: 20
       }).catch(() => null)
     ])
-      .then(async ([chapterRes, versesRes, bookmarksRes]) => {
+      .then(async ([chapterRes, bookmarksRes]) => {
         setChapter(chapterRes.chapter);
-        const totalPgs = versesRes.pagination.total_pages;
-        setTotalPages(totalPgs);
 
         const map: Record<number, string> = {};
         for (const bm of bookmarksRes?.data ?? []) {
@@ -226,24 +219,37 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
         }
         setBookmarkedVerses(map);
 
-        // If we need to scroll to a verse beyond the first 50, load pages until it's present
-        let allVerses = versesRes.verses;
-        let lastLoadedPage = 1;
-        if (scrollToVerse && scrollToVerse > 50 && totalPgs > 1) {
-          while (allVerses.length < scrollToVerse && lastLoadedPage < totalPgs) {
-            lastLoadedPage += 1;
-            const more = await fetchVersesByChapter(surahNumber, {
-              translations: String(QF_DEFAULT_TRANSLATION_ID),
-              words: true,
-              page: lastLoadedPage,
-              per_page: 50
-            });
-            allVerses = [...allVerses, ...more.verses];
+        // Load ALL verses at once
+        const firstPage = await fetchVersesByChapter(surahNumber, {
+          translations: String(QF_DEFAULT_TRANSLATION_ID),
+          words: true,
+          page: 1,
+          per_page: 50
+        });
+
+        const totalPgs = firstPage.pagination.total_pages;
+        let allVerses = firstPage.verses;
+
+        // Load remaining pages
+        if (totalPgs > 1) {
+          const remainingPages = [];
+          for (let p = 2; p <= totalPgs; p++) {
+            remainingPages.push(
+              fetchVersesByChapter(surahNumber, {
+                translations: String(QF_DEFAULT_TRANSLATION_ID),
+                words: true,
+                page: p,
+                per_page: 50
+              })
+            );
           }
+          const results = await Promise.all(remainingPages);
+          results.forEach((res) => {
+            allVerses = [...allVerses, ...res.verses];
+          });
         }
 
         setVerses(allVerses);
-        setPage(lastLoadedPage);
 
         if (scrollToVerse) {
           setTimeout(() => {
@@ -256,27 +262,6 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
       .catch(() => setError('Failed to load surah. Please try again.'))
       .finally(() => setLoading(false));
   }, [surahNumber, scrollToVerse]);
-
-  const loadMoreVerses = () => {
-    if (loadingMore || page >= totalPages) return;
-    const nextPage = page + 1;
-    setLoadingMore(true);
-    fetchVersesByChapter(surahNumber, {
-      translations: String(QF_DEFAULT_TRANSLATION_ID),
-      words: true,
-      page: nextPage,
-      per_page: 50
-    })
-      .then((res) => {
-        setVerses((prev) => {
-          const existingKeys = new Set(prev.map((v) => v.verse_key));
-          const newVerses = res.verses.filter((v) => !existingKeys.has(v.verse_key));
-          return [...prev, ...newVerses];
-        });
-        setPage(nextPage);
-      })
-      .finally(() => setLoadingMore(false));
-  };
 
   const loadTafsir = async (verseNumber: number) => {
     if (tafsirs[verseNumber] !== undefined) return;
@@ -329,8 +314,15 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
     const idx = verseAudioFiles.findIndex(
       (f) => parseInt(f.verse_key.split(':')[1], 10) === verseNumber
     );
-    if (idx !== -1) setCurrentVerseIndex(idx);
-    setIsPlaying(true);
+    if (idx !== -1) {
+      setCurrentVerseIndex(idx);
+      setIsPlaying(true);
+      // Track audio listening for garden
+      recordGardenActivity('audio_listen', {
+        verseKey: `${surahNumber}:${verseNumber}`,
+        surahName: chapter?.name_simple ?? `Surah ${surahNumber}`
+      });
+    }
   };
 
   const handleTranslationClick = async (e: React.MouseEvent<HTMLDivElement>) => {
@@ -393,6 +385,9 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
           const [ch, v] = key.split(':').map(Number);
           lastVisibleVerseRef.current = { chapter: ch, verse: v };
 
+          // Track surah reading
+          trackSurahReading(ch, chapter?.name_simple ?? `Surah ${ch}`, v);
+
           // Debounced reading-session update (location only)
           if (sessionDebounceRef.current) clearTimeout(sessionDebounceRef.current);
           sessionDebounceRef.current = setTimeout(() => {
@@ -406,7 +401,7 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
     const els = Object.values(verseRefs.current).filter(Boolean) as HTMLDivElement[];
     els.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [verses]);
+  }, [verses, chapter]);
 
   // Focus tracking: count active seconds while tab is focused
   useEffect(() => {
@@ -511,7 +506,7 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
     }
   };
 
-  const selectedReciter = reciters.find((r) => r.id === selectedReciterId);
+  const selectedReciter = reciters.find((r) => r.id === defaultReciterId);
 
   const arabicSizeClass = [
     'text-xl md:text-2xl',
@@ -730,13 +725,13 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
                             <button
                               key={reciter.id}
                               onClick={() => {
-                                setSelectedReciterId(reciter.id);
+                                setDefaultReciterId(reciter.id);
                                 setShowReciterPicker(false);
                                 setIsPlaying(false);
                               }}
                               className={cn(
                                 'w-full text-left px-3 py-2.5 text-sm transition-colors',
-                                reciter.id === selectedReciterId
+                                reciter.id === defaultReciterId
                                   ? 'bg-primary/10 text-primary font-semibold'
                                   : 'text-foreground hover:bg-secondary'
                               )}
@@ -925,7 +920,13 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
                   </motion.button>
                   <motion.button
                     whileTap={{ scale: 0.88 }}
-                    onClick={() => handlePlayVerse(verse.verse_number)}
+                    onClick={() => {
+                      if (isActive) {
+                        setIsPlaying(false);
+                      } else {
+                        handlePlayVerse(verse.verse_number);
+                      }
+                    }}
                     className={cn(
                       'p-2 rounded-xl transition-colors',
                       isActive
@@ -933,14 +934,14 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
                         : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                     )}
                   >
-                    <Play className="w-4 h-4" />
+                    {isActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                   </motion.button>
-                  <motion.button
-                    whileTap={{ scale: 0.88 }}
-                    className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                  >
-                    <Share2 className="w-4 h-4" />
-                  </motion.button>
+                  <VerseShare
+                    verseKey={verseKey}
+                    arabicText={verse.text_uthmani}
+                    translation={translation.replace(/<[^>]*>/g, '')}
+                    surahName={chapter?.name_simple ?? `Surah ${surahNumber}`}
+                  />
                 </div>
               </div>
 
@@ -1151,28 +1152,27 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
             </motion.div>
           );
         })}
-
-        {/* Load more */}
-        {page < totalPages && (
-          <button
-            onClick={loadMoreVerses}
-            disabled={loadingMore}
-            className="w-full py-3 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors flex items-center justify-center gap-2"
-          >
-            {loadingMore ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Loading...
-              </>
-            ) : (
-              <>
-                <ChevronDown className="w-4 h-4" />
-                Load more verses
-              </>
-            )}
-          </button>
-        )}
       </div>
+
+      {/* End of Surah - Continue to Next */}
+      {chapter && surahNumber < 114 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-6 rounded-2xl bg-gradient-to-br from-primary/10 to-teal/10 border border-primary/20 text-center space-y-3"
+        >
+          <p className="text-sm text-muted-foreground">
+            You've reached the end of {chapter.name_simple}
+          </p>
+          <Link
+            href={`/dashboard/quran?surah=${surahNumber + 1}`}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
+          >
+            Continue to Surah {surahNumber + 1}
+            <ChevronDown className="w-4 h-4 rotate-[-90deg]" />
+          </Link>
+        </motion.div>
+      )}
     </div>
   );
 }

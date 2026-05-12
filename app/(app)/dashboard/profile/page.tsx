@@ -156,13 +156,6 @@ export default function ProfilePage() {
                   Joined {reflectProfile.joiningYear}
                 </span>
               )}
-              {reflectProfile?.followersCount !== undefined && (
-                <span className="flex items-center gap-1">
-                  <User className="w-3 h-3" />
-                  {reflectProfile.followersCount} follower
-                  {reflectProfile.followersCount !== 1 ? 's' : ''}
-                </span>
-              )}
             </div>
           </motion.div>
 

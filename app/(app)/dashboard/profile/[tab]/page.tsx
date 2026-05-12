@@ -10,11 +10,16 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { motion } from 'framer-motion';
 import { updateReflectProfile } from '@/app/(app)/dashboard/profile/queries';
+import { fetchVerseReciters } from '@/app/(app)/dashboard/quran/queries';
+import { useReciterPreference } from '@/components/reciter-preference-provider';
 import type { ReflectProfile } from '@/app/(app)/dashboard/profile/types';
-import { BadgeCheck, MapPin, Calendar, User, CheckCircle } from 'lucide-react';
+import type { Reciter } from '@/app/(app)/dashboard/quran/types';
+import { BadgeCheck, MapPin, Calendar, User, CheckCircle, Mic, ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function ProfileTabPage({ params: _params }: { params: Promise<{ tab: string }> }) {
   const { user, logout, reflectProfile: ctxProfile, reflectProfileLoading } = useAuth();
+  const { defaultReciterId, setDefaultReciterId } = useReciterPreference();
   const router = useRouter();
 
   const [profile, setProfile] = useState<ReflectProfile | null>(null);
@@ -22,9 +27,18 @@ export default function ProfileTabPage({ params: _params }: { params: Promise<{ 
   const [lastName, setLastName] = useState('');
   const [bio, setBio] = useState('');
   const [country, setCountry] = useState('');
+  const [reciters, setReciters] = useState<Reciter[]>([]);
+  const [showReciterDropdown, setShowReciterDropdown] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  // Load reciters
+  useEffect(() => {
+    fetchVerseReciters()
+      .then((res: { reciters: Reciter[] }) => setReciters(res.reciters ?? []))
+      .catch(() => null);
+  }, []);
 
   // Seed form from cached context profile — no extra API call
   useEffect(() => {
@@ -42,6 +56,7 @@ export default function ProfileTabPage({ params: _params }: { params: Promise<{ 
     setSaved(false);
     // Optimistic update
     setProfile((prev) => (prev ? { ...prev, firstName, lastName, bio, country } : prev));
+
     try {
       const updated = await updateReflectProfile({ firstName, lastName, bio, country });
       setProfile(updated);
@@ -128,12 +143,6 @@ export default function ProfileTabPage({ params: _params }: { params: Promise<{ 
                             Joined {profile.joiningYear}
                           </span>
                         )}
-                        {profile?.followersCount !== undefined && (
-                          <span className="flex items-center gap-1">
-                            <User className="w-3 h-3" />
-                            {profile.followersCount} followers
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -194,6 +203,58 @@ export default function ProfileTabPage({ params: _params }: { params: Promise<{ 
                         onChange={(e) => setCountry(e.target.value)}
                         placeholder="e.g. NG"
                       />
+                    </div>
+
+                    {/* Default Reciter Selection */}
+                    <div className="space-y-2">
+                      <Label>Default Reciter</Label>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setShowReciterDropdown(!showReciterDropdown)}
+                          className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground hover:bg-secondary transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Mic className="w-4 h-4 text-muted-foreground" />
+                            <span>
+                              {reciters.find((r) => r.id === defaultReciterId)?.name ||
+                                'Loading...'}
+                            </span>
+                          </div>
+                          <ChevronDown
+                            className={cn(
+                              'w-4 h-4 text-muted-foreground transition-transform',
+                              showReciterDropdown && 'rotate-180'
+                            )}
+                          />
+                        </button>
+
+                        {showReciterDropdown && (
+                          <div className="absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded-lg border border-border bg-background shadow-lg z-10">
+                            {reciters.map((reciter) => (
+                              <button
+                                key={reciter.id}
+                                type="button"
+                                onClick={() => {
+                                  setDefaultReciterId(reciter.id);
+                                  setShowReciterDropdown(false);
+                                }}
+                                className={cn(
+                                  'w-full text-left px-3 py-2.5 text-sm transition-colors hover:bg-secondary',
+                                  reciter.id === defaultReciterId
+                                    ? 'bg-primary/10 text-primary font-semibold'
+                                    : 'text-foreground'
+                                )}
+                              >
+                                {reciter.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        This reciter will be used by default when playing Quran audio
+                      </p>
                     </div>
                     {error && <p className="text-sm text-destructive">{error}</p>}
                     {saved && (

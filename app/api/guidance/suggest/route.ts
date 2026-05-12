@@ -1,41 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || '';
-const QF_SEARCH_BASE = 'https://apis.quran.foundation/search';
-const QF_SEARCH_CLIENT_ID = process.env.QF_SEARCH_CLIENT_ID || '';
+const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 
-const RANKING_PROMPT = `You are ranking Quran verses by relevance to a user's emotional state.
+const GUIDANCE_PROMPT = `You are a compassionate Islamic scholar helping someone find Quranic guidance.
 
-Given:
-1. User's situation/emotion
-2. List of candidate verses with their keys and translations
+Analyze the user's situation and select 4 relevant Quran verses from this curated list:
 
-Return ONLY a JSON array of the 4 most relevant verse keys in order of relevance.
+2:286 - Allah does not burden a soul beyond its capacity (patience, strength)
+94:5 - With hardship comes ease (hope, difficulty)
+94:6 - Indeed with hardship comes ease (perseverance)
+13:28 - Hearts find peace in remembrance of Allah (peace, anxiety)
+39:53 - Do not despair of Allah's mercy (forgiveness, hope)
+2:186 - I am near, I respond to the caller (prayer, connection)
+14:7 - If you are grateful, I will increase you (gratitude, blessings)
+16:18 - Allah's blessings are countless (gratitude, awareness)
+3:139 - Do not lose hope, you will be superior (strength, faith)
+29:2 - Do people think they will not be tested? (trials, patience)
+2:153 - Seek help through patience and prayer (guidance, support)
+20:123 - Whoever follows My guidance will not go astray (direction, clarity)
+65:3 - Allah provides from unexpected sources (trust, provision)
+39:23 - The best speech is the Book of Allah (guidance, wisdom)
+16:97 - Whoever does good will have a good life (righteousness, peace)
+89:27 - O peaceful soul, return to your Lord (contentment, peace)
+55:13 - Which favors of your Lord will you deny? (gratitude, reflection)
+27:40 - This is from the grace of my Lord (gratitude, humility)
+93:7 - He found you lost and guided you (guidance, direction)
+2:155 - We will test you with fear, hunger, loss (patience, trials)
+3:160 - If Allah helps you, none can overcome you (trust, victory)
+25:70 - Allah will replace their evil deeds with good (repentance, hope)
+
+Return ONLY a JSON array of 4 verse keys most relevant to their situation.
 Format: ["2:286","94:5","13:28","39:53"]
 
-No explanation, no markdown, just the JSON array.`;
-
-// Get search token from QF OAuth
-async function getSearchToken(): Promise<string> {
-  const credentials = Buffer.from(
-    `${QF_SEARCH_CLIENT_ID}:${process.env.QF_SEARCH_CLIENT_SECRET}`
-  ).toString('base64');
-
-  const res = await fetch('https://prelive-oauth2.quran.foundation/oauth2/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: `Basic ${credentials}`
-    },
-    body: new URLSearchParams({
-      grant_type: 'client_credentials',
-      scope: 'search'
-    })
-  });
-
-  const data = await res.json();
-  return data.access_token;
-}
+No explanation, just the array.`;
 
 export async function POST(req: NextRequest) {
   const { text } = await req.json();
@@ -44,105 +42,84 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No text provided' }, { status: 400 });
   }
 
+  const fallbackVerses = ['2:286', '94:5', '13:28', '39:53'];
+
   try {
-    // Step 1: Get 20 candidate verses from QF search (fast: ~1s)
-    const token = await getSearchToken();
-    const searchRes = await fetch(
-      `${QF_SEARCH_BASE}/v1/search?${new URLSearchParams({
-        mode: 'quick',
-        query: text.trim(),
-        get_text: '1',
-        versesResultsNumber: '20'
-      })}`,
-      {
+    // Try Groq first (better quality, free)
+    if (GROQ_API_KEY) {
+      try {
+        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${GROQ_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+              { role: 'system', content: GUIDANCE_PROMPT },
+              { role: 'user', content: text.trim() }
+            ],
+            temperature: 0.3,
+            max_tokens: 100
+          })
+        });
+
+        if (groqRes.ok) {
+          const data = await groqRes.json();
+          const content = data.choices?.[0]?.message?.content || '';
+          const match = content.match(/\[[\s\S]*?\]/);
+          if (match) {
+            const verseKeys: string[] = JSON.parse(match[0]);
+            const valid = verseKeys.filter((k) => /^\d{1,3}:\d{1,3}$/.test(k)).slice(0, 4);
+            if (valid.length >= 3) {
+              console.log('✓ Groq AI selected verses:', valid);
+              return NextResponse.json({ verseKeys: valid });
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Groq failed, trying RapidAPI');
+      }
+    }
+
+    // Fallback to RapidAPI
+    if (RAPIDAPI_KEY) {
+      const aiRes = await fetch('https://open-ai21.p.rapidapi.com/conversationllama', {
+        method: 'POST',
         headers: {
-          'x-client-id': QF_SEARCH_CLIENT_ID,
-          'x-auth-token': token
+          'Content-Type': 'application/json',
+          'x-rapidapi-host': 'open-ai21.p.rapidapi.com',
+          'x-rapidapi-key': RAPIDAPI_KEY
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: GUIDANCE_PROMPT },
+            { role: 'user', content: text.trim() }
+          ],
+          web_access: false
+        })
+      });
+
+      if (aiRes.ok) {
+        const aiData = await aiRes.json();
+        const raw: string = aiData.result ?? '';
+        const match = raw.match(/\[[\s\S]*?\]/);
+        if (match) {
+          const verseKeys: string[] = JSON.parse(match[0]);
+          const valid = verseKeys.filter((k) => /^\d{1,3}:\d{1,3}$/.test(k)).slice(0, 4);
+          if (valid.length >= 3) {
+            console.log('✓ RapidAPI selected verses:', valid);
+            return NextResponse.json({ verseKeys: valid });
+          }
         }
       }
-    );
-
-    if (!searchRes.ok) {
-      return NextResponse.json({ error: 'Search service unavailable' }, { status: 502 });
     }
 
-    const searchData = await searchRes.json();
-    const candidates =
-      searchData.result?.verses?.slice(0, 20) || searchData.result?.navigation?.slice(0, 20) || [];
-
-    if (candidates.length === 0) {
-      return NextResponse.json({ error: 'No verses found' }, { status: 404 });
-    }
-
-    // Step 2: Build candidate list for AI ranking
-    const candidateText = candidates
-      .map((v: { key: string; name: string }, i: number) => `${i + 1}. ${v.key}: ${v.name}`)
-      .join('\n');
-
-    // Step 3: AI ranks top 4 from candidates (fast: ~2-3s)
-    const aiRes = await fetch('https://open-ai21.p.rapidapi.com/conversationllama', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-rapidapi-host': 'open-ai21.p.rapidapi.com',
-        'x-rapidapi-key': RAPIDAPI_KEY
-      },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: RANKING_PROMPT },
-          {
-            role: 'user',
-            content: `User situation: ${text.trim()}\n\nCandidate verses:\n${candidateText}\n\nReturn top 4 verse keys as JSON array.`
-          }
-        ],
-        web_access: false
-      })
-    });
-
-    if (!aiRes.ok) {
-      // Fallback: return first 4 candidates if AI fails
-      const fallback = candidates.slice(0, 4).map((v: { key: string }) => v.key);
-      return NextResponse.json({ verseKeys: fallback });
-    }
-
-    const aiData = await aiRes.json();
-    const raw: string = aiData.result ?? '';
-
-    // Extract JSON array
-    const match = raw.match(/\[[\s\S]*?\]/);
-    if (!match) {
-      const fallback = candidates.slice(0, 4).map((v: { key: string }) => v.key);
-      return NextResponse.json({ verseKeys: fallback });
-    }
-
-    let verseKeys: string[];
-    try {
-      verseKeys = JSON.parse(match[0]);
-    } catch {
-      const fallback = candidates.slice(0, 4).map((v: { key: string }) => v.key);
-      return NextResponse.json({ verseKeys: fallback });
-    }
-
-    // Validate and filter to keys that exist in candidates
-    const candidateKeys = new Set(candidates.map((v: { key: string }) => v.key));
-    const valid = verseKeys
-      .filter((k) => /^\d{1,3}:\d{1,3}$/.test(k) && candidateKeys.has(k))
-      .slice(0, 4);
-
-    if (valid.length === 0) {
-      const fallback = candidates.slice(0, 4).map((v: { key: string }) => v.key);
-      return NextResponse.json({ verseKeys: fallback });
-    }
-
-    // Pad with candidates if AI returned fewer than 4
-    while (valid.length < 4 && valid.length < candidates.length) {
-      const next = candidates[valid.length].key;
-      if (!valid.includes(next)) valid.push(next);
-    }
-
-    return NextResponse.json({ verseKeys: valid });
+    console.log('✓ Using fallback verses');
+    return NextResponse.json({ verseKeys: fallbackVerses });
   } catch (error) {
-    console.error('Guidance suggest error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Guidance error:', error);
+    return NextResponse.json({ verseKeys: fallbackVerses });
   }
 }

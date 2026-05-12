@@ -17,9 +17,13 @@ import {
   CheckCircle2,
   Loader2,
   Play,
-  Pause
+  Pause,
+  BookMarked,
+  Layers,
+  FileStack
 } from 'lucide-react';
 import Link from 'next/link';
+import { loadLastRecitations, getMostRecentRecitation } from '@/lib/recitationTracking';
 import { fetchActiveStreak, fetchAllTodayGoalPlans } from '@/app/(app)/dashboard/profile/queries';
 import {
   fetchBookmarks,
@@ -81,6 +85,8 @@ export default function HomePage() {
   const [ayahPlaying, setAyahPlaying] = useState(false);
   const [ayahAudioLoading, setAyahAudioLoading] = useState(false);
   const ayahAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const [lastRecitations, setLastRecitations] = useState(loadLastRecitations());
 
   useEffect(() => {
     if (!user) return;
@@ -226,6 +232,94 @@ export default function HomePage() {
               </Link>
             )}
           </motion.div>
+
+          {/* Continue Reading - Last Recitations */}
+          {(lastRecitations.surah ||
+            lastRecitations.juz ||
+            lastRecitations.hizb ||
+            lastRecitations.page) && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.13 }}
+              className="rounded-xl border border-border bg-card p-5 space-y-3"
+            >
+              <div className="flex items-center gap-2">
+                <BookMarked className="w-4 h-4 text-primary" />
+                <p className="text-sm font-semibold text-foreground">Continue Reading</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {lastRecitations.surah && (
+                  <Link
+                    href={`/dashboard/quran?surah=${lastRecitations.surah.surahNumber}&verse=${lastRecitations.surah.ayahNumber}`}
+                    className="p-3 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <BookOpen className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
+                      <p className="text-xs font-semibold text-foreground">Surah</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {lastRecitations.surah.surahName}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Ayah {lastRecitations.surah.ayahNumber}
+                    </p>
+                  </Link>
+                )}
+                {lastRecitations.juz && (
+                  <Link
+                    href={`/dashboard/quran?juz=${lastRecitations.juz.juzNumber}`}
+                    className="p-3 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Layers className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                      <p className="text-xs font-semibold text-foreground">Juz</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Juz {lastRecitations.juz.juzNumber}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Page {lastRecitations.juz.pageNumber}
+                    </p>
+                  </Link>
+                )}
+                {lastRecitations.hizb && (
+                  <Link
+                    href={`/dashboard/quran?hizb=${lastRecitations.hizb.hizbNumber}`}
+                    className="p-3 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <FileStack className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                      <p className="text-xs font-semibold text-foreground">Hizb</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Hizb {lastRecitations.hizb.hizbNumber}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Page {lastRecitations.hizb.pageNumber}
+                    </p>
+                  </Link>
+                )}
+                {lastRecitations.page && (
+                  <Link
+                    href={`/dashboard/quran?page=${lastRecitations.page.pageNumber}`}
+                    className="p-3 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <p className="text-xs font-semibold text-foreground">Page</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Page {lastRecitations.page.pageNumber}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {new Date(lastRecitations.page.timestamp).toLocaleDateString()}
+                    </p>
+                  </Link>
+                )}
+              </div>
+            </motion.div>
+          )}
 
           {/* Resume Reading */}
           <motion.div

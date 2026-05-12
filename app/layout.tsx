@@ -4,6 +4,8 @@ import { Analytics } from '@vercel/analytics/next';
 import { ThemeProvider } from '@/components/theme-provider';
 import { AuthProvider } from '@/components/auth-provider';
 import { AppStateProvider } from '@/components/app-state-provider';
+import { ReciterPreferenceProvider } from '@/components/reciter-preference-provider';
+import { CompanionOverlay } from '@/components/CompanionOverlay';
 import './globals.css';
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -63,7 +65,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           disableTransitionOnChange={false}
         >
           <AuthProvider>
-            <AppStateProvider>{children}</AppStateProvider>
+            <ReciterPreferenceProvider>
+              <AppStateProvider>
+                {children}
+                <CompanionOverlay />
+              </AppStateProvider>
+            </ReciterPreferenceProvider>
           </AuthProvider>
         </ThemeProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}

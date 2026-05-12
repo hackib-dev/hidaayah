@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle2, BookOpen, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { RecitationProgress } from '@/types/recitation';
 
@@ -42,6 +42,7 @@ interface PageRecitationViewProps {
 
 export function PageRecitationView({ progress, onSelectPage }: PageRecitationViewProps) {
   const [currentChunk, setCurrentChunk] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
   const totalChunks = Math.ceil(PAGE_COUNT / PAGES_PER_VIEW);
 
   const getProgress = (pageNum: number) =>
@@ -51,7 +52,16 @@ export function PageRecitationView({ progress, onSelectPage }: PageRecitationVie
 
   const startPage = currentChunk * PAGES_PER_VIEW + 1;
   const endPage = Math.min(startPage + PAGES_PER_VIEW - 1, PAGE_COUNT);
-  const pages = Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i);
+
+  // Filter pages based on search query
+  let pages = Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i);
+  if (searchQuery) {
+    const query = searchQuery.toLowerCase();
+    pages = pages.filter(
+      (pageNum) =>
+        String(pageNum).includes(query) || getPageLabel(pageNum).toLowerCase().includes(query)
+    );
+  }
 
   // Find last read page for quick resume
   const lastRead = progress
@@ -68,19 +78,6 @@ export function PageRecitationView({ progress, onSelectPage }: PageRecitationVie
             <p className="text-xs text-muted-foreground mt-0.5">
               {completedCount} of {PAGE_COUNT} pages read
             </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-24 h-2 rounded-full bg-secondary overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${(completedCount / PAGE_COUNT) * 100}%` }}
-                transition={{ duration: 0.6, ease: 'easeOut' }}
-                className="h-full bg-primary rounded-full"
-              />
-            </div>
-            <span className="text-xs font-bold text-primary">
-              {Math.round((completedCount / PAGE_COUNT) * 100)}%
-            </span>
           </div>
         </div>
 
@@ -101,6 +98,18 @@ export function PageRecitationView({ progress, onSelectPage }: PageRecitationVie
             <ChevronRight className="w-4 h-4 text-primary" />
           </button>
         )}
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search page number or surah name…"
+          className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
+        />
       </div>
 
       {/* Page range navigation */}
@@ -129,8 +138,8 @@ export function PageRecitationView({ progress, onSelectPage }: PageRecitationVie
         </div>
       </div>
 
-      {/* Page grid */}
-      <div className="grid grid-cols-5 sm:grid-cols-6 gap-2">
+      {/* Page grid - Mobile: 5x6 boxes, Desktop/Tablet: List */}
+      <div className="md:hidden grid grid-cols-5 gap-2">
         {pages.map((pageNum, i) => {
           const prog = getProgress(pageNum);
           const isCompleted = !!prog?.completedAt;
@@ -154,6 +163,54 @@ export function PageRecitationView({ progress, onSelectPage }: PageRecitationVie
               title={`Page ${pageNum} · ${getPageLabel(pageNum)}`}
             >
               {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5" /> : pageNum}
+            </motion.button>
+          );
+        })}
+      </div>
+
+      {/* Page list - Desktop/Tablet */}
+      <div className="hidden md:block space-y-2">
+        {pages.map((pageNum, i) => {
+          const prog = getProgress(pageNum);
+          const isCompleted = !!prog?.completedAt;
+          const isInProgress = prog && !isCompleted;
+
+          return (
+            <motion.button
+              key={pageNum}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.012 }}
+              onClick={() => onSelectPage(pageNum)}
+              className={cn(
+                'w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-200',
+                isCompleted
+                  ? 'bg-primary/10 border-primary/40 text-primary'
+                  : isInProgress
+                    ? 'bg-primary/5 border-primary/20 text-foreground'
+                    : 'bg-card border-border text-foreground hover:border-primary/30 hover:bg-secondary'
+              )}
+            >
+              <div
+                className={cn(
+                  'w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0',
+                  isCompleted
+                    ? 'bg-primary text-primary-foreground'
+                    : isInProgress
+                      ? 'bg-primary/15 text-primary'
+                      : 'bg-secondary text-muted-foreground'
+                )}
+              >
+                {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : pageNum}
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-semibold">Page {pageNum}</p>
+                <p className="text-xs text-muted-foreground">{getPageLabel(pageNum)}</p>
+              </div>
+              {isCompleted && <span className="text-xs font-medium text-primary">Completed</span>}
+              {isInProgress && (
+                <span className="text-xs font-medium text-muted-foreground">In progress</span>
+              )}
             </motion.button>
           );
         })}

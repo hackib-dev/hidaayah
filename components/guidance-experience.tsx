@@ -289,7 +289,7 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 rounded-2xl bg-linear-to-r from-secondary to-muted border border-border"
+          className="p-4 rounded-2xl bg-gradient-to-r from-secondary to-muted border border-border"
         >
           <p className="text-sm text-muted-foreground">
             <span className="font-bold text-foreground">You shared: </span>
@@ -302,7 +302,7 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
 
       {/* Main Verse Card */}
       <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
-        <div className="h-1.5 bg-linear-to-r from-primary via-teal to-accent" />
+        <div className="h-1.5 bg-gradient-to-r from-primary via-teal to-accent" />
 
         <div className="p-5 md:p-6 space-y-5">
           <div className="flex items-center justify-between">
@@ -320,7 +320,7 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
           {/* Translation (shown while Arabic loads) */}
           <div
             className={cn(
-              'py-6 px-5 rounded-2xl bg-linear-to-br border border-primary/10',
+              'py-6 px-5 rounded-2xl bg-gradient-to-br border border-primary/10',
               guidance.color
             )}
           >
@@ -514,7 +514,7 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
               className={cn(
                 'flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold transition-all duration-200 text-sm',
                 reflection.trim() && !savingReflection
-                  ? 'bg-linear-to-r from-primary to-teal text-white shadow-sm hover:opacity-90'
+                  ? 'bg-gradient-to-r from-primary to-teal text-white shadow-sm hover:opacity-90'
                   : 'bg-muted text-muted-foreground cursor-not-allowed'
               )}
             >
@@ -614,7 +614,7 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
       </div>
 
       {/* CTA */}
-      <div className="p-5 rounded-2xl bg-linear-to-br from-teal-muted to-violet-muted border border-primary/15 space-y-3 shadow-sm">
+      <div className="p-5 rounded-2xl bg-gradient-to-br from-teal-muted to-violet-muted border border-primary/15 space-y-3 shadow-sm">
         <h3 className="font-bold text-foreground text-sm">Keep the Connection</h3>
         <p className="text-sm text-muted-foreground">
           Let this guidance sink in. Consider exploring more verses on similar themes.
@@ -623,7 +623,7 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
           <motion.div whileTap={{ scale: 0.95 }}>
             <Link
               href="/dashboard/collections"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-linear-to-r from-primary to-teal text-white font-semibold transition-all text-sm shadow-sm hover:opacity-90"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary to-teal text-white font-semibold transition-all text-sm shadow-sm hover:opacity-90"
             >
               <BookOpen className="w-4 h-4" />
               <span>Explore Collections</span>

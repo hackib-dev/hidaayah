@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { Play, Pause, Bookmark, Share2, ChevronRight } from 'lucide-react';
+import { Play, Pause, Bookmark, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { VerseShare } from './verse-share';
+import { recordGardenActivity } from '@/lib/gardenTracking';
 
 interface VerseCardProps {
   surah: string;
@@ -13,9 +15,12 @@ interface VerseCardProps {
   translation: string;
   theme?: string;
   surahNumber?: number;
+  audioUrl?: string;
   isBookmarked?: boolean;
   onBookmark?: () => void;
   className?: string;
+  playingVerseKey?: string | null;
+  onPlayToggle?: (verseKey: string, audioUrl: string) => void;
 }
 
 const themeColors: Record<string, string> = {
@@ -34,16 +39,30 @@ export function VerseCard({
   arabicText = 'لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا',
   translation = 'Allah does not burden a soul beyond that it can bear.',
   theme = 'patience',
+  surahNumber = 2,
+  audioUrl,
   isBookmarked = false,
   onBookmark,
+  playingVerseKey,
+  onPlayToggle,
   className
 }: Partial<VerseCardProps>) {
-  const [isPlaying, setIsPlaying] = useState(false);
   const [bookmarked, setBookmarked] = useState(isBookmarked);
+  const verseKey = `${surahNumber}:${ayah}`;
+  const isPlaying = playingVerseKey === verseKey;
 
   const handleBookmark = () => {
     setBookmarked(!bookmarked);
     onBookmark?.();
+  };
+
+  const handlePlayToggle = () => {
+    if (audioUrl && onPlayToggle) {
+      onPlayToggle(verseKey, audioUrl);
+      if (!isPlaying) {
+        recordGardenActivity('audio_listen', { verseKey, surahName: surah });
+      }
+    }
   };
 
   const themeColor = themeColors[theme || 'default'] || themeColors.default;
@@ -90,12 +109,12 @@ export function VerseCard({
             >
               <Bookmark className={cn('w-4 h-4', bookmarked && 'fill-current')} />
             </motion.button>
-            <motion.button
-              whileTap={{ scale: 0.88 }}
-              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-            >
-              <Share2 className="w-4 h-4" />
-            </motion.button>
+            <VerseShare
+              verseKey={verseKey}
+              arabicText={arabicText}
+              translation={translation}
+              surahName={surah}
+            />
           </div>
         </div>
 
@@ -115,19 +134,21 @@ export function VerseCard({
         </p>
 
         <div className="flex items-center justify-center gap-3 pt-1">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setIsPlaying(!isPlaying)}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 text-sm font-semibold',
-              isPlaying
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-            )}
-          >
-            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-            <span>{isPlaying ? 'Pause' : 'Listen'}</span>
-          </motion.button>
+          {audioUrl && (
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={handlePlayToggle}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 text-sm font-semibold',
+                isPlaying
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+              )}
+            >
+              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              <span>{isPlaying ? 'Pause' : 'Listen'}</span>
+            </motion.button>
+          )}
           <motion.div whileTap={{ scale: 0.95 }}>
             <Link
               href={`/dashboard/guidance?surah=${surah}&ayah=${ayah}`}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Navigation } from '@/components/navigation';
 import { QuranReader } from '@/components/quran-reader';
 import { MushafPageView } from '@/components/mushaf-page-view';
@@ -10,32 +10,15 @@ import { RecitationFormatSelector } from '@/components/recitation-format-selecto
 import { JuzRecitationView } from '@/components/recitation-juz-view';
 import { HizbRecitationView } from '@/components/recitation-hizb-view';
 import { PageRecitationView } from '@/components/recitation-page-view';
-import { ChevronLeft, BookText, AlignJustify, BookOpen } from 'lucide-react';
+import { ChevronLeft, ChevronRight, BookText, AlignJustify, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchChapter } from '@/app/(app)/dashboard/quran/queries';
 import type { Chapter } from '@/app/(app)/dashboard/quran/types';
-import type { RecitationFormat, RecitationProgress } from '@/types/recitation';
-
-const PROGRESS_KEY = 'hidaayah_recitation_progress';
-
-function loadProgress(): RecitationProgress[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    return JSON.parse(localStorage.getItem(PROGRESS_KEY) ?? '[]');
-  } catch {
-    return [];
-  }
-}
-
-function saveProgress(progress: RecitationProgress[]) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
-}
+import type { RecitationFormat } from '@/types/recitation';
 
 export default function QuranPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   const [format, setFormat] = useState<RecitationFormat>('surah');
   const [selectedSurah, setSelectedSurah] = useState<number | null>(null);
@@ -43,12 +26,6 @@ export default function QuranPage() {
   const [view, setView] = useState<'list' | 'reader'>('list');
   const [readerMode, setReaderMode] = useState<'translation' | 'mushaf'>('translation');
   const [chapterInfo, setChapterInfo] = useState<Chapter | null>(null);
-  const [progress, setProgress] = useState<RecitationProgress[]>([]);
-
-  // Load persisted progress
-  useEffect(() => {
-    setProgress(loadProgress());
-  }, []);
 
   // Open directly to surah/verse if provided via query params
   useEffect(() => {
@@ -104,113 +81,19 @@ export default function QuranPage() {
   // ─── Juz handlers ──────────────────────────────────────────────────────────
   const handleSelectJuz = (juzNumber: number, verseKey: string) => {
     const [chapter, verse] = verseKey.split(':');
-    const surahNum = parseInt(chapter, 10);
-    const verseNum = parseInt(verse, 10);
-
-    setProgress((prev) => {
-      const existing = prev.find((p) => p.format === 'juz' && p.unitNumber === juzNumber);
-      const updated: RecitationProgress = existing
-        ? { ...existing, lastReadAt: new Date().toISOString() }
-        : {
-            format: 'juz',
-            unitNumber: juzNumber,
-            verseFrom: verseKey,
-            lastReadAt: new Date().toISOString(),
-            percentComplete: 0
-          };
-      const next = existing
-        ? prev.map((p) => (p.format === 'juz' && p.unitNumber === juzNumber ? updated : p))
-        : [...prev, updated];
-      saveProgress(next);
-      return next;
-    });
-
-    openReader(surahNum, verseNum);
+    openReader(parseInt(chapter, 10), parseInt(verse, 10));
   };
 
-  const handleMarkJuzComplete = (juzNumber: number) => {
-    setProgress((prev) => {
-      const next = prev.map((p) =>
-        p.format === 'juz' && p.unitNumber === juzNumber
-          ? { ...p, completedAt: new Date().toISOString(), percentComplete: 1 }
-          : p
-      );
-      saveProgress(next);
-      return next;
-    });
-  };
-
-  // ─── Hizb handlers ─────────────────────────────────────────────────────────
   const handleSelectHizb = (hizbNumber: number, verseKey: string) => {
     const [chapter, verse] = verseKey.split(':');
-    const surahNum = parseInt(chapter, 10);
-    const verseNum = parseInt(verse, 10);
-
-    setProgress((prev) => {
-      const existing = prev.find((p) => p.format === 'hizb' && p.unitNumber === hizbNumber);
-      const updated: RecitationProgress = existing
-        ? { ...existing, lastReadAt: new Date().toISOString() }
-        : {
-            format: 'hizb',
-            unitNumber: hizbNumber,
-            verseFrom: verseKey,
-            lastReadAt: new Date().toISOString(),
-            percentComplete: 0
-          };
-      const next = existing
-        ? prev.map((p) => (p.format === 'hizb' && p.unitNumber === hizbNumber ? updated : p))
-        : [...prev, updated];
-      saveProgress(next);
-      return next;
-    });
-
-    openReader(surahNum, verseNum);
+    openReader(parseInt(chapter, 10), parseInt(verse, 10));
   };
 
-  const handleMarkHizbComplete = (hizbNumber: number) => {
-    setProgress((prev) => {
-      const next = prev.map((p) =>
-        p.format === 'hizb' && p.unitNumber === hizbNumber
-          ? { ...p, completedAt: new Date().toISOString(), percentComplete: 1 }
-          : p
-      );
-      saveProgress(next);
-      return next;
-    });
-  };
-
-  // ─── Page handlers ─────────────────────────────────────────────────────────
   const handleSelectPage = (pageNumber: number) => {
-    setProgress((prev) => {
-      const existing = prev.find((p) => p.format === 'page' && p.unitNumber === pageNumber);
-      const updated: RecitationProgress = existing
-        ? { ...existing, lastReadAt: new Date().toISOString() }
-        : {
-            format: 'page',
-            unitNumber: pageNumber,
-            lastReadAt: new Date().toISOString(),
-            percentComplete: 0
-          };
-      const next = existing
-        ? prev.map((p) => (p.format === 'page' && p.unitNumber === pageNumber ? updated : p))
-        : [...prev, updated];
-      saveProgress(next);
-      return next;
-    });
-
-    router.push(`/dashboard/quran?page=${pageNumber}`);
-  };
-
-  const handleMarkPageComplete = (pageNumber: number) => {
-    setProgress((prev) => {
-      const next = prev.map((p) =>
-        p.format === 'page' && p.unitNumber === pageNumber
-          ? { ...p, completedAt: new Date().toISOString(), percentComplete: 1 }
-          : p
-      );
-      saveProgress(next);
-      return next;
-    });
+    // For page selection, we need to find which surah starts on or before this page
+    // This is a simplified approach - in a real app you'd have page-to-surah mapping
+    const estimatedSurah = Math.max(1, Math.min(114, Math.floor(pageNumber / 5.3) + 1));
+    openReader(estimatedSurah);
   };
 
   return (
@@ -269,11 +152,7 @@ export default function QuranPage() {
                       exit={{ opacity: 0, y: -8 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <JuzRecitationView
-                        progress={progress}
-                        onSelectJuz={handleSelectJuz}
-                        onMarkComplete={handleMarkJuzComplete}
-                      />
+                      <JuzRecitationView onSelectJuz={handleSelectJuz} />
                     </motion.div>
                   )}
 
@@ -285,11 +164,7 @@ export default function QuranPage() {
                       exit={{ opacity: 0, y: -8 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <HizbRecitationView
-                        progress={progress}
-                        onSelectHizb={handleSelectHizb}
-                        onMarkComplete={handleMarkHizbComplete}
-                      />
+                      <HizbRecitationView onSelectHizb={handleSelectHizb} />
                     </motion.div>
                   )}
 
@@ -301,11 +176,7 @@ export default function QuranPage() {
                       exit={{ opacity: 0, y: -8 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <PageRecitationView
-                        progress={progress}
-                        onSelectPage={handleSelectPage}
-                        onMarkComplete={handleMarkPageComplete}
-                      />
+                      <PageRecitationView progress={[]} onSelectPage={handleSelectPage} />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -320,22 +191,48 @@ export default function QuranPage() {
                 className="py-4"
               >
                 <div className="flex items-center justify-between mb-4">
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleBack}
-                    className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors touch-target font-semibold"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    <span>
-                      {format === 'surah'
-                        ? 'All Surahs'
-                        : format === 'juz'
-                          ? 'All Juz'
-                          : format === 'hizb'
-                            ? 'All Hizb'
-                            : 'All Pages'}
-                    </span>
-                  </motion.button>
+                  <div className="flex items-center gap-2">
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleBack}
+                      className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors touch-target font-semibold"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <span>
+                        {format === 'surah'
+                          ? 'All Surahs'
+                          : format === 'juz'
+                            ? 'All Juz'
+                            : format === 'hizb'
+                              ? 'All Hizb'
+                              : 'All Pages'}
+                      </span>
+                    </motion.button>
+
+                    {/* Prev / Next surah */}
+                    {selectedSurah && (
+                      <div className="flex items-center gap-1 ml-1">
+                        <motion.button
+                          whileTap={{ scale: 0.9 }}
+                          disabled={selectedSurah <= 1}
+                          onClick={() => openReader(selectedSurah - 1)}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          title="Previous surah"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </motion.button>
+                        <motion.button
+                          whileTap={{ scale: 0.9 }}
+                          disabled={selectedSurah >= 114}
+                          onClick={() => openReader(selectedSurah + 1)}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          title="Next surah"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </motion.button>
+                      </div>
+                    )}
+                  </div>
 
                   {/* View mode toggle */}
                   <div className="flex items-center gap-1 p-1 rounded-xl bg-secondary">
