@@ -606,7 +606,12 @@ export default function ProfilePage() {
               >
                 {'href' in stat ? (
                   <Link href={(stat as { href: string }).href} className="block">
-                    <div className={cn('w-7 h-7 rounded-xl mx-auto flex items-center justify-center mb-1.5 bg-white/50', stat.iconColor)}>
+                    <div
+                      className={cn(
+                        'w-7 h-7 rounded-xl mx-auto flex items-center justify-center mb-1.5 bg-white/50',
+                        stat.iconColor
+                      )}
+                    >
                       <stat.icon className="w-3.5 h-3.5" />
                     </div>
                     {stat.isLoading ? (
@@ -618,7 +623,12 @@ export default function ProfilePage() {
                   </Link>
                 ) : (
                   <>
-                    <div className={cn('w-7 h-7 rounded-xl mx-auto flex items-center justify-center mb-1.5 bg-white/50', stat.iconColor)}>
+                    <div
+                      className={cn(
+                        'w-7 h-7 rounded-xl mx-auto flex items-center justify-center mb-1.5 bg-white/50',
+                        stat.iconColor
+                      )}
+                    >
                       <stat.icon className="w-3.5 h-3.5" />
                     </div>
                     {stat.isLoading ? (

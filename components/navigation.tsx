@@ -27,7 +27,7 @@ export function Navigation() {
     { href: '/dashboard/circles', label: 'Circles', icon: Users },
     { href: '/dashboard/reflections', label: 'Journal', icon: BookOpen },
     { href: '/dashboard/bookmarks', label: 'Saved', icon: Bookmark },
-    { href: '/dashboard/garden', label: 'Garden', icon: Leaf },
+    { href: '/dashboard/garden', label: 'Garden', icon: Leaf }
   ];
 
   return (
