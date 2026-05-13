@@ -323,10 +323,12 @@ export const createComment = async (params: {
   parentId?: number;
   isPrivate?: boolean;
 }): Promise<{ success: boolean; comment: Comment }> => {
-  const response = await reflectApi.post<{ success: boolean; comment: Comment }>('/v1/comments', {
-    comment: { ...params, postId: String(params.postId), mentions: [] }
-  });
-  return response.data;
+  const response = await reflectApi.post<{ success: boolean; comment?: Comment; data?: Comment }>(
+    '/v1/comments',
+    { comment: { ...params, postId: String(params.postId), mentions: [] } }
+  );
+  const comment = (response.data.comment ?? response.data.data) as Comment;
+  return { success: response.data.success, comment };
 };
 
 // GET /v1/comments/:id/delete  — despite the name, this is a GET per the API spec
