@@ -167,6 +167,11 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
   const [reciters, setReciters] = useState<Reciter[]>([]);
   const [selectedReciterId, setSelectedReciterId] = useState(QF_DEFAULT_RECITER_ID);
   const [loadingAudio, setLoadingAudio] = useState(false);
+  // When audio finishes the last verse on a page, we want to auto-advance to the
+  // next page and continue playing. We keep isPlaying=true across the page turn
+  // and stash the first verse key of the incoming page here so the audio effect
+  // can start it as soon as audioFiles is populated.
+  const pendingPlayRef = useRef<string | null>(null);
   const [juzs, setJuzs] = useState<Juz[]>([]);
   const [hizbs, setHizbs] = useState<Hizb[]>([]);
   const [selectedJuz, setSelectedJuz] = useState<number | ''>('');
@@ -242,8 +247,11 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
     setLoading(true);
     setFontReady(false);
     setVerses([]);
-    setIsPlaying(false);
-    setCurrentVerseKey(null);
+    // Only reset playback when not mid-page-turn (pendingPlayRef keeps us playing)
+    if (!pendingPlayRef.current) {
+      setIsPlaying(false);
+      setCurrentVerseKey(null);
+    }
 
     fetchVersesByPage(page)
       .then(async (res) => {
@@ -294,7 +302,16 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
     Promise.all(surahNums.map((s) => fetchVerseAudioFiles(selectedReciterId, s).catch(() => [])))
       .then((all) => {
         const pageVerseKeys = new Set(verses.map((v) => v.verse_key));
-        setAudioFiles(all.flat().filter((a) => pageVerseKeys.has(a.verse_key)));
+        const files = all.flat().filter((a) => pageVerseKeys.has(a.verse_key));
+        setAudioFiles(files);
+        // If we turned the page while playing, start the first verse automatically
+        if (pendingPlayRef.current && files.length > 0) {
+          const target = files.find((f) => f.verse_key === pendingPlayRef.current) ?? files[0];
+          pendingPlayRef.current = null;
+          setCurrentVerseKey(target.verse_key);
+          setActiveVerseKey(target.verse_key);
+          // isPlaying is already true — the sync effect will pick up the new currentVerseKey
+        }
       })
       .catch(() => null)
       .finally(() => setLoadingAudio(false));
@@ -307,7 +324,9 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
     audio.muted = isMuted;
     const file = audioFiles.find((a) => a.verse_key === currentVerseKey);
     if (!file) {
-      audio.pause();
+      // Don't pause during a page-turn — audio will resume once the new page's
+      // audioFiles loads and pendingPlayRef triggers setCurrentVerseKey.
+      if (!pendingPlayRef.current) audio.pause();
       return;
     }
     if (audio.src !== file.url) {
@@ -334,12 +353,19 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
   };
 
   const handleVerseEnd = () => {
-    // Auto-advance to next verse on page
     const idx = audioFiles.findIndex((a) => a.verse_key === currentVerseKey);
     if (idx >= 0 && idx < audioFiles.length - 1) {
+      // More verses on this page — advance normally
       const next = audioFiles[idx + 1].verse_key;
       setCurrentVerseKey(next);
       setActiveVerseKey(next);
+    } else if (page < TOTAL_PAGES) {
+      // Last verse on page — turn to the next page while keeping isPlaying=true.
+      // The first verse key of the new page will be set once audioFiles loads via pendingPlayRef.
+      pendingPlayRef.current = '__first__';
+      setCurrentVerseKey(null);
+      setActiveVerseKey(null);
+      goTo(page + 1);
     } else {
       setIsPlaying(false);
     }

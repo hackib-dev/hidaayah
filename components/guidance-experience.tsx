@@ -399,8 +399,10 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
             <motion.button
               whileTap={{ scale: 0.88 }}
               onClick={handleBookmark}
+              aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark this verse'}
+              aria-pressed={isBookmarked}
               className={cn(
-                'p-2.5 rounded-xl transition-all duration-200',
+                'p-2.5 rounded-xl transition-all duration-200 focus-ring',
                 isBookmarked
                   ? 'bg-gold-muted text-accent'
                   : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
@@ -411,7 +413,8 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
 
             <motion.button
               whileTap={{ scale: 0.88 }}
-              className="p-2.5 rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+              aria-label="Share this verse"
+              className="p-2.5 rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors focus-ring"
             >
               <Share2 className="w-5 h-5" />
             </motion.button>

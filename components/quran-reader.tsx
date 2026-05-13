@@ -677,7 +677,8 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
                 setIsPlaying(true);
               }}
               disabled={currentVerseIndex === 0}
-              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40"
+              aria-label="Previous verse"
+              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40 focus-ring"
             >
               <SkipBack className="w-4 h-4" />
             </motion.button>
@@ -685,8 +686,9 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
               whileTap={{ scale: 0.9 }}
               onClick={() => setIsPlaying((p) => !p)}
               disabled={loadingAudio}
+              aria-label={isPlaying ? 'Pause recitation' : 'Play recitation'}
               className={cn(
-                'p-3 rounded-xl transition-all duration-200',
+                'p-3 rounded-xl transition-all duration-200 focus-ring',
                 isPlaying
                   ? 'bg-linear-to-br from-primary to-teal text-white shadow-sm'
                   : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
@@ -708,7 +710,8 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
                 setIsPlaying(true);
               }}
               disabled={currentVerseIndex >= verseAudioFiles.length - 1}
-              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40"
+              aria-label="Next verse"
+              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40 focus-ring"
             >
               <SkipForward className="w-4 h-4" />
             </motion.button>
@@ -725,15 +728,18 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
             <motion.button
               whileTap={{ scale: 0.88 }}
               onClick={() => setIsMuted((m) => !m)}
-              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              aria-label={isMuted ? 'Unmute audio' : 'Mute audio'}
+              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors focus-ring"
             >
               {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.88 }}
               onClick={() => setShowSettings((s) => !s)}
+              aria-label={showSettings ? 'Hide settings' : 'Show settings'}
+              aria-expanded={showSettings}
               className={cn(
-                'p-2 rounded-xl transition-colors',
+                'p-2 rounded-xl transition-colors focus-ring',
                 showSettings
                   ? 'bg-primary/10 text-primary'
                   : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
@@ -960,8 +966,14 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
                   <motion.button
                     whileTap={{ scale: 0.88 }}
                     onClick={() => toggleBookmark(verse)}
+                    aria-label={
+                      isBookmarked
+                        ? `Remove bookmark from verse ${verse.verse_number}`
+                        : `Bookmark verse ${verse.verse_number}`
+                    }
+                    aria-pressed={isBookmarked}
                     className={cn(
-                      'p-2 rounded-xl transition-colors',
+                      'p-2 rounded-xl transition-colors focus-ring',
                       isBookmarked
                         ? 'text-accent bg-gold-muted'
                         : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
@@ -972,8 +984,14 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
                   <motion.button
                     whileTap={{ scale: 0.88 }}
                     onClick={() => toggleNotes(verseKey)}
+                    aria-label={
+                      notesOpen
+                        ? `Close notes for verse ${verse.verse_number}`
+                        : `Add note to verse ${verse.verse_number}`
+                    }
+                    aria-expanded={notesOpen}
                     className={cn(
-                      'p-2 rounded-xl transition-colors',
+                      'p-2 rounded-xl transition-colors focus-ring',
                       notesOpen
                         ? 'bg-primary/10 text-primary'
                         : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
@@ -984,8 +1002,9 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
                   <motion.button
                     whileTap={{ scale: 0.88 }}
                     onClick={() => handlePlayVerse(verse.verse_number)}
+                    aria-label={`Play verse ${verse.verse_number}`}
                     className={cn(
-                      'p-2 rounded-xl transition-colors',
+                      'p-2 rounded-xl transition-colors focus-ring',
                       isActive
                         ? 'bg-primary text-primary-foreground'
                         : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
@@ -995,7 +1014,8 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
                   </motion.button>
                   <motion.button
                     whileTap={{ scale: 0.88 }}
-                    className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                    aria-label={`Share verse ${verse.verse_number}`}
+                    className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors focus-ring"
                   >
                     <Share2 className="w-4 h-4" />
                   </motion.button>
