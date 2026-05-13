@@ -235,6 +235,36 @@ export const fetchMyRooms = async (
   return response.data;
 };
 
+// ─── Preferences ─────────────────────────────────────────────────────────────
+
+export type QFPreferences = {
+  quranReaderStyles?: {
+    quranTextFontScale?: number;
+    quranFont?: string;
+  };
+  audio?: {
+    reciter?: number;
+  };
+  reading?: {
+    selectedWordByWordLocale?: string;
+  };
+};
+
+export const getPreferences = async (): Promise<{ success: boolean; data: QFPreferences }> => {
+  const response = await userApi.get<{ success: boolean; data: QFPreferences }>('/v1/preferences');
+  return response.data;
+};
+
+export const savePreferencesBulk = async (
+  prefs: QFPreferences,
+  mushafId = 1
+): Promise<{ success: boolean }> => {
+  const response = await userApi.post<{ success: boolean }>('/v1/preferences/bulk', prefs, {
+    params: { mushafId }
+  });
+  return response.data;
+};
+
 // GET /v1/users/search — search users by name/username
 export const searchUsers = async (
   params: {

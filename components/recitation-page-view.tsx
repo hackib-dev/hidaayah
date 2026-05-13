@@ -1,30 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, BookOpen, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { fetchPages, fetchChapters } from '@/app/(app)/dashboard/quran/queries';
-import type { RecitationProgress } from '@/types/recitation';
 
 const PAGE_COUNT = 604;
-const PAGES_PER_VIEW = 30;
 
 interface PageRecitationViewProps {
-  progress: RecitationProgress[];
   onSelectPage: (pageNumber: number) => void;
-  onTogglePage: (pageNumber: number) => void;
-  onMarkComplete?: (pageNumber: number) => void;
 }
 
-export function PageRecitationView({
-  progress,
-  onSelectPage,
-  onTogglePage
-}: PageRecitationViewProps) {
-  const [currentChunk, setCurrentChunk] = useState(0);
+export function PageRecitationView({ onSelectPage }: PageRecitationViewProps) {
   const [pageLabels, setPageLabels] = useState<Map<number, string>>(new Map());
   const [loadingLabels, setLoadingLabels] = useState(true);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     Promise.all([fetchPages(), fetchChapters()])
@@ -44,146 +35,104 @@ export function PageRecitationView({
       .finally(() => setLoadingLabels(false));
   }, []);
 
-  const getPageLabel = (page: number): string => pageLabels.get(page) ?? '';
+  const allPages = useMemo(() => Array.from({ length: PAGE_COUNT }, (_, i) => i + 1), []);
 
-  const totalChunks = Math.ceil(PAGE_COUNT / PAGES_PER_VIEW);
-  const getProgress = (pageNum: number) =>
-    progress.find((p) => p.format === 'page' && p.unitNumber === pageNum);
-  const completedCount = progress.filter((p) => p.format === 'page' && p.completedAt).length;
+  const filteredPages = useMemo(() => {
+    const q = search.trim();
+    if (!q) return allPages;
+    const num = parseInt(q, 10);
+    if (!isNaN(num)) return allPages.filter((p) => p === num);
+    const lower = q.toLowerCase();
+    return allPages.filter((p) => (pageLabels.get(p) ?? '').toLowerCase().includes(lower));
+  }, [search, allPages, pageLabels]);
 
-  const startPage = currentChunk * PAGES_PER_VIEW + 1;
-  const endPage = Math.min(startPage + PAGES_PER_VIEW - 1, PAGE_COUNT);
-  const pages = Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i);
-
-  const lastRead = progress
-    .filter((p) => p.format === 'page')
-    .sort((a, b) => new Date(b.lastReadAt).getTime() - new Date(a.lastReadAt).getTime())[0];
+  // Group filtered pages by surah label for better scanning
+  const juzGroups = useMemo(() => {
+    const groups: { label: string; pages: number[] }[] = [];
+    let current: { label: string; pages: number[] } | null = null;
+    for (const p of filteredPages) {
+      const label = pageLabels.get(p) ?? '';
+      if (!current || current.label !== label) {
+        current = { label, pages: [p] };
+        groups.push(current);
+      } else {
+        current.pages.push(p);
+      }
+    }
+    return groups;
+  }, [filteredPages, pageLabels]);
 
   return (
     <div className="space-y-4">
-      {/* Progress summary + resume */}
-      <div className="p-4 rounded-2xl bg-card border border-border space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-semibold text-foreground">Page Progress</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {completedCount} of {PAGE_COUNT} pages read
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-24 h-2 rounded-full bg-secondary overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${(completedCount / PAGE_COUNT) * 100}%` }}
-                transition={{ duration: 0.6, ease: 'easeOut' }}
-                className="h-full bg-primary rounded-full"
-              />
-            </div>
-            <span className="text-xs font-bold text-primary">
-              {Math.round((completedCount / PAGE_COUNT) * 100)}%
-            </span>
-          </div>
-        </div>
-
-        {lastRead && (
-          <button
-            onClick={() => onSelectPage(lastRead.unitNumber)}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-primary/8 border border-primary/20 hover:bg-primary/12 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-primary" />
-              <div className="text-left">
-                <p className="text-xs font-semibold text-primary">Resume reading</p>
-                <p className="text-[10px] text-muted-foreground">
-                  Page {lastRead.unitNumber}
-                  {getPageLabel(lastRead.unitNumber)
-                    ? ` · ${getPageLabel(lastRead.unitNumber)}`
-                    : ''}
-                </p>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-primary" />
-          </button>
-        )}
-      </div>
-
-      {/* Page range navigation */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          Pages {startPage}–{endPage}
-        </p>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setCurrentChunk((c) => Math.max(0, c - 1))}
-            disabled={currentChunk === 0}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <span className="text-xs text-muted-foreground px-1">
-            {currentChunk + 1} / {totalChunks}
-          </span>
-          <button
-            onClick={() => setCurrentChunk((c) => Math.min(totalChunks - 1, c + 1))}
-            disabled={currentChunk === totalChunks - 1}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Jump to page number or surah name…"
+          className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-card border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow"
+        />
       </div>
 
       {loadingLabels ? (
-        <div className="flex items-center justify-center py-8">
+        <div className="flex items-center justify-center py-12">
           <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
         </div>
+      ) : filteredPages.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-10">No pages found.</p>
+      ) : search.trim() ? (
+        // Flat grid when searching
+        <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5">
+          {filteredPages.map((pageNum) => (
+            <button
+              key={pageNum}
+              onClick={() => onSelectPage(pageNum)}
+              title={
+                pageLabels.get(pageNum)
+                  ? `${pageLabels.get(pageNum)} · Page ${pageNum}`
+                  : `Page ${pageNum}`
+              }
+              className="aspect-square rounded-lg bg-card border border-border hover:border-primary/40 hover:bg-primary/5 flex items-center justify-center text-xs font-semibold text-foreground transition-all"
+            >
+              {pageNum}
+            </button>
+          ))}
+        </div>
       ) : (
-        <div className="grid grid-cols-5 sm:grid-cols-6 gap-2">
-          {pages.map((pageNum, i) => {
-            const prog = getProgress(pageNum);
-            const isCompleted = !!prog?.completedAt;
-            const isInProgress = prog && !isCompleted;
-            const label = getPageLabel(pageNum);
-
-            return (
-              <motion.button
-                key={pageNum}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.008 }}
-                onClick={() => onTogglePage(pageNum)}
-                className={cn(
-                  'aspect-square rounded-xl flex flex-col items-center justify-center gap-0.5 border text-xs font-semibold transition-all duration-200',
-                  isCompleted
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : isInProgress
-                      ? 'bg-primary/15 text-primary border-primary/40'
-                      : 'bg-card text-muted-foreground border-border hover:border-primary/30 hover:text-foreground'
-                )}
-                title={label ? `Page ${pageNum} · ${label}` : `Page ${pageNum}`}
-              >
-                {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5" /> : pageNum}
-              </motion.button>
-            );
-          })}
+        // Grouped by surah when not searching
+        <div className="space-y-4">
+          {juzGroups.map((group, gi) => (
+            <motion.div
+              key={gi}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: gi * 0.01 }}
+            >
+              {group.label && (
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5 px-0.5">
+                  {group.label}
+                </p>
+              )}
+              <div className="grid grid-cols-8 sm:grid-cols-10 gap-1.5">
+                {group.pages.map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    onClick={() => onSelectPage(pageNum)}
+                    title={`Page ${pageNum}`}
+                    className={cn(
+                      'aspect-square rounded-lg border flex items-center justify-center text-xs font-semibold transition-all',
+                      'bg-card border-border text-muted-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-foreground'
+                    )}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          ))}
         </div>
       )}
-
-      {/* Legend */}
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-primary" />
-          <span>Completed</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-primary/15 border border-primary/40" />
-          <span>In progress</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-card border border-border" />
-          <span>Not started</span>
-        </div>
-      </div>
     </div>
   );
 }

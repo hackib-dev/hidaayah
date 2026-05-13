@@ -20,23 +20,7 @@ import {
   fetchPageForVerseKey
 } from '@/app/(app)/dashboard/quran/queries';
 import type { Chapter, Juz, Hizb } from '@/app/(app)/dashboard/quran/types';
-import type { RecitationFormat, RecitationProgress } from '@/types/recitation';
-
-const PROGRESS_KEY = 'hidaayah_recitation_progress';
-
-function loadProgress(): RecitationProgress[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    return JSON.parse(localStorage.getItem(PROGRESS_KEY) ?? '[]');
-  } catch {
-    return [];
-  }
-}
-
-function saveProgress(progress: RecitationProgress[]) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
-}
+import type { RecitationFormat } from '@/types/recitation';
 
 export default function QuranPage() {
   const searchParams = useSearchParams();
@@ -48,18 +32,12 @@ export default function QuranPage() {
   const [readerMode, setReaderMode] = useState<'translation' | 'mushaf'>('mushaf');
   const [chapterInfo, setChapterInfo] = useState<Chapter | null>(null);
   const [selectedPage, setSelectedPage] = useState<number | null>(null);
-  const [progress, setProgress] = useState<RecitationProgress[]>([]);
   const [juzs, setJuzs] = useState<Juz[]>([]);
   const [hizbs, setHizbs] = useState<Hizb[]>([]);
   const [selectedJump, setSelectedJump] = useState<{ juz: number | ''; hizb: number | '' }>({
     juz: '',
     hizb: ''
   });
-
-  // Load persisted progress
-  useEffect(() => {
-    setProgress(loadProgress());
-  }, []);
 
   // Fetch juzs and hizbs for jump navigation
   useEffect(() => {
@@ -142,139 +120,22 @@ export default function QuranPage() {
   };
 
   // ─── Juz handlers ──────────────────────────────────────────────────────────
-  const handleSelectJuz = (juzNumber: number, verseKey: string) => {
+  const handleSelectJuz = (_juzNumber: number, verseKey: string) => {
     const [chapter, verse] = verseKey.split(':');
-    const surahNum = parseInt(chapter, 10);
-    const verseNum = parseInt(verse, 10);
-
-    setProgress((prev) => {
-      const existing = prev.find((p) => p.format === 'juz' && p.unitNumber === juzNumber);
-      const updated: RecitationProgress = existing
-        ? { ...existing, lastReadAt: new Date().toISOString() }
-        : {
-            format: 'juz',
-            unitNumber: juzNumber,
-            verseFrom: verseKey,
-            lastReadAt: new Date().toISOString(),
-            percentComplete: 0
-          };
-      const next = existing
-        ? prev.map((p) => (p.format === 'juz' && p.unitNumber === juzNumber ? updated : p))
-        : [...prev, updated];
-      saveProgress(next);
-      return next;
-    });
-
-    openReader(surahNum, verseNum);
-  };
-
-  const handleMarkJuzComplete = (juzNumber: number) => {
-    setProgress((prev) => {
-      const next = prev.map((p) =>
-        p.format === 'juz' && p.unitNumber === juzNumber
-          ? { ...p, completedAt: new Date().toISOString(), percentComplete: 1 }
-          : p
-      );
-      saveProgress(next);
-      return next;
-    });
+    openReader(parseInt(chapter, 10), parseInt(verse, 10));
   };
 
   // ─── Hizb handlers ─────────────────────────────────────────────────────────
-  const handleSelectHizb = (hizbNumber: number, verseKey: string) => {
+  const handleSelectHizb = (_hizbNumber: number, verseKey: string) => {
     const [chapter, verse] = verseKey.split(':');
-    const surahNum = parseInt(chapter, 10);
-    const verseNum = parseInt(verse, 10);
-
-    setProgress((prev) => {
-      const existing = prev.find((p) => p.format === 'hizb' && p.unitNumber === hizbNumber);
-      const updated: RecitationProgress = existing
-        ? { ...existing, lastReadAt: new Date().toISOString() }
-        : {
-            format: 'hizb',
-            unitNumber: hizbNumber,
-            verseFrom: verseKey,
-            lastReadAt: new Date().toISOString(),
-            percentComplete: 0
-          };
-      const next = existing
-        ? prev.map((p) => (p.format === 'hizb' && p.unitNumber === hizbNumber ? updated : p))
-        : [...prev, updated];
-      saveProgress(next);
-      return next;
-    });
-
-    openReader(surahNum, verseNum);
-  };
-
-  const handleMarkHizbComplete = (hizbNumber: number) => {
-    setProgress((prev) => {
-      const next = prev.map((p) =>
-        p.format === 'hizb' && p.unitNumber === hizbNumber
-          ? { ...p, completedAt: new Date().toISOString(), percentComplete: 1 }
-          : p
-      );
-      saveProgress(next);
-      return next;
-    });
+    openReader(parseInt(chapter, 10), parseInt(verse, 10));
   };
 
   // ─── Page handlers ─────────────────────────────────────────────────────────
   const handleSelectPage = (pageNumber: number) => {
-    setProgress((prev) => {
-      const existing = prev.find((p) => p.format === 'page' && p.unitNumber === pageNumber);
-      const updated: RecitationProgress = existing
-        ? { ...existing, lastReadAt: new Date().toISOString() }
-        : {
-            format: 'page',
-            unitNumber: pageNumber,
-            lastReadAt: new Date().toISOString(),
-            percentComplete: 0
-          };
-      const next = existing
-        ? prev.map((p) => (p.format === 'page' && p.unitNumber === pageNumber ? updated : p))
-        : [...prev, updated];
-      saveProgress(next);
-      return next;
-    });
-
     setSelectedPage(pageNumber);
     setReaderMode('mushaf');
     setView('reader');
-  };
-
-  const handleTogglePage = (pageNumber: number) => {
-    setProgress((prev) => {
-      const existing = prev.find((p) => p.format === 'page' && p.unitNumber === pageNumber);
-      // If already selected (in progress), deselect — remove it entirely
-      if (existing && !existing.completedAt) {
-        const next = prev.filter((p) => !(p.format === 'page' && p.unitNumber === pageNumber));
-        saveProgress(next);
-        return next;
-      }
-      // Not selected yet — add it as in-progress
-      const updated: RecitationProgress = {
-        format: 'page',
-        unitNumber: pageNumber,
-        lastReadAt: new Date().toISOString(),
-        percentComplete: 0
-      };
-      const next = [...prev, updated];
-      saveProgress(next);
-      return next;
-    });
-  };
-
-  const handleMarkPageComplete = (pageNumber: number) => {
-    setProgress((prev) => {
-      const next = prev.map((p) =>
-        p.format === 'page' && p.unitNumber === pageNumber
-          ? { ...p, completedAt: new Date().toISOString(), percentComplete: 1 }
-          : p
-      );
-      saveProgress(next);
-      return next;
-    });
   };
 
   return (
@@ -389,11 +250,7 @@ export default function QuranPage() {
                       exit={{ opacity: 0, y: -8 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <JuzRecitationView
-                        progress={progress}
-                        onSelectJuz={handleSelectJuz}
-                        onMarkComplete={handleMarkJuzComplete}
-                      />
+                      <JuzRecitationView onSelectJuz={handleSelectJuz} />
                     </motion.div>
                   )}
 
@@ -405,11 +262,7 @@ export default function QuranPage() {
                       exit={{ opacity: 0, y: -8 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <HizbRecitationView
-                        progress={progress}
-                        onSelectHizb={handleSelectHizb}
-                        onMarkComplete={handleMarkHizbComplete}
-                      />
+                      <HizbRecitationView onSelectHizb={handleSelectHizb} />
                     </motion.div>
                   )}
 
@@ -421,12 +274,7 @@ export default function QuranPage() {
                       exit={{ opacity: 0, y: -8 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <PageRecitationView
-                        progress={progress}
-                        onSelectPage={handleSelectPage}
-                        onTogglePage={handleTogglePage}
-                        onMarkComplete={handleMarkPageComplete}
-                      />
+                      <PageRecitationView onSelectPage={handleSelectPage} />
                     </motion.div>
                   )}
                 </AnimatePresence>

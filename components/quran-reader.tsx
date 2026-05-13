@@ -45,6 +45,7 @@ import {
   logActivityDay
 } from '@/app/(app)/dashboard/reflections/queries';
 import { contentApi } from '@/app/apiService/quranFoundationService';
+import { getPreferences, savePreferencesBulk } from '@/app/(app)/dashboard/profile/queries';
 import type { Verse, Word, Chapter, Reciter } from '@/app/(app)/dashboard/quran/types';
 import type { Note } from '@/app/(app)/dashboard/reflections/types';
 import type { TafsirEntry } from '@/app/(app)/dashboard/guidance/types';
@@ -138,9 +139,66 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const verseRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const prefsSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prefsLoadedRef = useRef(false);
 
   // Derived: current audio URL from verse list
   const audioUrl = verseAudioFiles[currentVerseIndex]?.url ?? null;
+
+  // Load persisted preferences once on mount
+  useEffect(() => {
+    getPreferences()
+      .then(({ data }) => {
+        if (data?.quranReaderStyles?.quranTextFontScale) {
+          setArabicSize(Math.min(5, Math.max(1, data.quranReaderStyles.quranTextFontScale)));
+        }
+        if (data?.quranReaderStyles?.quranFont) {
+          const fontMap: Record<string, QuranFont> = {
+            qpc_uthmani_hafs: 'qpc_hafs',
+            code_v2: 'qpc_hafs',
+            text_uthmani: 'uthmani',
+            text_indopak: 'indopak'
+          };
+          const mapped =
+            fontMap[data.quranReaderStyles.quranFont] ??
+            (data.quranReaderStyles.quranFont as QuranFont);
+          if (['qpc_hafs', 'uthmani', 'indopak'].includes(mapped)) setSelectedFont(mapped);
+        }
+        if (data?.audio?.reciter) {
+          setSelectedReciterId(data.audio.reciter);
+        }
+        prefsLoadedRef.current = true;
+      })
+      .catch(() => {
+        prefsLoadedRef.current = true;
+      });
+  }, []);
+
+  // Debounced save whenever settings change (skip until first load completes)
+  useEffect(() => {
+    if (!prefsLoadedRef.current) return;
+    if (prefsSaveRef.current) clearTimeout(prefsSaveRef.current);
+    prefsSaveRef.current = setTimeout(() => {
+      const fontApiMap: Record<QuranFont, string> = {
+        qpc_hafs: 'qpc_uthmani_hafs',
+        uthmani: 'text_uthmani',
+        indopak: 'text_indopak'
+      };
+      savePreferencesBulk(
+        {
+          quranReaderStyles: {
+            quranTextFontScale: arabicSize,
+            quranFont: fontApiMap[selectedFont]
+          },
+          audio: { reciter: selectedReciterId }
+        },
+        QF_DEFAULT_MUSHAF_ID
+      ).catch(() => null);
+    }, 800);
+    return () => {
+      if (prefsSaveRef.current) clearTimeout(prefsSaveRef.current);
+    };
+  }, [arabicSize, selectedFont, selectedReciterId]);
 
   // Fetch reciters list once
   useEffect(() => {
