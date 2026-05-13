@@ -15,7 +15,6 @@ import {
   Check,
   BookOpen,
   Lightbulb,
-  ArrowRight,
   Sparkles,
   Loader2
 } from 'lucide-react';
@@ -545,24 +544,6 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
               <span className="text-sm font-semibold">Reflection saved to your journal</span>
             </motion.div>
           )}
-        </div>
-      </div>
-
-      {/* Related Themes */}
-      <div className="space-y-3">
-        <h3 className="font-bold text-foreground text-sm">Continue Your Journey</h3>
-        <div className="flex flex-wrap gap-2">
-          {guidance.relatedThemes.map((theme) => (
-            <motion.div key={theme} whileTap={{ scale: 0.95 }}>
-              <Link
-                href={`/dashboard/collections/${theme}`}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors text-sm font-semibold"
-              >
-                <span className="capitalize">{theme}</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </motion.div>
-          ))}
         </div>
       </div>
 
