@@ -702,26 +702,27 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
 
         {/* Mushaf page — arrows overlaid on hover */}
         <div className="relative w-full group/page">
-          {/* Prev arrow */}
-          <button
-            onClick={() => goTo(page - 1)}
-            disabled={page <= 1}
-            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 w-9 h-9 rounded-full bg-background border border-border shadow flex items-center justify-center text-muted-foreground hover:text-foreground transition-all opacity-0 group-hover/page:opacity-100 disabled:opacity-0"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-          {/* Next arrow */}
+          {/* Next arrow (left = forward in RTL) */}
           <button
             onClick={() => goTo(page + 1)}
             disabled={page >= TOTAL_PAGES}
-            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 w-9 h-9 rounded-full bg-background border border-border shadow flex items-center justify-center text-muted-foreground hover:text-foreground transition-all opacity-0 group-hover/page:opacity-100 disabled:opacity-0"
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-10 w-9 h-9 rounded-full bg-background border border-border shadow flex items-center justify-center text-muted-foreground hover:text-foreground transition-all opacity-0 group-hover/page:opacity-100 disabled:opacity-0"
           >
             <ChevronLeft className="w-4 h-4" />
+          </button>
+          {/* Prev arrow (right = back in RTL) */}
+          <button
+            onClick={() => goTo(page - 1)}
+            disabled={page <= 1}
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 w-9 h-9 rounded-full bg-background border border-border shadow flex items-center justify-center text-muted-foreground hover:text-foreground transition-all opacity-0 group-hover/page:opacity-100 disabled:opacity-0"
+          >
+            <ChevronRight className="w-4 h-4" />
           </button>
           <div
             ref={containerRef}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
+            onWheel={handleWheel}
             className="w-full rounded-2xl shadow-md overflow-y-auto relative"
             style={{
               background: themeConfig.bg,
