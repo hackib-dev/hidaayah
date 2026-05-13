@@ -347,16 +347,54 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
     }
   };
 
-  // Swipe
+  // Swipe (horizontal)
   const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
   };
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
+    if (touchStartX.current === null || touchStartY.current === null) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
-    if (Math.abs(dx) > 50) goTo(dx > 0 ? page - 1 : page + 1);
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+      goTo(dx > 0 ? page - 1 : page + 1);
+    } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 50) {
+      const el = containerRef.current;
+      if (!el) return;
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
+      const atTop = el.scrollTop <= 4;
+      // swipe up (dy < 0) at bottom → next page; swipe down (dy > 0) at top → prev page
+      if (dy < 0 && atBottom) goTo(page + 1);
+      else if (dy > 0 && atTop) goTo(page - 1);
+    }
     touchStartX.current = null;
+    touchStartY.current = null;
+  };
+
+  // Wheel: navigate pages when scrolled to boundary
+  const wheelDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleWheel = (e: React.WheelEvent) => {
+    const el = containerRef.current;
+    if (!el) return;
+    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
+    const atTop = el.scrollTop <= 4;
+    if (e.deltaY > 0 && atBottom) {
+      e.preventDefault();
+      if (wheelDebounce.current) return;
+      goTo(page + 1);
+      wheelDebounce.current = setTimeout(() => {
+        wheelDebounce.current = null;
+      }, 600);
+    } else if (e.deltaY < 0 && atTop) {
+      e.preventDefault();
+      if (wheelDebounce.current) return;
+      goTo(page - 1);
+      wheelDebounce.current = setTimeout(() => {
+        wheelDebounce.current = null;
+      }, 600);
+    }
   };
 
   const sortedLines = Array.from(groupByLine(verses).entries()).sort((a, b) => a[0] - b[0]);
