@@ -119,7 +119,7 @@ function PostCard({
     setLoadingComments(true);
     try {
       const res = await fetchPostComments(Number(post.id), { limit: 20 });
-      setComments(res.data);
+      setComments(res.comments ?? []);
     } catch {
       // leave empty
     } finally {

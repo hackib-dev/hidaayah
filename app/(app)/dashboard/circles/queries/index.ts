@@ -289,7 +289,7 @@ export const fetchPostComments = async (
   currentPage: number;
   limit: number;
   pages: number;
-  data: Comment[];
+  comments: Comment[];
 }> => {
   const response = await reflectApi.get(`/v1/posts/${postId}/comments`, { params });
   return response.data;
