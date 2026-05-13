@@ -45,14 +45,7 @@ export async function POST(req: NextRequest) {
 
   const resolvedGrantType = isReflectGrant || isSearchGrant ? 'client_credentials' : grant_type;
 
-  // Search client lives on prelive OAuth (that's where it was registered)
-  const SEARCH_OAUTH_BASE = 'https://prelive-oauth2.quran.foundation';
-
-  const oauthBase = isContentGrant
-    ? CONTENT_OAUTH_BASE
-    : isSearchGrant
-      ? SEARCH_OAUTH_BASE
-      : USER_OAUTH_BASE;
+  const oauthBase = isContentGrant ? CONTENT_OAUTH_BASE : USER_OAUTH_BASE;
 
   const clientId = isContentGrant
     ? CONTENT_CLIENT_ID
