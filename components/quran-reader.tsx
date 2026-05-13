@@ -455,6 +455,10 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
           if (sessionDebounceRef.current) clearTimeout(sessionDebounceRef.current);
           sessionDebounceRef.current = setTimeout(() => {
             upsertReadingSession({ chapterNumber: ch, verseNumber: v }).catch(() => null);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('last_read_verse_key', `${ch}:${v}`);
+              localStorage.removeItem('last_read_mushaf_page');
+            }
           }, 2000);
         }
       },

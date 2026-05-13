@@ -211,6 +211,13 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
     setPage(startPage);
   }, [startPage]);
 
+  // Persist last-read page for the dashboard "Resume reading" card
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('last_read_mushaf_page', String(page));
+    localStorage.removeItem('last_read_verse_key');
+  }, [page]);
+
   // Fetch reciters, juzs, hizbs once
   useEffect(() => {
     fetchVerseReciters()

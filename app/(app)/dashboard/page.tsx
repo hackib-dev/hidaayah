@@ -113,10 +113,26 @@ export default function HomePage() {
       .catch(() => setTodayPlans([]))
       .finally(() => setPlanLoading(false));
 
-    fetchLastReadingSession()
-      .then((session) => setLastVerse(session?.verseFrom ?? null))
-      .catch(() => setLastVerse(null))
-      .finally(() => setSessionLoading(false));
+    const localVerseKey =
+      typeof window !== 'undefined' ? localStorage.getItem('last_read_verse_key') : null;
+    const localPage =
+      typeof window !== 'undefined' ? localStorage.getItem('last_read_mushaf_page') : null;
+
+    if (localVerseKey) {
+      setLastVerse(localVerseKey);
+      setSessionLoading(false);
+    } else if (localPage) {
+      setLastVerse(`page:${localPage}`);
+      setSessionLoading(false);
+    } else {
+      fetchLastReadingSession()
+        .then((session) => {
+          if (session?.verseFrom?.includes(':')) setLastVerse(session.verseFrom);
+          else setLastVerse(null);
+        })
+        .catch(() => setLastVerse(null))
+        .finally(() => setSessionLoading(false));
+    }
 
     fetchNotes({ limit: 50 })
       .then((res) => setNotesCount(res?.data?.length ?? 0))
@@ -237,14 +253,22 @@ export default function HomePage() {
               <CardSkeleton rows={2} />
             ) : lastVerse ? (
               <Link
-                href={`/dashboard/quran?verse=${lastVerse}`}
+                href={
+                  lastVerse.startsWith('page:')
+                    ? `/dashboard/quran?page=${lastVerse.slice(5)}`
+                    : `/dashboard/quran?verse=${lastVerse}`
+                }
                 className="flex items-center justify-between rounded-xl border border-border bg-card p-4 hover:bg-secondary/40 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
                   <div>
                     <p className="text-sm font-semibold text-foreground">Resume reading</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Last at {lastVerse}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {lastVerse.startsWith('page:')
+                        ? `Page ${lastVerse.slice(5)}`
+                        : `Verse ${lastVerse}`}
+                    </p>
                   </div>
                 </div>
                 <ArrowRight className="w-4 h-4 text-muted-foreground" />

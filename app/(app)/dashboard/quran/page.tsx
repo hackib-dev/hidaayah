@@ -58,10 +58,22 @@ export default function QuranPage() {
       .catch(() => null);
   }, []);
 
-  // Open directly to surah/verse if provided via query params
+  // Open directly to surah/verse/page if provided via query params
   useEffect(() => {
     const surahParam = searchParams.get('surah') ?? searchParams.get('chapter');
     const verseParam = searchParams.get('verse');
+    const pageParam = searchParams.get('page');
+
+    // Direct mushaf page navigation (from "Resume reading" when last session was mushaf)
+    if (pageParam) {
+      const p = parseInt(pageParam, 10);
+      if (!isNaN(p)) {
+        setSelectedPage(p);
+        setReaderMode('mushaf');
+        setView('reader');
+        return;
+      }
+    }
 
     let surahNumber: number | null = surahParam ? parseInt(surahParam, 10) : null;
     let verseNumber: number | undefined;
@@ -81,7 +93,6 @@ export default function QuranPage() {
       setScrollToVerse(verseNumber);
       setView('reader');
 
-      // If a specific verse is given, look up its page and open mushaf there
       if (verseNumber) {
         const verseKey = `${surahNumber}:${verseNumber}`;
         fetchPageForVerseKey(verseKey)
