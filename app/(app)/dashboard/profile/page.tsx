@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth-provider';
 import { useTheme } from 'next-themes';
@@ -9,6 +9,7 @@ import { Navigation } from '@/components/navigation';
 import { cn } from '@/lib/utils';
 import {
   User,
+  Users,
   Settings,
   Bell,
   Moon,
@@ -23,12 +24,333 @@ import {
   LogOut,
   Flame,
   MapPin,
-  BadgeCheck
+  BadgeCheck,
+  Search,
+  X,
+  Loader2,
+  UserPlus,
+  UserMinus,
+  UserCheck
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { fetchStreaks } from '@/app/(app)/dashboard/profile/queries';
+import {
+  fetchUserFollowers,
+  fetchUserFollowing,
+  searchUsers,
+  toggleFollowUser,
+  removeFollower
+} from '@/app/(app)/dashboard/profile/queries';
 import { fetchBookmarks, fetchMyReflectionsCount } from '@/app/(app)/dashboard/reflections/queries';
 import { QF_DEFAULT_MUSHAF_ID } from '@/config';
+import type { ReflectProfile } from '@/app/(app)/dashboard/profile/types';
+
+// ─── UserListItem ──────────────────────────────────────────────────────────────
+
+function UserListItem({
+  profile,
+  onFollow,
+  onRemove,
+  showRemove = false
+}: {
+  profile: ReflectProfile & { followed?: boolean };
+  onFollow?: (id: string, followed: boolean) => void;
+  onRemove?: (id: string) => void;
+  showRemove?: boolean;
+}) {
+  const [following, setFollowing] = useState(profile.followed ?? false);
+  const [loading, setLoading] = useState(false);
+  const displayName =
+    `${profile.firstName ?? ''} ${profile.lastName ?? ''}`.trim() ||
+    profile.username ||
+    'Unknown';
+
+
+  const handleToggleFollow = async () => {
+    setLoading(true);
+    try {
+      const res = await toggleFollowUser(profile.id);
+      setFollowing(res.followed);
+      onFollow?.(profile.id, res.followed);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    setLoading(true);
+    try {
+      await removeFollower(profile.id);
+      onRemove?.(profile.id);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-3 py-3 px-4">
+      {profile.avatarUrls?.small ? (
+        <img
+          src={profile.avatarUrls.small}
+          alt={displayName}
+          className="w-10 h-10 rounded-full object-cover shrink-0"
+        />
+      ) : (
+        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+          {displayName[0]?.toUpperCase()}
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1">
+          <p className="text-sm font-semibold text-foreground truncate">{displayName}</p>
+          {profile.verified && <BadgeCheck className="w-3.5 h-3.5 text-primary shrink-0" />}
+        </div>
+        {profile.username && (
+          <p className="text-xs text-muted-foreground">@{profile.username}</p>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {showRemove && (
+          <button
+            onClick={handleRemove}
+            disabled={loading}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-destructive/10 text-destructive text-xs font-semibold hover:bg-destructive/20 transition-colors disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserMinus className="w-3 h-3" />}
+          </button>
+        )}
+        {!showRemove && onFollow && (
+          <button
+            onClick={handleToggleFollow}
+            disabled={loading}
+            className={cn(
+              'flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-colors disabled:opacity-50',
+              following
+                ? 'bg-secondary text-muted-foreground hover:bg-secondary/80'
+                : 'bg-primary/10 text-primary hover:bg-primary/20'
+            )}
+          >
+            {loading ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : following ? (
+              <><UserCheck className="w-3 h-3" /> Following</>
+            ) : (
+              <><UserPlus className="w-3 h-3" /> Follow</>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── UserListModal ─────────────────────────────────────────────────────────────
+
+function UserListModal({
+  title,
+  userId,
+  mode,
+  onClose
+}: {
+  title: string;
+  userId: string;
+  mode: 'followers' | 'following';
+  onClose: () => void;
+}) {
+  const [users, setUsers] = useState<(ReflectProfile & { followed?: boolean })[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const load = useCallback(async (p: number) => {
+    if (p === 1) setLoading(true); else setLoadingMore(true);
+    try {
+      const res = mode === 'followers'
+        ? await fetchUserFollowers(userId, { page: p, limit: 20 })
+        : await fetchUserFollowing(userId, { page: p, limit: 20 });
+      const data = res.data as (ReflectProfile & { followed?: boolean })[];
+      setUsers((prev) => p === 1 ? data : [...prev, ...data]);
+      setHasMore(p < res.pages);
+      setPage(p);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [userId, mode]);
+
+  useEffect(() => { load(1); }, [load]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 40 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md bg-card rounded-2xl border border-border shadow-xl overflow-hidden max-h-[80vh] flex flex-col"
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+          <h3 className="text-base font-serif font-bold text-foreground">{title}</h3>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto flex-1">
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+            </div>
+          ) : users.length === 0 ? (
+            <div className="py-12 text-center">
+              <Users className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No users yet</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {users.map((u) => (
+                <UserListItem
+                  key={u.id}
+                  profile={u}
+                  onFollow={mode === 'following' ? (id, followed) => {
+                    setUsers((prev) => prev.map((p) => p.id === id ? { ...p, followed } : p));
+                  } : undefined}
+                  showRemove={mode === 'followers'}
+                  onRemove={(id) => setUsers((prev) => prev.filter((p) => p.id !== id))}
+                />
+              ))}
+              {hasMore && (
+                <div className="px-4 py-3">
+                  <button
+                    onClick={() => load(page + 1)}
+                    disabled={loadingMore}
+                    className="w-full py-2 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-2"
+                  >
+                    {loadingMore ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Load more'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ─── SearchUsersModal ──────────────────────────────────────────────────────────
+
+function SearchUsersModal({ onClose }: { onClose: () => void }) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<(ReflectProfile & { followed?: boolean })[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    if (!query.trim()) { setResults([]); return; }
+    const tid = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await searchUsers({ query: query.trim(), limit: 20, all: true });
+        setResults(res.data as (ReflectProfile & { followed?: boolean })[]);
+      } catch {
+        setResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 400);
+    return () => clearTimeout(tid);
+  }, [query]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 40 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md bg-card rounded-2xl border border-border shadow-xl overflow-hidden max-h-[80vh] flex flex-col"
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+          <h3 className="text-base font-serif font-bold text-foreground">Find People</h3>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="px-4 py-3 border-b border-border shrink-0">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by name or username..."
+              className="w-full pl-9 pr-3 py-2 rounded-xl bg-secondary border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+        </div>
+
+        <div className="overflow-y-auto flex-1">
+          {searching ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+            </div>
+          ) : results.length > 0 ? (
+            <div className="divide-y divide-border">
+              {results.map((u) => (
+                <UserListItem
+                  key={u.id}
+                  profile={u}
+                  onFollow={(id, followed) =>
+                    setResults((prev) => prev.map((p) => p.id === id ? { ...p, followed } : p))
+                  }
+                />
+              ))}
+            </div>
+          ) : query.trim() ? (
+            <div className="py-10 text-center">
+              <p className="text-sm text-muted-foreground">No users found</p>
+            </div>
+          ) : (
+            <div className="py-10 text-center space-y-2">
+              <Search className="w-8 h-8 text-muted-foreground/40 mx-auto" />
+              <p className="text-sm text-muted-foreground">Search for people to follow</p>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ─── ProfilePage ───────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
   const { user, logout, reflectProfile } = useAuth();
@@ -37,7 +359,6 @@ export default function ProfilePage() {
   const isDarkMode = theme === 'dark';
   const [notifications, setNotifications] = useState(true);
 
-  // Real stats — each loads independently
   const [currentStreak, setCurrentStreak] = useState<number | null>(null);
   const [longestStreak, setLongestStreak] = useState<number | null>(null);
   const [streakLoading, setStreakLoading] = useState(true);
@@ -47,6 +368,10 @@ export default function ProfilePage() {
 
   const [reflectionsCount, setReflectionsCount] = useState<number | null>(null);
   const [reflectionsLoading, setReflectionsLoading] = useState(true);
+
+  const [showFollowers, setShowFollowers] = useState(false);
+  const [showFollowing, setShowFollowing] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -58,10 +383,7 @@ export default function ProfilePage() {
         setCurrentStreak(active?.days ?? 0);
         setLongestStreak(streaks[0]?.days ?? 0);
       })
-      .catch(() => {
-        setCurrentStreak(0);
-        setLongestStreak(0);
-      })
+      .catch(() => { setCurrentStreak(0); setLongestStreak(0); })
       .finally(() => setStreakLoading(false));
 
     fetchBookmarks({ type: 'ayah', mushafId: QF_DEFAULT_MUSHAF_ID, first: 1 })
@@ -75,9 +397,9 @@ export default function ProfilePage() {
       .finally(() => setReflectionsLoading(false));
   }, [user]);
 
-  const toggleDarkMode = () => {
-    setTheme(isDarkMode ? 'light' : 'dark');
-  };
+  const toggleDarkMode = () => setTheme(isDarkMode ? 'light' : 'dark');
+
+  const profileId = reflectProfile?.id ?? user?.sub ?? '';
 
   return (
     <main className="min-h-screen pb-20 md:pb-8">
@@ -92,7 +414,6 @@ export default function ProfilePage() {
             className="p-4 md:p-5 rounded-2xl bg-teal-muted border border-teal/15 shadow-sm space-y-3"
           >
             <div className="flex items-center gap-4">
-              {/* Avatar */}
               {reflectProfile?.avatarUrls?.medium ? (
                 <img
                   src={reflectProfile.avatarUrls.medium}
@@ -106,7 +427,6 @@ export default function ProfilePage() {
               )}
 
               <div className="flex-1 min-w-0">
-                {/* Name + verified badge */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <h1 className="text-lg md:text-xl font-serif font-bold text-foreground">
                     {reflectProfile
@@ -116,33 +436,38 @@ export default function ProfilePage() {
                       : user!.name}
                   </h1>
                   {reflectProfile?.verified && (
-                    <BadgeCheck className="w-4 h-4 text-primary flex-shrink-0" />
+                    <BadgeCheck className="w-4 h-4 text-primary shrink-0" />
                   )}
                 </div>
 
-                {/* Username */}
                 {reflectProfile?.username && (
                   <p className="text-xs text-primary font-semibold">@{reflectProfile.username}</p>
                 )}
-
-                {/* Email */}
                 <p className="text-sm text-muted-foreground truncate">{user!.email}</p>
               </div>
 
-              <Link
-                href="/dashboard/profile/settings"
-                className="p-2.5 rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors flex-shrink-0"
-              >
-                <Settings className="w-5 h-5" />
-              </Link>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => setShowSearch(true)}
+                  className="p-2.5 rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+                  title="Find people"
+                >
+                  <Search className="w-4 h-4" />
+                </button>
+                <Link
+                  href="/dashboard/profile/settings"
+                  className="p-2.5 rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+                >
+                  <Settings className="w-5 h-5" />
+                </Link>
+              </div>
             </div>
 
-            {/* Bio */}
             {reflectProfile?.bio && (
               <p className="text-sm text-foreground/80 leading-relaxed">{reflectProfile.bio}</p>
             )}
 
-            {/* Meta row */}
+            {/* Meta row — followers/following are clickable */}
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               {reflectProfile?.country && (
                 <span className="flex items-center gap-1">
@@ -156,12 +481,23 @@ export default function ProfilePage() {
                   Joined {reflectProfile.joiningYear}
                 </span>
               )}
-              {reflectProfile?.followersCount !== undefined && (
-                <span className="flex items-center gap-1">
-                  <User className="w-3 h-3" />
-                  {reflectProfile.followersCount} follower
-                  {reflectProfile.followersCount !== 1 ? 's' : ''}
-                </span>
+              {profileId && (
+                <>
+                  <button
+                    onClick={() => setShowFollowers(true)}
+                    className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold"
+                  >
+                    <User className="w-3 h-3" />
+                    {reflectProfile?.followersCount ?? 0} followers
+                  </button>
+                  <button
+                    onClick={() => setShowFollowing(true)}
+                    className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold"
+                  >
+                    <Users className="w-3 h-3" />
+                    {reflectProfile?.postsCount !== undefined ? `${reflectProfile.postsCount} posts` : 'following'}
+                  </button>
+                </>
               )}
             </div>
           </motion.div>
@@ -241,7 +577,7 @@ export default function ProfilePage() {
           </motion.div>
 
           <div className="grid md:grid-cols-2 gap-4">
-            {/* Achievements — derived from real stats */}
+            {/* Achievements */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -299,7 +635,7 @@ export default function ProfilePage() {
                   >
                     <div
                       className={cn(
-                        'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0',
+                        'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
                         m.earned ? m.earnedColor : 'bg-secondary text-muted-foreground'
                       )}
                     >
@@ -317,7 +653,7 @@ export default function ProfilePage() {
                       <p className="text-xs text-muted-foreground truncate">{m.description}</p>
                     </div>
                     {m.earned && (
-                      <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                      <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center shrink-0">
                         <svg
                           className="w-3 h-3 text-primary-foreground"
                           fill="none"
@@ -338,7 +674,7 @@ export default function ProfilePage() {
               </div>
             </motion.div>
 
-            {/* Recent Reflections — link to the reflections page */}
+            {/* Recent Activity */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -362,6 +698,32 @@ export default function ProfilePage() {
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </Link>
+
+              {/* People shortcuts */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setShowFollowers(true)}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-card border border-border hover:bg-secondary/50 transition-colors text-left"
+                >
+                  <div>
+                    <p className="text-sm font-bold text-foreground">
+                      {reflectProfile?.followersCount ?? '—'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Followers</p>
+                  </div>
+                  <User className="w-4 h-4 text-muted-foreground" />
+                </button>
+                <button
+                  onClick={() => setShowSearch(true)}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-card border border-border hover:bg-secondary/50 transition-colors text-left"
+                >
+                  <div>
+                    <p className="text-sm font-bold text-foreground">Find</p>
+                    <p className="text-xs text-muted-foreground">People</p>
+                  </div>
+                  <Search className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
             </motion.div>
           </div>
 
@@ -461,6 +823,29 @@ export default function ProfilePage() {
           </motion.div>
         </div>
       </div>
+
+      {/* Modals */}
+      <AnimatePresence>
+        {showFollowers && profileId && (
+          <UserListModal
+            title="Followers"
+            userId={profileId}
+            mode="followers"
+            onClose={() => setShowFollowers(false)}
+          />
+        )}
+        {showFollowing && profileId && (
+          <UserListModal
+            title="Following"
+            userId={profileId}
+            mode="following"
+            onClose={() => setShowFollowing(false)}
+          />
+        )}
+        {showSearch && (
+          <SearchUsersModal onClose={() => setShowSearch(false)} />
+        )}
+      </AnimatePresence>
     </main>
   );
 }

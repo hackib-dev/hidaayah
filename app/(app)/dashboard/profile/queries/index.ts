@@ -195,3 +195,117 @@ export const updateReflectProfile = async (
   const response = await reflectApi.put<ReflectProfile>('/v1/users/profile', { user: params });
   return response.data;
 };
+
+// PATCH /v1/users/profile — edit settings/preferences (language, privacy, etc.)
+export const editReflectProfileSettings = async (params: {
+  languageId?: number;
+  reflectionLanguages?: string[];
+  ayahLanguages?: string[];
+  customized?: boolean;
+  hideFollowSuggestion?: boolean;
+  showFollowFeaturedSuggestion?: boolean;
+}): Promise<{ success: boolean }> => {
+  const response = await reflectApi.patch<{ success: boolean }>('/v1/users/profile', params);
+  return response.data;
+};
+
+// GET /v1/users/profile — full authenticated user profile
+export const fetchReflectProfileFull = async (params: { qdc?: boolean } = {}): Promise<ReflectProfile> => {
+  const response = await reflectApi.get<ReflectProfile>('/v1/users/profile', { params });
+  return response.data;
+};
+
+// GET /v1/users/my-rooms — rooms the authenticated user belongs to
+export const fetchMyRooms = async (params: {
+  name?: string;
+  page?: number;
+  limit?: number;
+} = {}): Promise<{
+  total: number;
+  currentPage: number;
+  limit: number;
+  pages: number;
+  data: unknown[];
+}> => {
+  const response = await reflectApi.get('/v1/users/my-rooms', { params });
+  return response.data;
+};
+
+// GET /v1/users/search — search users by name/username
+export const searchUsers = async (params: {
+  query?: string;
+  limit?: number;
+  page?: number;
+  all?: boolean;
+  postingAs?: boolean;
+  postingAsUserId?: string;
+  roomId?: number;
+} = {}): Promise<{
+  total: number;
+  currentPage: number;
+  limit: number;
+  pages: number;
+  data: ReflectProfile[];
+}> => {
+  const response = await reflectApi.get('/v1/users/search', { params });
+  return response.data;
+};
+
+// POST /v1/users/:followeeId/toggle-follow
+export const toggleFollowUser = async (
+  followeeId: string,
+  action?: 'follow' | 'unfollow'
+): Promise<{ followed: boolean }> => {
+  const response = await reflectApi.post<{ followed: boolean }>(
+    `/v1/users/${followeeId}/toggle-follow`,
+    action ? { action } : {}
+  );
+  return response.data;
+};
+
+// POST /v1/users/:followerId/remove-follower
+export const removeFollower = async (followerId: string): Promise<{ removed: boolean }> => {
+  const response = await reflectApi.post<{ removed: boolean }>(
+    `/v1/users/${followerId}/remove-follower`
+  );
+  return response.data;
+};
+
+// GET /v1/users/:id — profile by UUID or username
+export const fetchUserById = async (
+  id: string,
+  params: { qdc?: boolean } = {}
+): Promise<ReflectProfile> => {
+  const response = await reflectApi.get<ReflectProfile>(`/v1/users/${id}`, { params });
+  return response.data;
+};
+
+// GET /v1/users/:id/followers
+export const fetchUserFollowers = async (
+  userId: string,
+  params: { limit?: number; page?: number } = {}
+): Promise<{
+  total: number;
+  currentPage: number;
+  limit: number;
+  pages: number;
+  data: ReflectProfile[];
+}> => {
+  const response = await reflectApi.get(`/v1/users/${userId}/followers`, { params });
+  return response.data;
+};
+
+// GET /v1/users/:id/following
+export const fetchUserFollowing = async (
+  userId: string,
+  params: { limit?: number; page?: number } = {}
+): Promise<{
+  total: number;
+  currentPage: number;
+  limit: number;
+  pages: number;
+  data: ReflectProfile[];
+}> => {
+  const response = await reflectApi.get(`/v1/users/${userId}/following`, { params });
+  return response.data;
+};
