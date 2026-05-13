@@ -76,7 +76,7 @@ export const fetchClientCredentialsToken = async (): Promise<string> => {
 export const buildAuthorizeUrl = async (redirectUri: string): Promise<string> => {
   const clientId = process.env.NEXT_PUBLIC_QF_CLIENT_ID || '';
   const scopes = [
-    'openid',
+    // 'openid',
     'offline_access',
     'user',
     'collection',
@@ -88,7 +88,8 @@ export const buildAuthorizeUrl = async (redirectUri: string): Promise<string> =>
     'activity_day',
     'goal',
     'streak',
-    'note'
+    'note',
+    'room'
   ].join(' ');
 
   const { codeVerifier, codeChallenge } = await generatePkcePair();
