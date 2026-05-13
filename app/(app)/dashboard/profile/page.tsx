@@ -47,18 +47,20 @@ import type { ReflectProfile } from '@/app/(app)/dashboard/profile/types';
 
 // ─── UserListItem ──────────────────────────────────────────────────────────────
 
+type UserResult = ReflectProfile & { followed?: boolean; isFollowed?: boolean };
+
 function UserListItem({
   profile,
   onFollow,
   onRemove,
   showRemove = false
 }: {
-  profile: ReflectProfile & { followed?: boolean };
+  profile: UserResult;
   onFollow?: (id: string, followed: boolean) => void;
   onRemove?: (id: string) => void;
   showRemove?: boolean;
 }) {
-  const [following, setFollowing] = useState(profile.followed ?? false);
+  const [following, setFollowing] = useState(profile.isFollowed ?? profile.followed ?? false);
   const [loading, setLoading] = useState(false);
   const displayName =
     `${profile.firstName ?? ''} ${profile.lastName ?? ''}`.trim() || profile.username || 'Unknown';
@@ -164,7 +166,7 @@ function UserListModal({
   mode: 'followers' | 'following';
   onClose: () => void;
 }) {
-  const [users, setUsers] = useState<(ReflectProfile & { followed?: boolean })[]>([]);
+  const [users, setUsers] = useState<(UserResult)[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -179,7 +181,7 @@ function UserListModal({
           mode === 'followers'
             ? await fetchUserFollowers(userId, { page: p, limit: 20 })
             : await fetchUserFollowing(userId, { page: p, limit: 20 });
-        const data = res.data as (ReflectProfile & { followed?: boolean })[];
+        const data = res.data as (UserResult)[];
         setUsers((prev) => (p === 1 ? data : [...prev, ...data]));
         setHasMore(p < res.pages);
         setPage(p);
@@ -275,7 +277,7 @@ function UserListModal({
 
 function SearchUsersModal({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<(ReflectProfile & { followed?: boolean })[]>([]);
+  const [results, setResults] = useState<(UserResult)[]>([]);
   const [searching, setSearching] = useState(false);
 
   useEffect(() => {
@@ -287,7 +289,7 @@ function SearchUsersModal({ onClose }: { onClose: () => void }) {
       setSearching(true);
       try {
         const res = await searchUsers({ query: query.trim(), limit: 20, all: true });
-        setResults(res.data as (ReflectProfile & { followed?: boolean })[]);
+        setResults(res.data as (UserResult)[]);
       } catch {
         setResults([]);
       } finally {
