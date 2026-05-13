@@ -65,6 +65,20 @@ function timeAgo(iso: string): string {
 // ─── MemberAvatar ─────────────────────────────────────────────────────────────
 
 function MemberAvatar({ member, size = 'md' }: { member: ApiRoomMember; size?: 'sm' | 'md' }) {
+  const px = size === 'sm' ? 28 : 36;
+  const avatarUrl = member.avatarUrls?.small;
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={member.username}
+        width={px}
+        height={px}
+        className={cn('rounded-full object-cover shrink-0', size === 'sm' ? 'w-7 h-7' : 'w-9 h-9')}
+      />
+    );
+  }
+  const name = [member.firstName, member.lastName].filter(Boolean).join(' ') || null;
   return (
     <div
       className={cn(
@@ -72,7 +86,7 @@ function MemberAvatar({ member, size = 'md' }: { member: ApiRoomMember; size?: '
         size === 'sm' ? 'w-7 h-7 text-[10px]' : 'w-9 h-9 text-xs'
       )}
     >
-      {initials(member.name, member.username)}
+      {initials(name, member.username)}
     </div>
   );
 }
@@ -377,8 +391,8 @@ function RoomDetail({
     onLeft(room.id);
   };
 
-  const admins = members.filter((m) => m.role === 'admin');
-  const regularMembers = members.filter((m) => m.role === 'member');
+  const admins = members.filter((m) => m.isAdmin);
+  const regularMembers = members.filter((m) => !m.isAdmin);
 
   return (
     <motion.div
@@ -520,55 +534,95 @@ function RoomDetail({
       {tab === 'members' && (
         <div className="rounded-2xl bg-card border border-border overflow-hidden">
           {loadingMembers ? (
-            <div className="flex items-center justify-center py-8">
+            <div className="flex items-center justify-center py-10">
               <Loader2 className="w-5 h-5 animate-spin text-primary" />
             </div>
           ) : members.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No members yet.</p>
+            <p className="text-sm text-muted-foreground text-center py-10">No members yet.</p>
           ) : (
             <div className="divide-y divide-border">
               {admins.length > 0 && (
-                <div className="px-4 pt-3 pb-1">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                    Admins
+                <div className="px-4 pt-4 pb-3 space-y-3">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Admins · {admins.length}
                   </p>
-                  <div className="space-y-2 pb-2">
-                    {admins.map((m) => (
+                  {admins.map((m) => {
+                    const fullName = [m.firstName, m.lastName].filter(Boolean).join(' ');
+                    return (
                       <div key={m.id} className="flex items-center gap-3">
-                        <MemberAvatar member={m} />
+                        <div className="relative shrink-0">
+                          <MemberAvatar member={m} />
+                          {m.isOwner && (
+                            <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-accent flex items-center justify-center text-[8px]">
+                              👑
+                            </span>
+                          )}
+                        </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">
-                            {m.name ?? m.username}
-                          </p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-sm font-semibold text-foreground truncate">
+                              {fullName || m.username}
+                            </p>
+                            {m.verified && (
+                              <span className="text-primary text-xs" title="Verified">
+                                ✓
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-muted-foreground">@{m.username}</p>
                         </div>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold">
-                          Admin
-                        </span>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          {m.isOwner ? (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/20 text-accent font-semibold">
+                              Owner
+                            </span>
+                          ) : (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                              Admin
+                            </span>
+                          )}
+                          {m.followersCount > 0 && (
+                            <p className="text-[10px] text-muted-foreground">
+                              {m.followersCount} followers
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
               )}
               {regularMembers.length > 0 && (
-                <div className="px-4 pt-3 pb-3">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                    Members
+                <div className="px-4 pt-4 pb-4 space-y-3">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Members · {regularMembers.length}
                   </p>
-                  <div className="space-y-2">
-                    {regularMembers.map((m) => (
+                  {regularMembers.map((m) => {
+                    const fullName = [m.firstName, m.lastName].filter(Boolean).join(' ');
+                    return (
                       <div key={m.id} className="flex items-center gap-3">
                         <MemberAvatar member={m} />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">
-                            {m.name ?? m.username}
-                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-medium text-foreground truncate">
+                              {fullName || m.username}
+                            </p>
+                            {m.verified && (
+                              <span className="text-primary text-xs" title="Verified">
+                                ✓
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-muted-foreground">@{m.username}</p>
                         </div>
-                        <p className="text-xs text-muted-foreground">{timeAgo(m.joinedAt)}</p>
+                        {m.followersCount > 0 && (
+                          <p className="text-[10px] text-muted-foreground shrink-0">
+                            {m.followersCount} followers
+                          </p>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

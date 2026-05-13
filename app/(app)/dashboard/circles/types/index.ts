@@ -33,9 +33,19 @@ export interface Room {
 export interface RoomMember {
   id: string;
   username: string;
-  name: string | null;
-  role: 'admin' | 'member';
-  joinedAt: string;
+  firstName: string | null;
+  lastName: string | null;
+  verified: boolean;
+  isFollowed: boolean;
+  isActive: boolean;
+  isAdmin: boolean;
+  isOwner: boolean;
+  followersCount: number;
+  avatarUrls: {
+    small: string;
+    medium: string;
+    large: string;
+  };
 }
 
 export interface RoomPost {
