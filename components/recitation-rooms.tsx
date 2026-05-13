@@ -39,6 +39,9 @@ import {
   deleteComment,
   toggleCommentLike
 } from '@/app/(app)/dashboard/circles/queries';
+import { fetchUserFollowing } from '@/app/(app)/dashboard/profile/queries';
+import type { ReflectProfile } from '@/app/(app)/dashboard/profile/types';
+import { useAuth } from '@/components/auth-provider';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1040,9 +1043,113 @@ function SearchRoomsModal({ onClose, onJoined }: { onClose: () => void; onJoined
   );
 }
 
+// ─── FollowingModal ───────────────────────────────────────────────────────────
+
+function FollowingModal({ userId, onClose }: { userId: string; onClose: () => void }) {
+  const [following, setFollowing] = useState<ReflectProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchUserFollowing(userId, { page, limit: 20 })
+      .then((res) => {
+        setFollowing((prev) => (page === 1 ? res.data : [...prev, ...res.data]));
+        setTotalPages(res.pages);
+      })
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  }, [userId, page]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 40 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm bg-card rounded-2xl border border-border shadow-xl p-5 space-y-4"
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-serif font-bold text-foreground">People I Follow</h3>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {loading && page === 1 ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="w-5 h-5 animate-spin text-primary" />
+          </div>
+        ) : following.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">
+            You are not following anyone yet.
+          </p>
+        ) : (
+          <div className="space-y-2 max-h-72 overflow-y-auto">
+            {following.map((person) => {
+              const displayName =
+                [person.firstName, person.lastName].filter(Boolean).join(' ') ||
+                person.username ||
+                'Unknown';
+              const avatarUrl = (person as ReflectProfile & { avatarUrls?: { thumb?: string } })
+                .avatarUrls?.thumb;
+              return (
+                <div
+                  key={person.id}
+                  className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-secondary/50 transition-colors"
+                >
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt={displayName}
+                      className="w-9 h-9 rounded-full object-cover shrink-0"
+                    />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                      {displayName.slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">{displayName}</p>
+                    {person.username && (
+                      <p className="text-xs text-muted-foreground truncate">@{person.username}</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {page < totalPages && (
+              <button
+                onClick={() => setPage((p) => p + 1)}
+                disabled={loading}
+                className="w-full py-2 text-xs text-primary font-semibold hover:underline disabled:opacity-40"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Load more'}
+              </button>
+            )}
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function RecitationRooms() {
+  const { reflectProfile } = useAuth();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [scopeError, setScopeError] = useState(false);
@@ -1050,6 +1157,7 @@ export function RecitationRooms() {
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showFollowing, setShowFollowing] = useState(false);
 
   const loadRooms = useCallback(() => {
     setLoading(true);
@@ -1102,13 +1210,13 @@ export function RecitationRooms() {
             <Plus className="w-4 h-4" />
             New Circle
           </button>
-          <button
+          {/* <button
             onClick={() => setShowJoin(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-card border border-border text-sm font-semibold text-foreground hover:bg-secondary transition-colors"
           >
             <Hash className="w-4 h-4" />
             Join with Token
-          </button>
+          </button> */}
           <button
             onClick={() => setShowSearch(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-card border border-border text-sm font-semibold text-foreground hover:bg-secondary transition-colors"
@@ -1116,6 +1224,15 @@ export function RecitationRooms() {
             <Search className="w-4 h-4" />
             Find Circles
           </button>
+          {reflectProfile && (
+            <button
+              onClick={() => setShowFollowing(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-card border border-border text-sm font-semibold text-foreground hover:bg-secondary transition-colors"
+            >
+              <UserPlus className="w-4 h-4" />
+              Following
+            </button>
+          )}
         </div>
 
         {/* Rooms list */}
@@ -1229,6 +1346,9 @@ export function RecitationRooms() {
               loadRooms();
             }}
           />
+        )}
+        {showFollowing && reflectProfile && (
+          <FollowingModal userId={reflectProfile.id} onClose={() => setShowFollowing(false)} />
         )}
       </AnimatePresence>
     </>
