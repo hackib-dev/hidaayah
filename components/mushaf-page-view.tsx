@@ -30,6 +30,7 @@ import {
 import type { Verse, Word, Reciter, Juz, Hizb } from '@/app/(app)/dashboard/quran/types';
 import { cn } from '@/lib/utils';
 import { QF_DEFAULT_RECITER_ID } from '@/config';
+import { awardXP } from '@/lib/garden';
 
 const CDN = 'https://verses.quran.foundation';
 const TOTAL_PAGES = 604;
@@ -211,11 +212,23 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
     setPage(startPage);
   }, [startPage]);
 
-  // Persist last-read page for the dashboard "Resume reading" card
+  // Persist last-read page and award XP — skip the very first render (mount)
+  const isFirstPageRender = useRef(true);
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('last_read_mushaf_page', String(page));
-    localStorage.removeItem('last_read_verse_key');
+    if (isFirstPageRender.current) {
+      isFirstPageRender.current = false;
+      // Still persist on mount so Resume Reading works, but don't award XP
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('last_read_mushaf_page', String(page));
+        localStorage.removeItem('last_read_verse_key');
+      }
+      return;
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('last_read_mushaf_page', String(page));
+      localStorage.removeItem('last_read_verse_key');
+    }
+    awardXP('read_page');
   }, [page]);
 
   // Fetch reciters, juzs, hizbs once

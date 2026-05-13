@@ -31,6 +31,8 @@ import { fetchRandomAyah, fetchVerseAudioFiles } from '@/app/(app)/dashboard/qur
 import { QF_DEFAULT_MUSHAF_ID, QF_DEFAULT_RECITER_ID } from '@/config';
 import type { TodayGoalPlan } from '@/app/(app)/dashboard/profile/types';
 import type { RandomAyah } from '@/app/(app)/dashboard/reflections/types';
+import { QuranGarden } from '@/components/quran-garden';
+import { awardXP, loadGarden } from '@/lib/garden';
 
 function StatSkeleton() {
   return (
@@ -86,7 +88,22 @@ export default function HomePage() {
     if (!user) return;
 
     fetchActiveStreak()
-      .then((res) => setStreakDays(res?.data?.[0]?.days ?? 0))
+      .then((res) => {
+        const days = res?.data?.[0]?.days ?? 0;
+        setStreakDays(days);
+        // Award streak_day XP once per calendar day when streak is active
+        if (days > 0 && typeof window !== 'undefined') {
+          const today = new Date().toISOString().slice(0, 10);
+          const lastStreakXP = localStorage.getItem('garden_last_streak_xp_date');
+          if (lastStreakXP !== today) {
+            localStorage.setItem('garden_last_streak_xp_date', today);
+            // Sync streak days into garden state before awarding
+            const g = loadGarden();
+            g.streakDays = days;
+            awardXP('streak_day');
+          }
+        }
+      })
       .catch(() => setStreakDays(0))
       .finally(() => setStreakLoading(false));
 
@@ -201,6 +218,17 @@ export default function HomePage() {
                 <p className="text-[10px] text-muted-foreground mt-0.5">Saved verses</p>
               </div>
             )}
+          </motion.div>
+
+          {/* Garden Widget */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 }}
+          >
+            <Link href="/dashboard/garden" className="block">
+              <QuranGarden compact />
+            </Link>
           </motion.div>
 
           {/* Today's Goals — compact summary */}

@@ -25,6 +25,7 @@ import {
 } from '@/app/(app)/dashboard/profile/queries';
 import type { GoalEstimateDay } from '@/app/(app)/dashboard/profile/queries';
 import type { TodayGoalPlan } from '@/app/(app)/dashboard/profile/types';
+import { awardXP } from '@/lib/garden';
 
 function CardSkeleton() {
   return (
@@ -166,7 +167,7 @@ export default function GoalsPage() {
     return null;
   };
 
-  const refreshAll = async () => {
+  const refreshAll = async (currentPlans = plans) => {
     const TYPES = ['QURAN_PAGES', 'QURAN_TIME', 'QURAN_RANGE'] as const;
     const results = await Promise.all(
       TYPES.map((type) =>
@@ -181,6 +182,15 @@ export default function GoalsPage() {
       if (!p || seen.has(p.goalId)) continue;
       seen.add(p.goalId);
       updated.push(p as TodayGoalPlan);
+    }
+    // Award XP for any goal that just became complete
+    for (const p of updated) {
+      const wasComplete = currentPlans.find(
+        (old) => old.goalId === p.goalId && goalInfoFor(old)?.pct === 100
+      );
+      if (!wasComplete && goalInfoFor(p as TodayGoalPlan)?.pct === 100) {
+        awardXP('complete_goal');
+      }
     }
     setPlans(updated);
   };
@@ -261,7 +271,7 @@ export default function GoalsPage() {
                         onClick={async () => {
                           setRefreshingId(plan.goalId);
                           try {
-                            await refreshAll();
+                            await refreshAll(plans);
                           } finally {
                             setRefreshingId(null);
                           }
@@ -335,7 +345,7 @@ export default function GoalsPage() {
                               amount: amt,
                               category: 'QURAN'
                             });
-                            await refreshAll();
+                            await refreshAll(plans);
                             setEditingGoalId(null);
                           } finally {
                             setSavingEdit(false);
@@ -532,7 +542,7 @@ export default function GoalsPage() {
                               ? goalTarget.replace(/\s/g, '')
                               : Number(goalTarget);
                         await createGoal({ type: goalType, amount, category: 'QURAN' });
-                        await refreshAll();
+                        await refreshAll(plans);
                         setEstimate(null);
                         setAddingGoal(false);
                         setGoalTarget('10');

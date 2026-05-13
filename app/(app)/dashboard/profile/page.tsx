@@ -30,7 +30,8 @@ import {
   Loader2,
   UserPlus,
   UserMinus,
-  UserCheck
+  UserCheck,
+  Leaf
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchStreaks } from '@/app/(app)/dashboard/profile/queries';
@@ -44,6 +45,7 @@ import {
 import { fetchBookmarks, fetchMyReflectionsCount } from '@/app/(app)/dashboard/reflections/queries';
 import { QF_DEFAULT_MUSHAF_ID } from '@/config';
 import type { ReflectProfile } from '@/app/(app)/dashboard/profile/types';
+import { loadGarden } from '@/lib/garden';
 
 // ─── UserListItem ──────────────────────────────────────────────────────────────
 
@@ -394,6 +396,8 @@ export default function ProfilePage() {
   const [showFollowing, setShowFollowing] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
 
+  const gardenState = typeof window !== 'undefined' ? loadGarden() : null;
+
   useEffect(() => {
     if (!user) return;
 
@@ -543,9 +547,19 @@ export default function ProfilePage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08 }}
-            className="grid grid-cols-4 gap-2.5"
+            className="grid grid-cols-5 gap-2"
           >
             {[
+              {
+                icon: Leaf,
+                value: gardenState ? `L${gardenState.level}` : '—',
+                label: 'Garden',
+                bg: 'bg-emerald-50 dark:bg-emerald-950/30',
+                iconColor: 'text-emerald-600',
+                border: 'border-emerald-200/50 dark:border-emerald-800/30',
+                isLoading: false,
+                href: '/dashboard/garden'
+              },
               {
                 icon: Flame,
                 value: currentStreak,
@@ -588,26 +602,33 @@ export default function ProfilePage() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 + index * 0.06 }}
-                className={cn('p-3 md:p-4 rounded-2xl border text-center', stat.bg, stat.border)}
+                className={cn('p-3 rounded-2xl border text-center', stat.bg, stat.border)}
               >
-                <div
-                  className={cn(
-                    'w-8 h-8 rounded-xl mx-auto flex items-center justify-center mb-2 bg-white/50',
-                    stat.iconColor
-                  )}
-                >
-                  <stat.icon className="w-4 h-4" />
-                </div>
-                {stat.isLoading ? (
-                  <div className="h-7 w-8 rounded-md bg-current/20 animate-pulse mx-auto mb-0.5" />
+                {'href' in stat ? (
+                  <Link href={(stat as { href: string }).href} className="block">
+                    <div className={cn('w-7 h-7 rounded-xl mx-auto flex items-center justify-center mb-1.5 bg-white/50', stat.iconColor)}>
+                      <stat.icon className="w-3.5 h-3.5" />
+                    </div>
+                    {stat.isLoading ? (
+                      <div className="h-6 w-7 rounded-md bg-current/20 animate-pulse mx-auto mb-0.5" />
+                    ) : (
+                      <p className="text-base font-bold text-foreground">{stat.value ?? '—'}</p>
+                    )}
+                    <p className="text-[9px] text-muted-foreground font-semibold">{stat.label}</p>
+                  </Link>
                 ) : (
-                  <p className="text-lg md:text-xl font-bold text-foreground">
-                    {stat.value ?? '—'}
-                  </p>
+                  <>
+                    <div className={cn('w-7 h-7 rounded-xl mx-auto flex items-center justify-center mb-1.5 bg-white/50', stat.iconColor)}>
+                      <stat.icon className="w-3.5 h-3.5" />
+                    </div>
+                    {stat.isLoading ? (
+                      <div className="h-6 w-7 rounded-md bg-current/20 animate-pulse mx-auto mb-0.5" />
+                    ) : (
+                      <p className="text-base font-bold text-foreground">{stat.value ?? '—'}</p>
+                    )}
+                    <p className="text-[9px] text-muted-foreground font-semibold">{stat.label}</p>
+                  </>
                 )}
-                <p className="text-[10px] md:text-xs text-muted-foreground font-semibold">
-                  {stat.label}
-                </p>
               </motion.div>
             ))}
           </motion.div>
