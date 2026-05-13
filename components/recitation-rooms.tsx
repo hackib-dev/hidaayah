@@ -907,6 +907,7 @@ function JoinRoomModal({ onClose, onJoined }: { onClose: () => void; onJoined: (
 
 function SearchRoomsModal({ onClose, onJoined }: { onClose: () => void; onJoined: () => void }) {
   const [query, setQuery] = useState('');
+  const [roomType, setRoomType] = useState<'GROUP' | 'PAGE' | undefined>(undefined);
   const [results, setResults] = useState<Room[]>([]);
   const [searching, setSearching] = useState(false);
   const [joiningId, setJoiningId] = useState<number | null>(null);
@@ -918,13 +919,13 @@ function SearchRoomsModal({ onClose, onJoined }: { onClose: () => void; onJoined
     }
     const tid = setTimeout(() => {
       setSearching(true);
-      searchRooms({ query: query.trim(), roomType: 'GROUP', limit: 10 })
+      searchRooms({ query: query.trim(), roomType, limit: 10 })
         .then((res) => setResults(res.data))
         .catch(() => setResults([]))
         .finally(() => setSearching(false));
     }, 400);
     return () => clearTimeout(tid);
-  }, [query]);
+  }, [query, roomType]);
 
   const handleJoinPublic = async (room: Room) => {
     setJoiningId(room.id);
@@ -972,6 +973,26 @@ function SearchRoomsModal({ onClose, onJoined }: { onClose: () => void; onJoined
             autoFocus
             className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-secondary border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
+        </div>
+
+        <div className="flex gap-2">
+          {(['All', 'GROUP', 'PAGE'] as const).map((t) => {
+            const active = t === 'All' ? roomType === undefined : roomType === t;
+            return (
+              <button
+                key={t}
+                onClick={() => setRoomType(t === 'All' ? undefined : t)}
+                className={cn(
+                  'px-3 py-1 rounded-lg text-xs font-medium transition-colors',
+                  active
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {t === 'GROUP' ? 'Groups' : t === 'PAGE' ? 'Pages' : 'All'}
+              </button>
+            );
+          })}
         </div>
 
         {searching && (
