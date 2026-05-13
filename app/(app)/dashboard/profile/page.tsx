@@ -496,7 +496,17 @@ export default function ProfilePage() {
               {reflectProfile?.country && (
                 <span className="flex items-center gap-1">
                   <MapPin className="w-3 h-3" />
-                  {reflectProfile.country}
+                  {(() => {
+                    try {
+                      return (
+                        new Intl.DisplayNames(['en'], { type: 'region' }).of(
+                          reflectProfile.country
+                        ) ?? reflectProfile.country
+                      );
+                    } catch {
+                      return reflectProfile.country;
+                    }
+                  })()}
                 </span>
               )}
               {reflectProfile?.joiningYear && (
