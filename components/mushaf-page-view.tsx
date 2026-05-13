@@ -155,7 +155,7 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [font, setFont] = useState<MushafFont>('qcf_v2');
   const [theme, setTheme] = useState<PageTheme>('cream');
-  const [fontSize, setFontSize] = useState<'sm' | 'md' | 'lg'>('sm');
+  const [fontSize, setFontSize] = useState<'xs' | 'sm' | 'md'>('xs');
 
   // Audio
   const [audioFiles, setAudioFiles] = useState<{ verse_key: string; url: string }[]>([]);
@@ -382,9 +382,9 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
   }
   const themeConfig = THEME_OPTIONS.find((t) => t.id === theme)!;
 
-  const fontSizeMap = { sm: '1.5rem', md: '1.85rem', lg: '2.25rem' };
-  const lineHeightMap = { sm: '2.4', md: '2.7', lg: '3.1' };
-  const indopakFontSizeMap = { sm: '1.8rem', md: '2.2rem', lg: '2.8rem' };
+  const fontSizeMap = { xs: '1.2rem', sm: '1.5rem', md: '1.85rem' };
+  const lineHeightMap = { xs: '2.2', sm: '2.4', md: '2.7' };
+  const indopakFontSizeMap = { xs: '1.4rem', sm: '1.8rem', md: '2.2rem' };
 
   const getWordStyle = (word: LineWord): React.CSSProperties => {
     const isEnd = word.char_type_name === 'end';
@@ -615,7 +615,7 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
           Size
         </p>
         <div className="flex flex-col gap-1.5">
-          {(['sm', 'md', 'lg'] as const).map((s) => (
+          {(['xs', 'sm', 'md'] as const).map((s) => (
             <button
               key={s}
               onClick={() => setFontSize(s)}
@@ -626,7 +626,7 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
                   : 'border-border text-muted-foreground hover:text-foreground'
               )}
             >
-              {s === 'sm' ? 'Small' : s === 'md' ? 'Medium' : 'Large'}
+              {s === 'xs' ? 'Small' : s === 'sm' ? 'Medium' : 'Large'}
             </button>
           ))}
         </div>
