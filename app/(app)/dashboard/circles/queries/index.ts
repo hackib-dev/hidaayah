@@ -282,7 +282,7 @@ export const togglePostLike = async (postId: number): Promise<{ liked: boolean }
 
 // GET /v1/posts/:id/comments
 export const fetchPostComments = async (
-  postId: number,
+  postId: string | number,
   params: { page?: number; limit?: number } = {}
 ): Promise<{
   total: number;
@@ -319,12 +319,12 @@ export interface Comment {
 // POST /v1/comments
 export const createComment = async (params: {
   body: string;
-  postId: number;
+  postId: string | number;
   parentId?: number;
   isPrivate?: boolean;
 }): Promise<{ success: boolean; comment: Comment }> => {
   const response = await reflectApi.post<{ success: boolean; comment: Comment }>('/v1/comments', {
-    comment: { ...params, mentions: [] }
+    comment: { ...params, postId: String(params.postId), mentions: [] }
   });
   return response.data;
 };

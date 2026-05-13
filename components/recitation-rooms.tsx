@@ -118,7 +118,7 @@ function PostCard({
     if (loadingComments) return;
     setLoadingComments(true);
     try {
-      const res = await fetchPostComments(Number(post.id), { limit: 20 });
+      const res = await fetchPostComments(post.id, { limit: 20 });
       setComments(res.comments ?? []);
     } catch {
       // leave empty
@@ -136,7 +136,7 @@ function PostCard({
     if (commentBody.trim().length < 1) return;
     setSubmittingComment(true);
     try {
-      const res = await createComment({ body: commentBody.trim(), postId: Number(post.id) });
+      const res = await createComment({ body: commentBody.trim(), postId: post.id });
       setComments((prev) => [res.comment, ...prev]);
       setCommentBody('');
     } catch {
