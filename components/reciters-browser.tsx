@@ -73,7 +73,6 @@ export function RecitersBrowser({ onSelectReciterAndSurah }: RecitersBrowserProp
     }
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => () => stopAudio(), []);
 
   if (loading) {
