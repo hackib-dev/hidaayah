@@ -179,6 +179,19 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
   >({});
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [containerHeight, setContainerHeight] = useState(0);
+
+  // Track container height so we can fit text to page
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      setContainerHeight(entry.contentRect.height);
+    });
+    ro.observe(el);
+    setContainerHeight(el.clientHeight);
+    return () => ro.disconnect();
+  }, []);
 
   const goTo = useCallback(
     (p: number) => {
@@ -386,27 +399,37 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
   }
   const themeConfig = THEME_OPTIONS.find((t) => t.id === theme)!;
 
-  const fontSizeMap = { xs: '1.2rem', sm: '1.5rem', md: '1.85rem' };
-  const lineHeightMap = { xs: '2.2', sm: '2.4', md: '2.7' };
-  const indopakFontSizeMap = { xs: '1.4rem', sm: '1.8rem', md: '2.2rem' };
+  // Max font sizes per user preference (caps to avoid overflow)
+  const maxFontSizePx = { xs: 19, sm: 24, md: 30 };
+  const lineHeightRatio = 2.4;
+  const numLines = sortedLines.length || 15;
+  const verticalPadding = 48;
+  const computedFontPx =
+    containerHeight > 0
+      ? Math.min(
+          (containerHeight - verticalPadding) / (numLines * lineHeightRatio),
+          maxFontSizePx[fontSize]
+        )
+      : maxFontSizePx[fontSize];
+  const activeFontSize = `${computedFontPx}px`;
 
   const getWordStyle = (word: LineWord): React.CSSProperties => {
     const isEnd = word.char_type_name === 'end';
     if (font === 'qcf_v2') {
       return {
         fontFamily: `QCFPage${word.page_number}, 'UthmanicHafs', serif`,
-        fontSize: fontSizeMap[fontSize]
+        fontSize: activeFontSize
       };
     }
     if (font === 'indopak') {
       return {
         fontFamily: isEnd ? "'UthmanicHafs', serif" : "'IndoPakNastaleeq', 'UthmanicHafs', serif",
-        fontSize: fontSizeMap[fontSize]
+        fontSize: activeFontSize
       };
     }
     return {
       fontFamily: "'UthmanicHafs', serif",
-      fontSize: fontSizeMap[fontSize]
+      fontSize: activeFontSize
     };
   };
 
@@ -775,7 +798,7 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
                         )}
                         <div
                           className="flex justify-center items-baseline flex-wrap"
-                          style={{ lineHeight: lineHeightMap[fontSize] }}
+                          style={{ lineHeight: String(lineHeightRatio) }}
                         >
                           {words.map((word, wi) => (
                             <span
