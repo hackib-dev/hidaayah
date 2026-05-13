@@ -150,10 +150,9 @@ export const acceptRoomInvite = async (
   id: number,
   token: string
 ): Promise<AcceptInviteResponse> => {
-  const response = await reflectApi.get<AcceptInviteResponse>(
-    `/v1/rooms/${id}/accept-invite`,
-    { params: { token } }
-  );
+  const response = await reflectApi.get<AcceptInviteResponse>(`/v1/rooms/${id}/accept-invite`, {
+    params: { token }
+  });
   return response.data;
 };
 
@@ -163,10 +162,9 @@ export const rejectRoomInvite = async (
   id: number,
   token: string
 ): Promise<RejectInviteResponse> => {
-  const response = await reflectApi.get<RejectInviteResponse>(
-    `/v1/rooms/${id}/reject-invite`,
-    { params: { token } }
-  );
+  const response = await reflectApi.get<RejectInviteResponse>(`/v1/rooms/${id}/reject-invite`, {
+    params: { token }
+  });
   return response.data;
 };
 
@@ -187,10 +185,7 @@ export const removeMemberFromRoom = async (
 export const updateAdminAccess = async (
   params: UpdateAdminAccessParams
 ): Promise<GenericSuccessResponse> => {
-  const response = await reflectApi.post<GenericSuccessResponse>(
-    '/v1/rooms/admins-access',
-    params
-  );
+  const response = await reflectApi.post<GenericSuccessResponse>('/v1/rooms/admins-access', params);
   return response.data;
 };
 
@@ -336,9 +331,7 @@ export const createComment = async (params: {
 
 // GET /v1/comments/:id/delete  — despite the name, this is a GET per the API spec
 export const deleteComment = async (commentId: number): Promise<{ removed: boolean }> => {
-  const response = await reflectApi.get<{ removed: boolean }>(
-    `/v1/comments/${commentId}/delete`
-  );
+  const response = await reflectApi.get<{ removed: boolean }>(`/v1/comments/${commentId}/delete`);
   return response.data;
 };
 
