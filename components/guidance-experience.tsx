@@ -25,6 +25,7 @@ import { createBookmark } from '@/app/(app)/dashboard/reflections/queries';
 import { fetchVerseByKey, fetchVerseAudioFiles } from '@/app/(app)/dashboard/quran/queries';
 import { reflectApi } from '@/app/apiService/quranFoundationService';
 import { QF_DEFAULT_MUSHAF_ID, QF_DEFAULT_TRANSLATION_ID, QF_DEFAULT_RECITER_ID } from '@/config';
+import { awardXP } from '@/lib/garden';
 
 interface GuidanceExperienceProps {
   emotion: string;
@@ -112,6 +113,7 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
 
     searchByEmotion(emotion, situation)
       .then(async (res) => {
+        awardXP('seek_guidance');
         const navItems = res.result?.navigation ?? [];
 
         // Collect unique ayah keys: prefer verses array, supplement from navigation ayah items
@@ -515,6 +517,7 @@ export function GuidanceExperience({ emotion, situation }: GuidanceExperiencePro
                     }
                   });
                   setSavedReflection(true);
+                  awardXP('write_reflection');
                 } catch {
                   // Save still marks as saved locally if API fails (offline/scope issue)
                   setSavedReflection(true);

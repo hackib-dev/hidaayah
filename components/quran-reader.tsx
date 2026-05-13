@@ -44,6 +44,7 @@ import {
   upsertReadingSession,
   logActivityDay
 } from '@/app/(app)/dashboard/reflections/queries';
+import { awardXP } from '@/lib/garden';
 import { contentApi } from '@/app/apiService/quranFoundationService';
 import { getPreferences, savePreferencesBulk } from '@/app/(app)/dashboard/profile/queries';
 import type { Verse, Word, Chapter, Reciter } from '@/app/(app)/dashboard/quran/types';
@@ -136,6 +137,7 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
   const lastVisibleVerseRef = useRef<{ chapter: number; verse: number } | null>(null);
   const sessionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const focusedRef = useRef(true); // whether tab is in focus
+  const awardedVersesRef = useRef<Set<string>>(new Set()); // verse keys that already got XP this session
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const verseRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -358,6 +360,7 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
     } else {
       setShowTafsir(verseNumber);
       loadTafsir(verseNumber);
+      awardXP('read_tafsir');
     }
   };
 
@@ -389,6 +392,7 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
     );
     if (idx !== -1) setCurrentVerseIndex(idx);
     setIsPlaying(true);
+    awardXP('listen_verse');
   };
 
   const handleTranslationClick = async (e: React.MouseEvent<HTMLDivElement>) => {
@@ -459,6 +463,11 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
               localStorage.setItem('last_read_verse_key', `${ch}:${v}`);
               localStorage.removeItem('last_read_mushaf_page');
             }
+            // Only award XP once per verse per session
+            if (!awardedVersesRef.current.has(key)) {
+              awardedVersesRef.current.add(key);
+              awardXP('read_verse');
+            }
           }, 2000);
         }
       },
@@ -498,6 +507,7 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
   useEffect(() => {
     activeSecondsRef.current = 0;
     verseQueueRef.current = new Set();
+    awardedVersesRef.current = new Set();
     const interval = setInterval(flushActivity, 10_000);
     return () => {
       clearInterval(interval);
@@ -537,6 +547,7 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
       if (res?.data) {
         setVerseNotes((prev) => ({ ...prev, [verseKey]: [...(prev[verseKey] ?? []), res.data] }));
         setNoteInput('');
+        awardXP('write_note');
       }
     } finally {
       setSavingNote(false);
