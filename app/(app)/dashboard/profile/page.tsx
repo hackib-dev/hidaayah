@@ -166,7 +166,7 @@ function UserListModal({
   mode: 'followers' | 'following';
   onClose: () => void;
 }) {
-  const [users, setUsers] = useState<(UserResult)[]>([]);
+  const [users, setUsers] = useState<UserResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -181,7 +181,7 @@ function UserListModal({
           mode === 'followers'
             ? await fetchUserFollowers(userId, { page: p, limit: 20 })
             : await fetchUserFollowing(userId, { page: p, limit: 20 });
-        const data = res.data as (UserResult)[];
+        const data = res.data as UserResult[];
         setUsers((prev) => (p === 1 ? data : [...prev, ...data]));
         setHasMore(p < res.pages);
         setPage(p);
@@ -277,7 +277,7 @@ function UserListModal({
 
 function SearchUsersModal({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<(UserResult)[]>([]);
+  const [results, setResults] = useState<UserResult[]>([]);
   const [searching, setSearching] = useState(false);
 
   useEffect(() => {
@@ -289,7 +289,7 @@ function SearchUsersModal({ onClose }: { onClose: () => void }) {
       setSearching(true);
       try {
         const res = await searchUsers({ query: query.trim(), limit: 20, all: true });
-        setResults(res.data as (UserResult)[]);
+        setResults(res.data as UserResult[]);
       } catch {
         setResults([]);
       } finally {
