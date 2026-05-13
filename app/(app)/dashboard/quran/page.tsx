@@ -10,6 +10,7 @@ import { RecitationFormatSelector } from '@/components/recitation-format-selecto
 import { JuzRecitationView } from '@/components/recitation-juz-view';
 import { HizbRecitationView } from '@/components/recitation-hizb-view';
 import { PageRecitationView } from '@/components/recitation-page-view';
+import { RecitersBrowser } from '@/components/reciters-browser';
 import { ChevronLeft, BookText, AlignJustify, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -275,6 +276,18 @@ export default function QuranPage() {
                       transition={{ duration: 0.2 }}
                     >
                       <PageRecitationView onSelectPage={handleSelectPage} />
+                    </motion.div>
+                  )}
+
+                  {format === 'reciters' && (
+                    <motion.div
+                      key="reciters"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <RecitersBrowser />
                     </motion.div>
                   )}
                 </AnimatePresence>

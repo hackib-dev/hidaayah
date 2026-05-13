@@ -5,6 +5,7 @@ import type {
   GetVerseResponse,
   ListVersesParams,
   ListRecitersResponse,
+  ListChapterRecitersResponse,
   ListJuzsResponse,
   ListHizbsResponse,
   ListPagesResponse
@@ -102,6 +103,11 @@ export const fetchVersesByPage = async (
 // ─── Audio ────────────────────────────────────────────────────────────────────
 export const fetchReciters = async (): Promise<ListRecitersResponse> => {
   const response = await contentApi.get<ListRecitersResponse>('/resources/chapter_reciters');
+  return response.data;
+};
+
+export const fetchChapterReciters = async (): Promise<ListChapterRecitersResponse> => {
+  const response = await contentApi.get<ListChapterRecitersResponse>('/resources/chapter_reciters');
   return response.data;
 };
 

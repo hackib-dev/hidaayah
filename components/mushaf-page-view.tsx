@@ -21,7 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   fetchVersesByPage,
   fetchVerseAudioFiles,
-  fetchReciters,
+  fetchVerseReciters,
   fetchJuzs,
   fetchHizbs,
   fetchPageForVerseKey,
@@ -213,7 +213,7 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
 
   // Fetch reciters, juzs, hizbs once
   useEffect(() => {
-    fetchReciters()
+    fetchVerseReciters()
       .then((res) => setReciters(res.reciters ?? []))
       .catch(() => null);
     fetchJuzs()

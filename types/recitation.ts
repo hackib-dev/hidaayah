@@ -1,4 +1,4 @@
-export type RecitationFormat = 'surah' | 'juz' | 'hizb' | 'page';
+export type RecitationFormat = 'surah' | 'juz' | 'hizb' | 'page' | 'reciters';
 
 export interface RecitationProgress {
   format: RecitationFormat;

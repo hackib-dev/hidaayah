@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { BookOpen, BookText, Layers, FileText } from 'lucide-react';
+import { BookOpen, BookText, Layers, FileText, Mic } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { RecitationFormat } from '@/types/recitation';
 
@@ -16,7 +16,8 @@ const FORMAT_OPTIONS: FormatOption[] = [
   { id: 'surah', label: 'Surah', sublabel: '114 chapters', icon: BookText },
   { id: 'juz', label: 'Juz', sublabel: '30 parts', icon: Layers },
   { id: 'hizb', label: 'Hizb', sublabel: '60 sections', icon: BookOpen },
-  { id: 'page', label: 'Page', sublabel: '604 pages', icon: FileText }
+  { id: 'page', label: 'Page', sublabel: '604 pages', icon: FileText },
+  { id: 'reciters', label: 'Reciters', sublabel: 'All reciters', icon: Mic }
 ];
 
 interface RecitationFormatSelectorProps {

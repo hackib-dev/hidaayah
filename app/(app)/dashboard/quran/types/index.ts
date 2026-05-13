@@ -170,6 +170,18 @@ export interface ListRecitersResponse {
   reciters: Reciter[];
 }
 
+export interface ChapterReciter {
+  id: number;
+  name: string;
+  style: { name: string } | null;
+  qirat: { name: string; language_name: string } | null;
+  translated_name: { name: string; language_name: string } | null;
+}
+
+export interface ListChapterRecitersResponse {
+  reciters: ChapterReciter[];
+}
+
 export interface AudioTimestamp {
   timestamp_from: number;
   timestamp_to: number;
