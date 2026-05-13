@@ -171,6 +171,9 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
   const [selectedHizb, setSelectedHizb] = useState<number | ''>('');
   const [navigating, setNavigating] = useState(false);
   const [currentChapterName, setCurrentChapterName] = useState<string | undefined>(chapterName);
+  const [chapterNames, setChapterNames] = useState<
+    Record<number, { arabic: string; simple: string }>
+  >({});
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -242,13 +245,26 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
       .finally(() => setLoading(false));
   }, [page]);
 
-  // Update chapter name from first verse on the page
+  // Update chapter name + fetch names for all surahs on this page
   useEffect(() => {
     if (verses.length === 0) return;
-    const chapterId = verses[0].chapter_id || parseInt(verses[0].verse_key.split(':')[0], 10);
-    fetchChapter(chapterId)
-      .then((res) => setCurrentChapterName(res.chapter?.name_simple ?? chapterName))
-      .catch(() => null);
+    const ids = [
+      ...new Set(verses.map((v) => v.chapter_id || parseInt(v.verse_key.split(':')[0], 10)))
+    ];
+    Promise.all(ids.map((id) => fetchChapter(id).catch(() => null))).then((results) => {
+      const map: Record<number, { arabic: string; simple: string }> = {};
+      for (const res of results) {
+        if (res?.chapter) {
+          map[res.chapter.id] = {
+            arabic: res.chapter.name_arabic,
+            simple: res.chapter.name_simple
+          };
+        }
+      }
+      setChapterNames(map);
+      const first = results[0]?.chapter;
+      if (first) setCurrentChapterName(first.name_simple ?? chapterName);
+    });
   }, [verses, chapterName]);
 
   // Fetch audio separately — re-runs when page verses load OR reciter changes
@@ -344,6 +360,26 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
   };
 
   const sortedLines = Array.from(groupByLine(verses).entries()).sort((a, b) => a[0] - b[0]);
+
+  // Map: line number → chapterId — only the FIRST line where a new surah's verse 1 appears.
+  // A single verse can span multiple lines, so we track which chapters already got a banner.
+  const surahBannerLines = new Map<number, number>();
+  const banneredChapters = new Set<number>();
+  for (const [lineNum, words] of sortedLines) {
+    for (const word of words) {
+      if (word.verseNumber !== 1) continue;
+      const chapterId = parseInt(word.verseKey.split(':')[0], 10);
+      if (banneredChapters.has(chapterId)) continue;
+      // Skip the very first surah that opens page 1 (Al-Fatiha already has no prior content)
+      if (lineNum === sortedLines[0]?.[0] && page === 1) {
+        banneredChapters.add(chapterId);
+        continue;
+      }
+      surahBannerLines.set(lineNum, chapterId);
+      banneredChapters.add(chapterId);
+      break;
+    }
+  }
   const themeConfig = THEME_OPTIONS.find((t) => t.id === theme)!;
 
   const fontSizeMap = { sm: '1.5rem', md: '1.85rem', lg: '2.25rem' };
@@ -673,29 +709,78 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
                   className="min-h-full flex flex-col justify-center px-4 py-6"
                   dir="rtl"
                 >
-                  {sortedLines.map(([lineNum, words]) => (
-                    <div
-                      key={lineNum}
-                      className="flex justify-center items-baseline flex-wrap"
-                      style={{ lineHeight: lineHeightMap[fontSize] }}
-                    >
-                      {words.map((word, wi) => (
-                        <span
-                          key={`${word.verseKey}-${word.position}-${wi}`}
-                          onClick={() => {
-                            if (activeVerseKey === word.verseKey) setIsPlaying((p) => !p);
-                            else playVerse(word.verseKey);
-                          }}
-                          className="cursor-pointer transition-colors duration-150 px-px"
-                          style={{
-                            ...getWordStyle(word),
-                            color: activeVerseKey === word.verseKey ? '#16a34a' : themeConfig.text
-                          }}
-                          dangerouslySetInnerHTML={{ __html: getWordText(word) }}
-                        />
-                      ))}
-                    </div>
-                  ))}
+                  {sortedLines.map(([lineNum, words]) => {
+                    const bannerChapterId = surahBannerLines.get(lineNum);
+                    const bannerInfo = bannerChapterId ? chapterNames[bannerChapterId] : null;
+                    // golden tint that works across all three themes
+                    const gold =
+                      theme === 'dark' ? 'rgba(180,140,60,0.55)' : 'rgba(120,90,30,0.25)';
+                    const goldText = theme === 'dark' ? '#c8a84b' : '#7a5c1e';
+                    return (
+                      <div key={lineNum}>
+                        {bannerInfo && (
+                          <div
+                            className="my-2 mx-1 flex items-center justify-center"
+                            dir="rtl"
+                            style={{
+                              border: `1.5px solid ${gold}`,
+                              borderRadius: '6px',
+                              padding: '4px 12px',
+                              background:
+                                theme === 'dark' ? 'rgba(180,140,60,0.08)' : 'rgba(120,90,30,0.06)',
+                              position: 'relative'
+                            }}
+                          >
+                            {/* corner ornaments */}
+                            {[
+                              'top-0 right-0',
+                              'top-0 left-0',
+                              'bottom-0 right-0',
+                              'bottom-0 left-0'
+                            ].map((pos) => (
+                              <span
+                                key={pos}
+                                className={`absolute ${pos} w-2 h-2 rounded-sm`}
+                                style={{ background: gold, margin: '-1px' }}
+                              />
+                            ))}
+                            <span
+                              style={{
+                                fontFamily: "'UthmanicHafs', 'Amiri', serif",
+                                fontSize: '0.95rem',
+                                color: goldText,
+                                letterSpacing: '0.04em',
+                                fontWeight: 600
+                              }}
+                            >
+                              سُورَةُ {bannerInfo.arabic}
+                            </span>
+                          </div>
+                        )}
+                        <div
+                          className="flex justify-center items-baseline flex-wrap"
+                          style={{ lineHeight: lineHeightMap[fontSize] }}
+                        >
+                          {words.map((word, wi) => (
+                            <span
+                              key={`${word.verseKey}-${word.position}-${wi}`}
+                              onClick={() => {
+                                if (activeVerseKey === word.verseKey) setIsPlaying((p) => !p);
+                                else playVerse(word.verseKey);
+                              }}
+                              className="cursor-pointer transition-colors duration-150 px-px"
+                              style={{
+                                ...getWordStyle(word),
+                                color:
+                                  activeVerseKey === word.verseKey ? '#16a34a' : themeConfig.text
+                              }}
+                              dangerouslySetInnerHTML={{ __html: getWordText(word) }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
                   {verses.length === 0 && (
                     <p
                       className="text-center py-12 text-sm"

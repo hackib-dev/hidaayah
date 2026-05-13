@@ -164,12 +164,17 @@ export function Navigation() {
             <HidaayahLogo size={30} />
           </Link>
           {user && (
-            <button
-              onClick={handleLogout}
-              className="p-2 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors touch-active"
+            <Link
+              href="/dashboard/profile"
+              className={cn(
+                'p-2 rounded-xl transition-colors touch-active',
+                pathname === '/dashboard/profile'
+                  ? 'text-primary bg-primary/10'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+              )}
             >
-              <LogOut className="w-5 h-5" />
-            </button>
+              <User className="w-5 h-5" />
+            </Link>
           )}
         </div>
       </header>
