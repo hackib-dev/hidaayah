@@ -13,7 +13,9 @@ import {
   Volume2,
   VolumeX,
   Settings2,
-  X
+  X,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -170,6 +172,7 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
   const [selectedJuz, setSelectedJuz] = useState<number | ''>('');
   const [selectedHizb, setSelectedHizb] = useState<number | ''>('');
   const [navigating, setNavigating] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const [currentChapterName, setCurrentChapterName] = useState<string | undefined>(chapterName);
   const [chapterNames, setChapterNames] = useState<
     Record<number, { arabic: string; simple: string }>
@@ -348,53 +351,16 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
   };
 
   // Swipe (horizontal)
+  // Swipe: right → next page, left → previous page
   const touchStartX = useRef<number | null>(null);
-  const touchStartY = useRef<number | null>(null);
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
   };
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null || touchStartY.current === null) return;
+    if (touchStartX.current === null) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
-    const dy = e.changedTouches[0].clientY - touchStartY.current;
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
-      goTo(dx > 0 ? page - 1 : page + 1);
-    } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 50) {
-      const el = containerRef.current;
-      if (!el) return;
-      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
-      const atTop = el.scrollTop <= 4;
-      // swipe up (dy < 0) at bottom → next page; swipe down (dy > 0) at top → prev page
-      if (dy < 0 && atBottom) goTo(page + 1);
-      else if (dy > 0 && atTop) goTo(page - 1);
-    }
+    if (Math.abs(dx) > 50) goTo(dx > 0 ? page + 1 : page - 1);
     touchStartX.current = null;
-    touchStartY.current = null;
-  };
-
-  // Wheel: navigate pages when scrolled to boundary
-  const wheelDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const handleWheel = (e: React.WheelEvent) => {
-    const el = containerRef.current;
-    if (!el) return;
-    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
-    const atTop = el.scrollTop <= 4;
-    if (e.deltaY > 0 && atBottom) {
-      e.preventDefault();
-      if (wheelDebounce.current) return;
-      goTo(page + 1);
-      wheelDebounce.current = setTimeout(() => {
-        wheelDebounce.current = null;
-      }, 600);
-    } else if (e.deltaY < 0 && atTop) {
-      e.preventDefault();
-      if (wheelDebounce.current) return;
-      goTo(page - 1);
-      wheelDebounce.current = setTimeout(() => {
-        wheelDebounce.current = null;
-      }, 600);
-    }
   };
 
   const sortedLines = Array.from(groupByLine(verses).entries()).sort((a, b) => a[0] - b[0]);
@@ -673,7 +639,12 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
   );
 
   return (
-    <div className="flex gap-4 items-start select-none w-full relative">
+    <div
+      className={cn(
+        'flex gap-4 items-start select-none w-full relative',
+        fullscreen && 'fixed inset-0 z-50 bg-background p-4 overflow-y-auto'
+      )}
+    >
       {/* ── Mushaf page column ─────────────────────────────────── */}
       <div className="flex flex-col items-center flex-1 min-w-0">
         {/* Page label + mobile toggle */}
@@ -685,7 +656,7 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
             <span className="text-xs text-muted-foreground font-medium tabular-nums">
               صفحة {page}
             </span>
-            {/* Mobile-only toggle button */}
+            {/* Mobile-only sidebar toggle */}
             <button
               onClick={() => setSidebarOpen((o) => !o)}
               className={cn(
@@ -696,6 +667,13 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
               )}
             >
               <Settings2 className="w-4 h-4" />
+            </button>
+            {/* Fullscreen toggle */}
+            <button
+              onClick={() => setFullscreen((f) => !f)}
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            >
+              {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </button>
           </div>
         </div>
@@ -722,12 +700,11 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
             ref={containerRef}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
-            onWheel={handleWheel}
             className="w-full rounded-2xl shadow-md overflow-y-auto relative"
             style={{
               background: themeConfig.bg,
               border: `1px solid ${themeConfig.border}`,
-              aspectRatio: '1 / 1.41'
+              ...(fullscreen ? { minHeight: 'calc(100vh - 8rem)' } : { aspectRatio: '1 / 1.41' })
             }}
           >
             {loading ? (
