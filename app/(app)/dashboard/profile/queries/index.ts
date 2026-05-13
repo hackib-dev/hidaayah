@@ -210,17 +210,21 @@ export const editReflectProfileSettings = async (params: {
 };
 
 // GET /v1/users/profile — full authenticated user profile
-export const fetchReflectProfileFull = async (params: { qdc?: boolean } = {}): Promise<ReflectProfile> => {
+export const fetchReflectProfileFull = async (
+  params: { qdc?: boolean } = {}
+): Promise<ReflectProfile> => {
   const response = await reflectApi.get<ReflectProfile>('/v1/users/profile', { params });
   return response.data;
 };
 
 // GET /v1/users/my-rooms — rooms the authenticated user belongs to
-export const fetchMyRooms = async (params: {
-  name?: string;
-  page?: number;
-  limit?: number;
-} = {}): Promise<{
+export const fetchMyRooms = async (
+  params: {
+    name?: string;
+    page?: number;
+    limit?: number;
+  } = {}
+): Promise<{
   total: number;
   currentPage: number;
   limit: number;
@@ -232,15 +236,17 @@ export const fetchMyRooms = async (params: {
 };
 
 // GET /v1/users/search — search users by name/username
-export const searchUsers = async (params: {
-  query?: string;
-  limit?: number;
-  page?: number;
-  all?: boolean;
-  postingAs?: boolean;
-  postingAsUserId?: string;
-  roomId?: number;
-} = {}): Promise<{
+export const searchUsers = async (
+  params: {
+    query?: string;
+    limit?: number;
+    page?: number;
+    all?: boolean;
+    postingAs?: boolean;
+    postingAsUserId?: string;
+    roomId?: number;
+  } = {}
+): Promise<{
   total: number;
   currentPage: number;
   limit: number;

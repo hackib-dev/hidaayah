@@ -61,10 +61,7 @@ function UserListItem({
   const [following, setFollowing] = useState(profile.followed ?? false);
   const [loading, setLoading] = useState(false);
   const displayName =
-    `${profile.firstName ?? ''} ${profile.lastName ?? ''}`.trim() ||
-    profile.username ||
-    'Unknown';
-
+    `${profile.firstName ?? ''} ${profile.lastName ?? ''}`.trim() || profile.username || 'Unknown';
 
   const handleToggleFollow = async () => {
     setLoading(true);
@@ -109,9 +106,7 @@ function UserListItem({
           <p className="text-sm font-semibold text-foreground truncate">{displayName}</p>
           {profile.verified && <BadgeCheck className="w-3.5 h-3.5 text-primary shrink-0" />}
         </div>
-        {profile.username && (
-          <p className="text-xs text-muted-foreground">@{profile.username}</p>
-        )}
+        {profile.username && <p className="text-xs text-muted-foreground">@{profile.username}</p>}
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
         {showRemove && (
@@ -120,7 +115,11 @@ function UserListItem({
             disabled={loading}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-destructive/10 text-destructive text-xs font-semibold hover:bg-destructive/20 transition-colors disabled:opacity-50"
           >
-            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserMinus className="w-3 h-3" />}
+            {loading ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <UserMinus className="w-3 h-3" />
+            )}
           </button>
         )}
         {!showRemove && onFollow && (
@@ -137,9 +136,13 @@ function UserListItem({
             {loading ? (
               <Loader2 className="w-3 h-3 animate-spin" />
             ) : following ? (
-              <><UserCheck className="w-3 h-3" /> Following</>
+              <>
+                <UserCheck className="w-3 h-3" /> Following
+              </>
             ) : (
-              <><UserPlus className="w-3 h-3" /> Follow</>
+              <>
+                <UserPlus className="w-3 h-3" /> Follow
+              </>
             )}
           </button>
         )}
@@ -167,25 +170,32 @@ function UserListModal({
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const load = useCallback(async (p: number) => {
-    if (p === 1) setLoading(true); else setLoadingMore(true);
-    try {
-      const res = mode === 'followers'
-        ? await fetchUserFollowers(userId, { page: p, limit: 20 })
-        : await fetchUserFollowing(userId, { page: p, limit: 20 });
-      const data = res.data as (ReflectProfile & { followed?: boolean })[];
-      setUsers((prev) => p === 1 ? data : [...prev, ...data]);
-      setHasMore(p < res.pages);
-      setPage(p);
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, [userId, mode]);
+  const load = useCallback(
+    async (p: number) => {
+      if (p === 1) setLoading(true);
+      else setLoadingMore(true);
+      try {
+        const res =
+          mode === 'followers'
+            ? await fetchUserFollowers(userId, { page: p, limit: 20 })
+            : await fetchUserFollowing(userId, { page: p, limit: 20 });
+        const data = res.data as (ReflectProfile & { followed?: boolean })[];
+        setUsers((prev) => (p === 1 ? data : [...prev, ...data]));
+        setHasMore(p < res.pages);
+        setPage(p);
+      } catch {
+        // ignore
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [userId, mode]
+  );
 
-  useEffect(() => { load(1); }, [load]);
+  useEffect(() => {
+    load(1);
+  }, [load]);
 
   return (
     <motion.div
@@ -229,9 +239,15 @@ function UserListModal({
                 <UserListItem
                   key={u.id}
                   profile={u}
-                  onFollow={mode === 'following' ? (id, followed) => {
-                    setUsers((prev) => prev.map((p) => p.id === id ? { ...p, followed } : p));
-                  } : undefined}
+                  onFollow={
+                    mode === 'following'
+                      ? (id, followed) => {
+                          setUsers((prev) =>
+                            prev.map((p) => (p.id === id ? { ...p, followed } : p))
+                          );
+                        }
+                      : undefined
+                  }
                   showRemove={mode === 'followers'}
                   onRemove={(id) => setUsers((prev) => prev.filter((p) => p.id !== id))}
                 />
@@ -263,7 +279,10 @@ function SearchUsersModal({ onClose }: { onClose: () => void }) {
   const [searching, setSearching] = useState(false);
 
   useEffect(() => {
-    if (!query.trim()) { setResults([]); return; }
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
     const tid = setTimeout(async () => {
       setSearching(true);
       try {
@@ -329,7 +348,7 @@ function SearchUsersModal({ onClose }: { onClose: () => void }) {
                   key={u.id}
                   profile={u}
                   onFollow={(id, followed) =>
-                    setResults((prev) => prev.map((p) => p.id === id ? { ...p, followed } : p))
+                    setResults((prev) => prev.map((p) => (p.id === id ? { ...p, followed } : p)))
                   }
                 />
               ))}
@@ -383,7 +402,10 @@ export default function ProfilePage() {
         setCurrentStreak(active?.days ?? 0);
         setLongestStreak(streaks[0]?.days ?? 0);
       })
-      .catch(() => { setCurrentStreak(0); setLongestStreak(0); })
+      .catch(() => {
+        setCurrentStreak(0);
+        setLongestStreak(0);
+      })
       .finally(() => setStreakLoading(false));
 
     fetchBookmarks({ type: 'ayah', mushafId: QF_DEFAULT_MUSHAF_ID, first: 1 })
@@ -495,7 +517,9 @@ export default function ProfilePage() {
                     className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold"
                   >
                     <Users className="w-3 h-3" />
-                    {reflectProfile?.postsCount !== undefined ? `${reflectProfile.postsCount} posts` : 'following'}
+                    {reflectProfile?.postsCount !== undefined
+                      ? `${reflectProfile.postsCount} posts`
+                      : 'following'}
                   </button>
                 </>
               )}
@@ -842,9 +866,7 @@ export default function ProfilePage() {
             onClose={() => setShowFollowing(false)}
           />
         )}
-        {showSearch && (
-          <SearchUsersModal onClose={() => setShowSearch(false)} />
-        )}
+        {showSearch && <SearchUsersModal onClose={() => setShowSearch(false)} />}
       </AnimatePresence>
     </main>
   );
