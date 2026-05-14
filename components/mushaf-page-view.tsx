@@ -15,7 +15,8 @@ import {
   Settings2,
   X,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Bookmark
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -29,8 +30,15 @@ import {
 } from '@/app/(app)/dashboard/quran/queries';
 import type { Verse, Word, Reciter, Juz, Hizb } from '@/app/(app)/dashboard/quran/types';
 import { cn } from '@/lib/utils';
-import { QF_DEFAULT_RECITER_ID } from '@/config';
-import { awardXP } from '@/lib/garden';
+import { QF_DEFAULT_RECITER_ID, QF_DEFAULT_MUSHAF_ID } from '@/config';
+import { awardPageXP } from '@/lib/garden';
+import {
+  upsertReadingSession,
+  logActivityDay,
+  createBookmark,
+  deleteBookmark,
+  fetchBookmarks
+} from '@/app/(app)/dashboard/reflections/queries';
 
 const CDN = 'https://verses.quran.foundation';
 const TOTAL_PAGES = 604;
@@ -168,6 +176,11 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
   const [reciters, setReciters] = useState<Reciter[]>([]);
   const [selectedReciterId, setSelectedReciterId] = useState(QF_DEFAULT_RECITER_ID);
   const [loadingAudio, setLoadingAudio] = useState(false);
+
+  // Page bookmark
+  const [pageBookmarkId, setPageBookmarkId] = useState<string | null>(null);
+  const [bookmarkLoading, setBookmarkLoading] = useState(false);
+
   // When audio finishes the last verse on a page, we want to auto-advance to the
   // next page and continue playing. We keep isPlaying=true across the page turn
   // and stash the first verse key of the incoming page here so the audio effect
@@ -186,6 +199,14 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerHeight, setContainerHeight] = useState(0);
+
+  // Activity tracking refs (mirrors quran-reader)
+  const activeSecondsRef = useRef(0);
+  const verseQueueRef = useRef<Set<string>>(new Set());
+  const sessionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const focusedRef = useRef(true);
+  const awardedVersesRef = useRef<Set<string>>(new Set());
+  const verseElsRef = useRef<HTMLElement[]>([]);
 
   // Track container height so we can fit text to page
   useEffect(() => {
@@ -228,8 +249,34 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
       localStorage.setItem('last_read_mushaf_page', String(page));
       localStorage.removeItem('last_read_verse_key');
     }
-    awardXP('read_page');
+    awardPageXP(page);
   }, [page]);
+
+  // Load bookmark state for the current page
+  useEffect(() => {
+    setPageBookmarkId(null);
+    fetchBookmarks({ type: 'page', key: page, mushafId: QF_DEFAULT_MUSHAF_ID, first: 1 })
+      .then((res) => setPageBookmarkId(res.data[0]?.id ?? null))
+      .catch(() => null);
+  }, [page]);
+
+  const togglePageBookmark = async () => {
+    if (bookmarkLoading) return;
+    setBookmarkLoading(true);
+    try {
+      if (pageBookmarkId) {
+        await deleteBookmark(pageBookmarkId);
+        setPageBookmarkId(null);
+      } else {
+        const res = await createBookmark({ type: 'page', key: page, mushaf: QF_DEFAULT_MUSHAF_ID });
+        setPageBookmarkId(res.data?.id ?? null);
+      }
+    } catch {
+      // silently ignore
+    } finally {
+      setBookmarkLoading(false);
+    }
+  };
 
   // Fetch reciters, juzs, hizbs once
   useEffect(() => {
@@ -408,6 +455,105 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
       setActiveVerseKey(k);
     }
   };
+
+  // ─── Reading tracking (mirrors quran-reader) ────────────────────────────────
+
+  const flushActivity = () => {
+    const secs = activeSecondsRef.current;
+    const keys = Array.from(verseQueueRef.current);
+    if (secs < 1 || keys.length === 0) return;
+    activeSecondsRef.current = 0;
+    verseQueueRef.current = new Set();
+
+    const sorted = keys
+      .map((k) => ({ ch: parseInt(k.split(':')[0], 10), v: parseInt(k.split(':')[1], 10) }))
+      .sort((a, b) => a.ch - b.ch || a.v - b.v);
+
+    const ranges: string[] = [];
+    let start = sorted[0];
+    let prev = sorted[0];
+    for (let i = 1; i < sorted.length; i++) {
+      const cur = sorted[i];
+      if (!(cur.ch === prev.ch && cur.v === prev.v + 1)) {
+        ranges.push(`${start.ch}:${start.v}-${prev.ch}:${prev.v}`);
+        start = cur;
+      }
+      prev = cur;
+    }
+    ranges.push(`${start.ch}:${start.v}-${prev.ch}:${prev.v}`);
+
+    logActivityDay({ type: 'QURAN', seconds: secs, ranges, mushafId: QF_DEFAULT_MUSHAF_ID }).catch(
+      () => null
+    );
+  };
+
+  // IntersectionObserver on verse elements — re-runs when page verses change
+  useEffect(() => {
+    if (verses.length === 0) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const el = entry.target as HTMLElement;
+          const key = el.dataset.verseKey;
+          if (!key) continue;
+          verseQueueRef.current.add(key);
+          const [ch, v] = key.split(':').map(Number);
+
+          if (sessionDebounceRef.current) clearTimeout(sessionDebounceRef.current);
+          sessionDebounceRef.current = setTimeout(() => {
+            upsertReadingSession({ chapterNumber: ch, verseNumber: v }).catch(() => null);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('last_read_mushaf_page', String(page));
+              localStorage.removeItem('last_read_verse_key');
+            }
+            // no per-verse XP — only pages count
+          }, 2000);
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    verseElsRef.current.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [verses, page]);
+
+  // Focus tracking
+  useEffect(() => {
+    const onFocus = () => {
+      focusedRef.current = true;
+    };
+    const onBlur = () => {
+      focusedRef.current = false;
+    };
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, []);
+
+  // Tick every second while focused
+  useEffect(() => {
+    const tick = setInterval(() => {
+      if (focusedRef.current) activeSecondsRef.current += 1;
+    }, 1000);
+    return () => clearInterval(tick);
+  }, []);
+
+  // Flush every 10s; reset + final flush when page changes
+  useEffect(() => {
+    activeSecondsRef.current = 0;
+    verseQueueRef.current = new Set();
+    awardedVersesRef.current = new Set();
+    const interval = setInterval(flushActivity, 10_000);
+    return () => {
+      clearInterval(interval);
+      flushActivity();
+      if (sessionDebounceRef.current) clearTimeout(sessionDebounceRef.current);
+    };
+  }, [page]);
 
   // Swipe (horizontal)
   // Swipe: right → next page, left → previous page
@@ -725,6 +871,20 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
             <span className="text-xs text-muted-foreground font-medium tabular-nums">
               صفحة {page}
             </span>
+            <button
+              onClick={togglePageBookmark}
+              disabled={bookmarkLoading}
+              aria-label={pageBookmarkId ? 'Remove page bookmark' : 'Bookmark this page'}
+              aria-pressed={!!pageBookmarkId}
+              className={cn(
+                'p-1.5 rounded-lg transition-colors disabled:opacity-50',
+                pageBookmarkId
+                  ? 'text-accent bg-gold-muted'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+              )}
+            >
+              <Bookmark className={cn('w-4 h-4', pageBookmarkId && 'fill-current')} />
+            </button>
             {/* Mobile-only sidebar toggle */}
             <button
               onClick={() => setSidebarOpen((o) => !o)}
@@ -794,6 +954,25 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
                   className="min-h-full flex flex-col justify-center px-4 py-6"
                   dir="rtl"
                 >
+                  {/* Hidden per-verse sentinels for IntersectionObserver */}
+                  <div
+                    ref={(el) => {
+                      if (!el) return;
+                      verseElsRef.current = Array.from(
+                        el.querySelectorAll<HTMLElement>('[data-verse-key]')
+                      );
+                    }}
+                    aria-hidden
+                    className="absolute inset-0 pointer-events-none overflow-hidden"
+                  >
+                    {verses.map((v) => (
+                      <span
+                        key={v.verse_key}
+                        data-verse-key={v.verse_key}
+                        className="block h-px w-px opacity-0"
+                      />
+                    ))}
+                  </div>
                   {sortedLines.map(([lineNum, words]) => {
                     const bannerChapterId = surahBannerLines.get(lineNum);
                     const bannerInfo = bannerChapterId ? chapterNames[bannerChapterId] : null;

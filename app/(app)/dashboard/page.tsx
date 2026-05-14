@@ -20,7 +20,11 @@ import {
   Pause
 } from 'lucide-react';
 import Link from 'next/link';
-import { fetchActiveStreak, fetchAllTodayGoalPlans } from '@/app/(app)/dashboard/profile/queries';
+import {
+  fetchActiveStreak,
+  fetchAllTodayGoalPlans,
+  goalPctFor
+} from '@/app/(app)/dashboard/profile/queries';
 import {
   fetchBookmarks,
   fetchMyReflectionsCount,
@@ -32,7 +36,6 @@ import { QF_DEFAULT_MUSHAF_ID, QF_DEFAULT_RECITER_ID } from '@/config';
 import type { TodayGoalPlan } from '@/app/(app)/dashboard/profile/types';
 import type { RandomAyah } from '@/app/(app)/dashboard/reflections/types';
 import { QuranGarden } from '@/components/quran-garden';
-import { awardXP, loadGarden } from '@/lib/garden';
 
 function StatSkeleton() {
   return (
@@ -91,18 +94,6 @@ export default function HomePage() {
       .then((res) => {
         const days = res?.data?.[0]?.days ?? 0;
         setStreakDays(days);
-        // Award streak_day XP once per calendar day when streak is active
-        if (days > 0 && typeof window !== 'undefined') {
-          const today = new Date().toISOString().slice(0, 10);
-          const lastStreakXP = localStorage.getItem('garden_last_streak_xp_date');
-          if (lastStreakXP !== today) {
-            localStorage.setItem('garden_last_streak_xp_date', today);
-            // Sync streak days into garden state before awarding
-            const g = loadGarden();
-            g.streakDays = days;
-            awardXP('streak_day');
-          }
-        }
       })
       .catch(() => setStreakDays(0))
       .finally(() => setStreakLoading(false));
@@ -252,7 +243,7 @@ export default function HomePage() {
                       {todayPlans.length === 0
                         ? 'No goals yet — tap to set one'
                         : (() => {
-                            const done = todayPlans.filter((p) => p.progress >= 1).length;
+                            const done = todayPlans.filter((p) => goalPctFor(p) >= 100).length;
                             return done === todayPlans.length
                               ? `All ${todayPlans.length} goal${todayPlans.length !== 1 ? 's' : ''} complete`
                               : `${done} / ${todayPlans.length} complete`;
@@ -262,7 +253,7 @@ export default function HomePage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {todayPlans.length > 0 &&
-                    todayPlans.filter((p) => p.progress >= 1).length === todayPlans.length && (
+                    todayPlans.filter((p) => goalPctFor(p) >= 100).length === todayPlans.length && (
                       <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                     )}
                   <ArrowRight className="w-4 h-4 text-muted-foreground" />
@@ -377,7 +368,7 @@ export default function HomePage() {
                       {ayahPlaying ? 'Pause' : 'Play'}
                     </button>
                     <Link
-                      href={`/dashboard/quran?verse=${randomAyah.verse_key}`}
+                      href={`/dashboard/quran?verse=${randomAyah.verse_key}&mode=translation`}
                       className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       Read in context →

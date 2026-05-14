@@ -2,10 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { Search, ChevronRight, Star, Loader2 } from 'lucide-react';
+import { Search, ChevronRight, Star, Loader2, Bookmark } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { fetchChapters } from '@/app/(app)/dashboard/quran/queries';
 import type { Chapter } from '@/app/(app)/dashboard/quran/types';
+import {
+  fetchAllBookmarks,
+  createBookmark,
+  deleteBookmark
+} from '@/app/(app)/dashboard/reflections/queries';
+import { QF_DEFAULT_MUSHAF_ID } from '@/config';
 
 const popularIds = [1, 36, 55, 67, 112];
 
@@ -20,6 +26,10 @@ export function SurahList({ onSelectSurah }: SurahListProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // surahId → bookmarkId (present = bookmarked)
+  const [surahBookmarks, setSurahBookmarks] = useState<Record<number, string>>({});
+  const [bookmarkingId, setBookmarkingId] = useState<number | null>(null);
+
   const loadChapters = () => {
     setLoading(true);
     setError(null);
@@ -31,7 +41,43 @@ export function SurahList({ onSelectSurah }: SurahListProps) {
 
   useEffect(() => {
     loadChapters();
+    // Load existing surah bookmarks — fetchAllBookmarks follows all cursor pages
+    fetchAllBookmarks({ type: 'surah', mushafId: QF_DEFAULT_MUSHAF_ID })
+      .then((bms) => {
+        const map: Record<number, string> = {};
+        for (const bm of bms) map[bm.key] = bm.id;
+        setSurahBookmarks(map);
+      })
+      .catch(() => null);
   }, []);
+
+  const toggleSurahBookmark = async (e: React.MouseEvent, surahId: number) => {
+    e.stopPropagation();
+    if (bookmarkingId === surahId) return;
+    setBookmarkingId(surahId);
+    try {
+      const existing = surahBookmarks[surahId];
+      if (existing) {
+        await deleteBookmark(existing);
+        setSurahBookmarks((prev) => {
+          const n = { ...prev };
+          delete n[surahId];
+          return n;
+        });
+      } else {
+        const res = await createBookmark({
+          type: 'surah',
+          key: surahId,
+          mushaf: QF_DEFAULT_MUSHAF_ID
+        });
+        if (res.data?.id) setSurahBookmarks((prev) => ({ ...prev, [surahId]: res.data.id }));
+      }
+    } catch {
+      // ignore
+    } finally {
+      setBookmarkingId(null);
+    }
+  };
 
   const filteredChapters = chapters.filter((ch) => {
     const matchesSearch =
@@ -121,43 +167,70 @@ export function SurahList({ onSelectSurah }: SurahListProps) {
       {/* Chapter list */}
       <div className="space-y-1.5">
         {filteredChapters.map((ch, i) => (
-          <motion.button
+          <motion.div
             key={ch.id}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.008 }}
-            onClick={() => onSelectSurah(ch.id)}
-            className="w-full flex items-center gap-4 p-3.5 rounded-xl bg-card border border-border hover:border-primary/30 hover:bg-primary/5 transition-all group text-left"
+            className="flex items-center gap-2 rounded-xl bg-card border border-border hover:border-primary/30 hover:bg-primary/5 transition-all group"
           >
-            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-              <span className="text-xs font-bold text-primary">{ch.id}</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-foreground text-sm">{ch.name_simple}</span>
-                <span
-                  className={cn(
-                    'text-[10px] px-1.5 py-0.5 rounded font-medium',
-                    ch.revelation_place === 'makkah'
-                      ? 'bg-teal-muted text-teal'
-                      : 'bg-gold-muted text-accent'
-                  )}
-                >
-                  {ch.revelation_place === 'makkah' ? 'Meccan' : 'Medinan'}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground truncate">
-                {ch.translated_name.name} · {ch.verses_count} verses
-              </p>
-            </div>
-            <span
-              className="text-base text-foreground/70 shrink-0"
-              style={{ fontFamily: 'var(--font-arabic)' }}
+            {/* Clickable surah area */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => onSelectSurah(ch.id)}
+              onKeyDown={(e) => e.key === 'Enter' && onSelectSurah(ch.id)}
+              className="flex-1 flex items-center gap-4 p-3.5 text-left cursor-pointer min-w-0"
             >
-              {ch.name_arabic}
-            </span>
-            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-          </motion.button>
+              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <span className="text-xs font-bold text-primary">{ch.id}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-foreground text-sm">{ch.name_simple}</span>
+                  <span
+                    className={cn(
+                      'text-[10px] px-1.5 py-0.5 rounded font-medium',
+                      ch.revelation_place === 'makkah'
+                        ? 'bg-teal-muted text-teal'
+                        : 'bg-gold-muted text-accent'
+                    )}
+                  >
+                    {ch.revelation_place === 'makkah' ? 'Meccan' : 'Medinan'}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground truncate">
+                  {ch.translated_name.name} · {ch.verses_count} verses
+                </p>
+              </div>
+              <span
+                className="text-base text-foreground/70 shrink-0"
+                style={{ fontFamily: 'var(--font-arabic)' }}
+              >
+                {ch.name_arabic}
+              </span>
+              <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+            </div>
+            {/* Bookmark button — separate from the row button to avoid nesting */}
+            <button
+              onClick={(e) => toggleSurahBookmark(e, ch.id)}
+              disabled={bookmarkingId === ch.id}
+              aria-label={surahBookmarks[ch.id] ? 'Remove bookmark' : 'Bookmark surah'}
+              aria-pressed={!!surahBookmarks[ch.id]}
+              className={cn(
+                'p-2 mr-2 rounded-lg transition-colors shrink-0 disabled:opacity-50',
+                surahBookmarks[ch.id]
+                  ? 'text-accent bg-gold-muted'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+              )}
+            >
+              {bookmarkingId === ch.id ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Bookmark className={cn('w-3.5 h-3.5', surahBookmarks[ch.id] && 'fill-current')} />
+              )}
+            </button>
+          </motion.div>
         ))}
         {filteredChapters.length === 0 && (
           <p className="text-center text-sm text-muted-foreground py-8">

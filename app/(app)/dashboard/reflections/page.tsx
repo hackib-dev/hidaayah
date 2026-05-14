@@ -280,6 +280,13 @@ export default function ReflectionsPage() {
     (p) => !searchQuery || p.body.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const filteredNotes = notes.filter(
+    (n) =>
+      !searchQuery ||
+      n.body.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (n.ranges?.[0] ?? '').toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const groupedPosts = filteredPosts.reduce(
     (acc, post) => {
       const label = formatDate(post.createdAt);
@@ -451,7 +458,7 @@ export default function ReflectionsPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search reflections..."
+                placeholder={activeTab === 'notes' ? 'Search notes...' : 'Search reflections...'}
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-card border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow"
               />
             </div>
@@ -460,7 +467,10 @@ export default function ReflectionsPage() {
           {/* Tab switcher */}
           <div className="flex rounded-xl border border-border bg-card overflow-hidden text-sm font-semibold">
             <button
-              onClick={() => setActiveTab('notes')}
+              onClick={() => {
+                setActiveTab('notes');
+                setSearchQuery('');
+              }}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 transition-colors ${
                 activeTab === 'notes'
                   ? 'bg-primary text-primary-foreground'
@@ -471,7 +481,10 @@ export default function ReflectionsPage() {
               Notes {!notesLoading && notes.length > 0 && `(${notes.length})`}
             </button>
             <button
-              onClick={() => setActiveTab('reflections')}
+              onClick={() => {
+                setActiveTab('reflections');
+                setSearchQuery('');
+              }}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 transition-colors ${
                 activeTab === 'reflections'
                   ? 'bg-primary text-primary-foreground'
@@ -510,7 +523,7 @@ export default function ReflectionsPage() {
                 </div>
               ) : (
                 <>
-                  {notes.map((note) => {
+                  {filteredNotes.map((note) => {
                     const verseRef = note.ranges?.[0]
                       ? (() => {
                           const m = note.ranges![0].match(/^(\d+):(\d+)-/);

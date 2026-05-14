@@ -22,6 +22,8 @@ import {
 } from '@/app/(app)/dashboard/quran/queries';
 import type { Chapter, Juz, Hizb } from '@/app/(app)/dashboard/quran/types';
 import type { RecitationFormat } from '@/types/recitation';
+import { QURAN_NAV_EVENT } from '@/components/quran-companion';
+import type { QuranNavEvent } from '@/components/quran-companion';
 
 export default function QuranPage() {
   const searchParams = useSearchParams();
@@ -39,6 +41,7 @@ export default function QuranPage() {
     juz: '',
     hizb: ''
   });
+  const [reciterSearch, setReciterSearch] = useState<string>('');
 
   // Fetch juzs and hizbs for jump navigation
   useEffect(() => {
@@ -58,11 +61,38 @@ export default function QuranPage() {
       .catch(() => null);
   }, []);
 
-  // Open directly to surah/verse/page if provided via query params
+  // Open directly to surah/verse/page/juz/hizb if provided via query params
   useEffect(() => {
     const surahParam = searchParams.get('surah') ?? searchParams.get('chapter');
     const verseParam = searchParams.get('verse');
     const pageParam = searchParams.get('page');
+    const modeParam = searchParams.get('mode');
+    const formatParam = searchParams.get('format') as RecitationFormat | null;
+    const juzParam = searchParams.get('juz');
+    const hizbParam = searchParams.get('hizb');
+    const reciterParam = searchParams.get('reciter');
+
+    // Switch to the requested format tab (juz, hizb, page, reciters, surah)
+    if (formatParam && ['surah', 'juz', 'hizb', 'page', 'reciters'].includes(formatParam)) {
+      setFormat(formatParam);
+    }
+
+    // Pre-fill reciter search when navigating from companion
+    if (reciterParam) {
+      setReciterSearch(decodeURIComponent(reciterParam));
+    }
+
+    // Scroll the juz list to the requested juz
+    if (juzParam && !isNaN(parseInt(juzParam, 10))) {
+      const num = parseInt(juzParam, 10);
+      setSelectedJump((prev) => ({ ...prev, juz: num }));
+    }
+
+    // Scroll the hizb list to the requested hizb
+    if (hizbParam && !isNaN(parseInt(hizbParam, 10))) {
+      const num = parseInt(hizbParam, 10);
+      setSelectedJump((prev) => ({ ...prev, hizb: num }));
+    }
 
     // Direct mushaf page navigation (from "Resume reading" when last session was mushaf)
     if (pageParam) {
@@ -71,6 +101,7 @@ export default function QuranPage() {
         setSelectedPage(p);
         setReaderMode('mushaf');
         setView('reader');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
     }
@@ -92,6 +123,7 @@ export default function QuranPage() {
       setSelectedSurah(surahNumber);
       setScrollToVerse(verseNumber);
       setView('reader');
+      if (modeParam === 'translation') setReaderMode('translation');
 
       if (verseNumber) {
         const verseKey = `${surahNumber}:${verseNumber}`;
@@ -122,6 +154,56 @@ export default function QuranPage() {
       .then((res) => setChapterInfo(res.chapter ?? null))
       .catch(() => null);
   }, []);
+
+  // Listen for navigation events dispatched by the Quran Companion when already on this page
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const nav = (e as CustomEvent<QuranNavEvent>).detail;
+
+      if (nav.reciterName) {
+        setFormat('reciters');
+        setReciterSearch(nav.reciterName);
+        setView('list');
+        return;
+      }
+      if (nav.juzNumber) {
+        setFormat('juz');
+        setSelectedJump((prev) => ({ ...prev, juz: nav.juzNumber! }));
+        setView('list');
+        return;
+      }
+      if (nav.hizbNumber) {
+        setFormat('hizb');
+        setSelectedJump((prev) => ({ ...prev, hizb: nav.hizbNumber! }));
+        setView('list');
+        return;
+      }
+      if (nav.pageNumber) {
+        setSelectedPage(nav.pageNumber);
+        setReaderMode('mushaf');
+        setView('reader');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      if (nav.verseKey) {
+        const [chapter, verse] = nav.verseKey.split(':');
+        openReader(parseInt(chapter, 10), parseInt(verse, 10));
+        if (nav.mode === 'translation') setReaderMode('translation');
+        fetchPageForVerseKey(nav.verseKey)
+          .then((p) => {
+            if (p) setSelectedPage(p);
+          })
+          .catch(() => null);
+        return;
+      }
+      if (nav.chapterNumber) {
+        openReader(nav.chapterNumber);
+        if (nav.mode === 'translation') setReaderMode('translation');
+      }
+    };
+    window.addEventListener(QURAN_NAV_EVENT, handler);
+    return () => window.removeEventListener(QURAN_NAV_EVENT, handler);
+  }, [openReader]);
 
   const handleBack = () => {
     setView('list');
@@ -262,7 +344,10 @@ export default function QuranPage() {
                       exit={{ opacity: 0, y: -8 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <JuzRecitationView onSelectJuz={handleSelectJuz} />
+                      <JuzRecitationView
+                        onSelectJuz={handleSelectJuz}
+                        scrollToJuz={selectedJump.juz || undefined}
+                      />
                     </motion.div>
                   )}
 
@@ -274,7 +359,10 @@ export default function QuranPage() {
                       exit={{ opacity: 0, y: -8 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <HizbRecitationView onSelectHizb={handleSelectHizb} />
+                      <HizbRecitationView
+                        onSelectHizb={handleSelectHizb}
+                        scrollToHizb={selectedJump.hizb || undefined}
+                      />
                     </motion.div>
                   )}
 
@@ -298,7 +386,7 @@ export default function QuranPage() {
                       exit={{ opacity: 0, y: -8 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <RecitersBrowser />
+                      <RecitersBrowser initialSearch={reciterSearch} />
                     </motion.div>
                   )}
                 </AnimatePresence>

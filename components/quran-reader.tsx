@@ -306,11 +306,19 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
         setPage(lastLoadedPage);
 
         if (scrollToVerse) {
-          setTimeout(() => {
-            document
-              .getElementById(`verse-${surahNumber}-${scrollToVerse}`)
-              ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }, 400);
+          // Wait for React to paint the verse elements, then scroll.
+          // Retry a few times in case rendering is slow.
+          const targetId = `verse-${surahNumber}-${scrollToVerse}`;
+          let attempts = 0;
+          const tryScroll = () => {
+            const el = document.getElementById(targetId);
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else if (attempts++ < 8) {
+              setTimeout(tryScroll, 150);
+            }
+          };
+          setTimeout(tryScroll, 200);
         }
       })
       .catch(() => setError('Failed to load surah. Please try again.'))
@@ -390,9 +398,12 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
     const idx = verseAudioFiles.findIndex(
       (f) => parseInt(f.verse_key.split(':')[1], 10) === verseNumber
     );
+    if (isPlaying && activeVerse === verseNumber) {
+      setIsPlaying(false);
+      return;
+    }
     if (idx !== -1) setCurrentVerseIndex(idx);
     setIsPlaying(true);
-    awardXP('listen_verse');
   };
 
   const handleTranslationClick = async (e: React.MouseEvent<HTMLDivElement>) => {
@@ -463,11 +474,7 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
               localStorage.setItem('last_read_verse_key', `${ch}:${v}`);
               localStorage.removeItem('last_read_mushaf_page');
             }
-            // Only award XP once per verse per session
-            if (!awardedVersesRef.current.has(key)) {
-              awardedVersesRef.current.add(key);
-              awardXP('read_verse');
-            }
+            // no per-verse XP — only pages and tafsir count
           }, 2000);
         }
       },
@@ -547,7 +554,6 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
       if (res?.data) {
         setVerseNotes((prev) => ({ ...prev, [verseKey]: [...(prev[verseKey] ?? []), res.data] }));
         setNoteInput('');
-        awardXP('write_note');
       }
     } finally {
       setSavingNote(false);
@@ -1017,7 +1023,12 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
                   <motion.button
                     whileTap={{ scale: 0.88 }}
                     onClick={() => handlePlayVerse(verse.verse_number)}
-                    aria-label={`Play verse ${verse.verse_number}`}
+                    aria-label={
+                      isActive
+                        ? `Pause verse ${verse.verse_number}`
+                        : `Play verse ${verse.verse_number}`
+                    }
+                    aria-pressed={isActive}
                     className={cn(
                       'p-2 rounded-xl transition-colors focus-ring',
                       isActive
@@ -1025,7 +1036,7 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
                         : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                     )}
                   >
-                    <Play className="w-4 h-4" />
+                    {isActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                   </motion.button>
                   <motion.button
                     whileTap={{ scale: 0.88 }}

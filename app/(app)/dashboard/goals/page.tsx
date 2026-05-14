@@ -25,7 +25,6 @@ import {
 } from '@/app/(app)/dashboard/profile/queries';
 import type { GoalEstimateDay } from '@/app/(app)/dashboard/profile/queries';
 import type { TodayGoalPlan } from '@/app/(app)/dashboard/profile/types';
-import { awardXP } from '@/lib/garden';
 
 function CardSkeleton() {
   return (
@@ -182,15 +181,6 @@ export default function GoalsPage() {
       if (!p || seen.has(p.goalId)) continue;
       seen.add(p.goalId);
       updated.push(p as TodayGoalPlan);
-    }
-    // Award XP for any goal that just became complete
-    for (const p of updated) {
-      const wasComplete = currentPlans.find(
-        (old) => old.goalId === p.goalId && goalInfoFor(old)?.pct === 100
-      );
-      if (!wasComplete && goalInfoFor(p as TodayGoalPlan)?.pct === 100) {
-        awardXP('complete_goal');
-      }
     }
     setPlans(updated);
   };
