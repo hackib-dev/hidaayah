@@ -190,7 +190,7 @@ export default function HomePage() {
     <main className="min-h-screen pb-24 md:pb-8">
       <Navigation />
 
-      <div className="pt-16 md:pt-20 px-4 md:px-6">
+      <div className="pt-16 md:pt-16 lg:pt-20 px-4 md:px-6">
         <div className="max-w-2xl mx-auto space-y-5 py-6">
           {/* Greeting */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>

@@ -32,16 +32,17 @@ export function Navigation() {
 
   return (
     <>
-      {/* Desktop Navigation */}
+      {/* Desktop / Tablet Navigation — shown at md (768px) and above */}
       <nav className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
-        <div className="w-full max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 group">
+        <div className="w-full max-w-6xl mx-auto px-4 lg:px-6 h-14 lg:h-16 flex items-center justify-between gap-2">
+          <Link href="/" className="flex items-center gap-2 shrink-0">
             <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }}>
-              <HidaayahLogo size={36} />
+              <HidaayahLogo size={30} />
             </motion.div>
           </Link>
 
-          <div className="flex items-center gap-1">
+          {/* Nav items — icon-only on md/lg tablets, icon + label on xl+ */}
+          <div className="flex items-center gap-0.5 lg:gap-1 flex-1 justify-center">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive =
@@ -51,8 +52,9 @@ export function Navigation() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  title={item.label}
                   className={cn(
-                    'relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors duration-200',
+                    'relative flex items-center gap-2 px-2.5 py-2 lg:px-3 xl:px-3.5 rounded-xl text-sm font-medium transition-colors duration-200',
                     isActive
                       ? 'text-primary-foreground'
                       : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
@@ -62,16 +64,13 @@ export function Navigation() {
                     <motion.div
                       layoutId="nav-pill"
                       className="absolute inset-0 rounded-xl bg-primary"
-                      transition={{
-                        type: 'spring',
-                        stiffness: 380,
-                        damping: 30
-                      }}
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                     />
                   )}
                   <span className="relative flex items-center gap-2">
-                    <Icon className="w-4 h-4" strokeWidth={isActive ? 2.5 : 2} />
-                    <span>{item.label}</span>
+                    <Icon className="w-4 h-4 shrink-0" strokeWidth={isActive ? 2.5 : 2} />
+                    {/* Label hidden on tablets (md–lg), visible on xl+ */}
+                    <span className="hidden xl:inline">{item.label}</span>
                   </span>
                 </Link>
               );
@@ -79,11 +78,12 @@ export function Navigation() {
           </div>
 
           {user && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5 shrink-0">
               <Link
                 href="/dashboard/profile"
+                title="Profile"
                 className={cn(
-                  'relative flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors duration-200',
+                  'relative flex items-center gap-2 px-2.5 py-2 lg:px-3 rounded-xl text-sm font-medium transition-colors duration-200',
                   pathname === '/dashboard/profile'
                     ? 'text-primary-foreground'
                     : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
@@ -101,12 +101,13 @@ export function Navigation() {
                     className="w-4 h-4"
                     strokeWidth={pathname === '/dashboard/profile' ? 2.5 : 2}
                   />
-                  <span>Profile</span>
+                  <span className="hidden xl:inline">Profile</span>
                 </span>
               </Link>
               <button
                 onClick={handleLogout}
-                className="px-3 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                title="Log out"
+                className="px-2.5 py-2 lg:px-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
               >
                 <LogOut className="w-4 h-4" />
               </button>
@@ -117,7 +118,7 @@ export function Navigation() {
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-t border-border safe-area-bottom">
-        <div className="flex items-center justify-around h-16 px-2">
+        <div className="flex items-center justify-around h-14 px-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive =
@@ -127,18 +128,18 @@ export function Navigation() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex flex-col items-center justify-center gap-0.5 w-16 h-14 rounded-xl transition-colors duration-200 touch-active"
+                className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full py-1.5 rounded-xl transition-colors duration-200 touch-active"
               >
                 <motion.div
                   whileTap={{ scale: 0.88 }}
                   className={cn(
-                    'p-1.5 rounded-xl transition-colors duration-200',
+                    'p-1 rounded-lg transition-colors duration-200',
                     isActive ? 'bg-primary/15' : ''
                   )}
                 >
                   <Icon
                     className={cn(
-                      'w-5 h-5 transition-colors duration-200',
+                      'w-4 h-4 transition-colors duration-200',
                       isActive ? 'text-primary' : 'text-muted-foreground'
                     )}
                     strokeWidth={isActive ? 2.5 : 2}
@@ -146,7 +147,7 @@ export function Navigation() {
                 </motion.div>
                 <span
                   className={cn(
-                    'text-[10px] font-medium transition-colors duration-200',
+                    'text-[9px] font-medium transition-colors duration-200 leading-none',
                     isActive ? 'text-primary font-semibold' : 'text-muted-foreground'
                   )}
                 >
@@ -162,7 +163,7 @@ export function Navigation() {
       <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border safe-area-top">
         <div className="flex items-center justify-between px-4 h-14">
           <Link href="/" className="flex items-center gap-2">
-            <HidaayahLogo size={30} />
+            <HidaayahLogo size={28} />
           </Link>
           {user && (
             <Link

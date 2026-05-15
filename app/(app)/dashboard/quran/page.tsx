@@ -236,7 +236,7 @@ export default function QuranPage() {
     <main className="min-h-screen pb-20 md:pb-8">
       <Navigation />
 
-      <div className="pt-16 md:pt-20 px-4 md:px-6">
+      <div className="pt-16 md:pt-16 lg:pt-20 px-4 md:px-6">
         <div className="max-w-4xl mx-auto">
           <AnimatePresence mode="wait">
             {view === 'list' ? (

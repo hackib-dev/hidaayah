@@ -9,7 +9,7 @@ export default function CirclesPage() {
   return (
     <main className="min-h-screen pb-24 md:pb-8">
       <Navigation />
-      <div className="pt-16 md:pt-20 px-4 md:px-6">
+      <div className="pt-16 md:pt-16 lg:pt-20 px-4 md:px-6">
         <div className="max-w-2xl mx-auto py-6 space-y-6">
           <motion.div
             initial={{ opacity: 0, y: 10 }}

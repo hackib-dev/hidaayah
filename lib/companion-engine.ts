@@ -588,14 +588,16 @@ export function parseIntent(raw: string): Intent {
     return { type: 'search', query: query || raw };
   }
 
-  // Fallback: if the message is short and clearly a topic, try search
-  if (raw.trim().split(/\s+/).length <= 6 && raw.trim().length > 2) {
-    return { type: 'search', query: raw.trim() };
-  }
-
-  // Long conversational message — extract the best spiritual/emotional keyword and search
+  // Try spiritual/emotional keyword extraction first (works for both short and long messages)
+  // e.g. "i am struggling" → "struggling", "i feel anxious lately" → "anxious"
   const keyword = extractSpiritualKeyword(raw);
   if (keyword) return { type: 'search', query: keyword };
+
+  // Fallback: if the message is short and clearly a topic (no filler words), try search as-is
+  const wordCount = raw.trim().split(/\s+/).length;
+  if (wordCount <= 4 && raw.trim().length > 2) {
+    return { type: 'search', query: raw.trim() };
+  }
 
   return { type: 'unknown' };
 }
@@ -704,7 +706,56 @@ const SPIRITUAL_KEYWORDS: string[] = [
   'failure',
   'rizq',
   'provision',
-  'sustenance'
+  'sustenance',
+  'lost',
+  'broken',
+  'empty',
+  'confused',
+  'uncertainty',
+  'uncertain',
+  'doubt',
+  'doubtful',
+  'sin',
+  'sins',
+  'sinning',
+  'disobedience',
+  'temptation',
+  'tempted',
+  'addiction',
+  'addicted',
+  'distressed',
+  'distress',
+  'crying',
+  'crying',
+  'tears',
+  'heartbreak',
+  'betrayal',
+  'injustice',
+  'jealousy',
+  'envy',
+  'hatred',
+  'arrogance',
+  'pride',
+  'humble',
+  'humility',
+  'weakness',
+  'strength',
+  'courage',
+  'brave',
+  'healing',
+  'recover',
+  'recovery',
+  'purpose',
+  'meaning',
+  'direction',
+  'clarity',
+  'mindfulness',
+  'spiritual',
+  'connection',
+  'disconnected',
+  'consistency',
+  'regular',
+  'consistent'
 ];
 
 function extractSpiritualKeyword(text: string): string | null {

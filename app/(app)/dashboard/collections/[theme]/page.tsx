@@ -171,7 +171,7 @@ export default function CollectionDetailPage() {
     return (
       <main className="min-h-screen pb-24 md:pb-12">
         <Navigation />
-        <div className="pt-20 md:pt-24 px-4 md:px-6">
+        <div className="pt-20 md:pt-20 lg:pt-24 px-4 md:px-6">
           <div className="max-w-4xl mx-auto py-8 space-y-6">
             <Link
               href="/dashboard/collections"
@@ -194,7 +194,7 @@ export default function CollectionDetailPage() {
     return (
       <main className="min-h-screen pb-24 md:pb-12">
         <Navigation />
-        <div className="pt-20 md:pt-24 px-4 md:px-6">
+        <div className="pt-20 md:pt-20 lg:pt-24 px-4 md:px-6">
           <div className="max-w-4xl mx-auto py-8 space-y-6">
             <Link
               href="/dashboard/collections"
@@ -223,7 +223,7 @@ export default function CollectionDetailPage() {
   return (
     <main className="min-h-screen pb-24 md:pb-12">
       <Navigation />
-      <div className="pt-20 md:pt-24 px-4 md:px-6">
+      <div className="pt-20 md:pt-20 lg:pt-24 px-4 md:px-6">
         <div className="max-w-4xl mx-auto space-y-6 py-8">
           <motion.div whileTap={{ scale: 0.95 }}>
             <Link
