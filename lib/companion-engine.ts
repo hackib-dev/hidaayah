@@ -579,7 +579,6 @@ export function parseIntent(raw: string): Intent {
       t
     )
   ) {
-    // Strip intent words to get the actual query
     const query = raw
       .replace(
         /^(search for|find verses? (about|on|regarding)?|where (does the quran|in the quran)|what does the quran (say|teach|mention) about|which verse(s)? (talk|speak|mention)s? about|look for)/i,
@@ -594,7 +593,129 @@ export function parseIntent(raw: string): Intent {
     return { type: 'search', query: raw.trim() };
   }
 
+  // Long conversational message — extract the best spiritual/emotional keyword and search
+  const keyword = extractSpiritualKeyword(raw);
+  if (keyword) return { type: 'search', query: keyword };
+
   return { type: 'unknown' };
+}
+
+// ─── Spiritual keyword extractor ──────────────────────────────────────────────
+// For long conversational messages, pick the most spiritually meaningful word
+// to use as a Quran search query.
+const SPIRITUAL_KEYWORDS: string[] = [
+  'consistency',
+  'struggling',
+  'struggle',
+  'discipline',
+  'procrastination',
+  'distraction',
+  'laziness',
+  'motivation',
+  'habit',
+  'perseverance',
+  'persistence',
+  'commitment',
+  'dedication',
+  'focus',
+  'anxiety',
+  'anxious',
+  'stress',
+  'stressed',
+  'worry',
+  'worried',
+  'fear',
+  'afraid',
+  'depression',
+  'depressed',
+  'sadness',
+  'sad',
+  'grief',
+  'loss',
+  'loneliness',
+  'lonely',
+  'anger',
+  'guilt',
+  'shame',
+  'regret',
+  'hopeless',
+  'despair',
+  'overwhelmed',
+  'exhausted',
+  'burnout',
+  'gratitude',
+  'grateful',
+  'thankful',
+  'hope',
+  'patience',
+  'sabr',
+  'tawakkul',
+  'trust',
+  'peace',
+  'contentment',
+  'happiness',
+  'joy',
+  'forgiveness',
+  'mercy',
+  'love',
+  'compassion',
+  'kindness',
+  'generosity',
+  'prayer',
+  'salah',
+  'fasting',
+  'ramadan',
+  'charity',
+  'zakat',
+  'dhikr',
+  'remembrance',
+  'taubah',
+  'repentance',
+  'dua',
+  'supplication',
+  'faith',
+  'iman',
+  'taqwa',
+  'sincerity',
+  'ikhlas',
+  'steadfastness',
+  'istiqamah',
+  'death',
+  'trial',
+  'test',
+  'hardship',
+  'difficulty',
+  'calamity',
+  'illness',
+  'disease',
+  'poverty',
+  'wealth',
+  'marriage',
+  'family',
+  'children',
+  'parents',
+  'justice',
+  'oppression',
+  'knowledge',
+  'wisdom',
+  'guidance',
+  'hidayah',
+  'success',
+  'failure',
+  'rizq',
+  'provision',
+  'sustenance'
+];
+
+function extractSpiritualKeyword(text: string): string | null {
+  const words = text
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, ' ')
+    .split(/\s+/);
+  for (const kw of SPIRITUAL_KEYWORDS) {
+    if (words.includes(kw)) return kw;
+  }
+  return null;
 }
 
 // ─── Response builder ─────────────────────────────────────────────────────────

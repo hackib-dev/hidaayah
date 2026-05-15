@@ -31,7 +31,11 @@ import {
   fetchLastReadingSession,
   fetchNotes
 } from '@/app/(app)/dashboard/reflections/queries';
-import { fetchRandomAyah, fetchVerseAudioFiles } from '@/app/(app)/dashboard/quran/queries';
+import {
+  fetchRandomAyah,
+  fetchVerseAudioFiles,
+  fetchChapter
+} from '@/app/(app)/dashboard/quran/queries';
 import { QF_DEFAULT_MUSHAF_ID, QF_DEFAULT_RECITER_ID } from '@/config';
 import type { TodayGoalPlan } from '@/app/(app)/dashboard/profile/types';
 import type { RandomAyah } from '@/app/(app)/dashboard/reflections/types';
@@ -148,12 +152,39 @@ export default function HomePage() {
       .finally(() => setNotesLoading(false));
 
     fetchRandomAyah()
-      .then((res) => setRandomAyah(res?.verse ?? null))
+      .then(async (res) => {
+        const verse = res?.verse ?? null;
+        if (verse) {
+          const chapterNum = parseInt(verse.verse_key.split(':')[0], 10);
+          const chapterRes = await fetchChapter(chapterNum).catch(() => null);
+          const name = chapterRes?.chapter?.name_simple ?? null;
+          setRandomAyah(name ? { ...verse, chapter_name: name } : verse);
+        } else {
+          setRandomAyah(null);
+        }
+      })
       .catch(() => setRandomAyah(null))
       .finally(() => setAyahLoading(false));
   }, [user]);
 
+  // Re-fetch goal progress when user returns to this tab (e.g. after reading on quran page)
+  useEffect(() => {
+    if (!user) return;
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      fetchAllTodayGoalPlans()
+        .then((plans) => setTodayPlans(plans))
+        .catch(() => null);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [user]);
+
   const displayName = reflectProfile?.firstName ?? reflectProfile?.username ?? user!.name;
+  const ayahTranslation = randomAyah?.translations?.[0]?.text
+    .replace(/<sup[^>]*>.*?<\/sup>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .trim();
 
   return (
     <main className="min-h-screen pb-24 md:pb-8">
@@ -262,38 +293,53 @@ export default function HomePage() {
             )}
           </motion.div>
 
-          {/* Resume Reading */}
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.13 }}
-          >
-            {sessionLoading ? (
-              <CardSkeleton rows={2} />
-            ) : lastVerse ? (
-              <Link
-                href={
-                  lastVerse.startsWith('page:')
-                    ? `/dashboard/quran?page=${lastVerse.slice(5)}`
-                    : `/dashboard/quran?verse=${lastVerse}`
-                }
-                className="flex items-center justify-between rounded-xl border border-border bg-card p-4 hover:bg-secondary/40 transition-colors"
+          {/* Resume Reading — hidden only when all goals are achieved */}
+          {(() => {
+            const allGoalsDone =
+              !planLoading &&
+              todayPlans.length > 0 &&
+              todayPlans.every((p) => goalPctFor(p) >= 100);
+            if (allGoalsDone) return null;
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.13 }}
               >
-                <div className="flex items-center gap-3">
-                  <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Resume reading</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {lastVerse.startsWith('page:')
-                        ? `Page ${lastVerse.slice(5)}`
-                        : `Verse ${lastVerse}`}
-                    </p>
-                  </div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground" />
-              </Link>
-            ) : null}
-          </motion.div>
+                {sessionLoading ? (
+                  <CardSkeleton rows={2} />
+                ) : (
+                  <Link
+                    href={
+                      lastVerse
+                        ? lastVerse.startsWith('page:')
+                          ? `/dashboard/quran?page=${lastVerse.slice(5)}`
+                          : `/dashboard/quran?verse=${lastVerse}`
+                        : '/dashboard/quran'
+                    }
+                    className="flex items-center justify-between rounded-xl border border-border bg-card p-4 hover:bg-secondary/40 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">
+                          {lastVerse ? 'Resume reading' : 'Start reading'}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {lastVerse
+                            ? lastVerse.startsWith('page:')
+                              ? `Page ${lastVerse.slice(5)}`
+                              : `Verse ${lastVerse}`
+                            : 'Open the Quran'}
+                        </p>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                  </Link>
+                )}
+              </motion.div>
+            );
+          })()}
 
           {/* Random Ayah */}
           <motion.div
@@ -316,15 +362,22 @@ export default function HomePage() {
                 >
                   {randomAyah.text_uthmani}
                 </p>
-                {randomAyah.translations?.[0] && (
+                {ayahTranslation && (
                   <p className="text-sm text-muted-foreground italic leading-relaxed">
-                    &ldquo;{randomAyah.translations[0].text}&rdquo;
+                    &ldquo;{ayahTranslation}&rdquo;
                   </p>
                 )}
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                    {randomAyah.verse_key}
-                  </p>
+                  <div>
+                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                      {randomAyah.verse_key}
+                      {randomAyah.chapter_name && (
+                        <span className="text-muted-foreground font-normal ml-1">
+                          · {randomAyah.chapter_name}
+                        </span>
+                      )}
+                    </p>
+                  </div>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={async () => {

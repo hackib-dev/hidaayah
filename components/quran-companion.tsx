@@ -28,18 +28,148 @@ const SUGGESTIONS = [
   'Surprise me with a random ayah'
 ];
 
-// Very simple markdown renderer — bold (**text**) and italic (*text*)
-function renderMarkdown(text: string): React.ReactNode[] {
+// Matches runs of Arabic characters (including diacritics and punctuation)
+const ARABIC_SEGMENT_RE = /([؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿][؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿ً-ٟ\s]*)/g;
+
+function stripHtmlTags(s: string): string {
+  return s
+    .replace(/<sup[^>]*>.*?<\/sup>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#\d+;/g, '')
+    .trim();
+}
+
+function isArabicLine(text: string): boolean {
+  const arabicChars = (text.match(/[؀-ۿ]/g) ?? []).length;
+  return arabicChars > text.length * 0.3;
+}
+
+// Split text into alternating english/arabic segments so Arabic is never inline
+type Segment = { type: 'english'; text: string } | { type: 'arabic'; text: string };
+
+function splitIntoSegments(text: string): Segment[] {
+  const segments: Segment[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  const re = new RegExp(ARABIC_SEGMENT_RE.source, 'g');
+
+  while ((match = re.exec(text)) !== null) {
+    const arabicText = match[0].trim();
+    if (!arabicText) continue;
+    if (match.index > lastIndex) {
+      const eng = text.slice(lastIndex, match.index).trim();
+      if (eng) segments.push({ type: 'english', text: eng });
+    }
+    segments.push({ type: 'arabic', text: arabicText });
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    const eng = text.slice(lastIndex).trim();
+    if (eng) segments.push({ type: 'english', text: eng });
+  }
+  return segments;
+}
+
+// Render bold/italic within an English string
+function renderInlineMarkdown(text: string): React.ReactNode {
   const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={i}>{part.slice(2, -2)}</strong>;
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**'))
+          return <strong key={i}>{part.slice(2, -2)}</strong>;
+        if (part.startsWith('*') && part.endsWith('*')) return <em key={i}>{part.slice(1, -1)}</em>;
+        return part;
+      })}
+    </>
+  );
+}
+
+// Render a full message — Arabic segments are always on their own line
+function renderMessage(raw: string): React.ReactNode {
+  const text = stripHtmlTags(raw);
+  if (!text) return null;
+
+  const nodes: React.ReactNode[] = [];
+  let nodeKey = 0;
+
+  text.split('\n').forEach((line) => {
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      nodes.push(<div key={nodeKey++} className="h-2" />);
+      return;
     }
-    if (part.startsWith('*') && part.endsWith('*')) {
-      return <em key={i}>{part.slice(1, -1)}</em>;
+
+    // Pure Arabic line — render as clean RTL block
+    if (isArabicLine(trimmed)) {
+      nodes.push(
+        <p
+          key={nodeKey++}
+          dir="rtl"
+          lang="ar"
+          style={{
+            fontFamily: 'var(--font-arabic, serif)',
+            fontSize: '1.18em',
+            lineHeight: 2.3,
+            wordBreak: 'normal',
+            overflowWrap: 'break-word'
+          }}
+          className="text-right text-foreground my-1 w-full"
+        >
+          {trimmed}
+        </p>
+      );
+      return;
     }
-    return part;
+
+    // Mixed line — split Arabic out onto its own line above/below
+    const segments = splitIntoSegments(trimmed);
+    if (segments.every((s) => s.type === 'english')) {
+      nodes.push(
+        <p key={nodeKey++} className="leading-relaxed whitespace-pre-wrap">
+          {renderInlineMarkdown(trimmed)}
+        </p>
+      );
+      return;
+    }
+
+    segments.forEach((seg) => {
+      if (seg.type === 'arabic') {
+        nodes.push(
+          <p
+            key={nodeKey++}
+            dir="rtl"
+            lang="ar"
+            style={{
+              fontFamily: 'var(--font-arabic, serif)',
+              fontSize: '1.18em',
+              lineHeight: 2.3,
+              wordBreak: 'normal',
+              overflowWrap: 'break-word'
+            }}
+            className="text-right text-foreground my-1 w-full"
+          >
+            {seg.text}
+          </p>
+        );
+      } else {
+        nodes.push(
+          <p key={nodeKey++} className="leading-relaxed whitespace-pre-wrap">
+            {renderInlineMarkdown(seg.text)}
+          </p>
+        );
+      }
+    });
   });
+
+  return <>{nodes}</>;
 }
 
 export type QuranNavEvent = {
@@ -138,17 +268,7 @@ function MessageBubble({
                 : 'bg-card border border-border text-foreground rounded-tl-sm'
           )}
         >
-          {isUser ? (
-            msg.text
-          ) : (
-            <div className="space-y-1 whitespace-pre-wrap">
-              {msg.text.split('\n').map((line, i) => (
-                <p key={i} className={line === '' ? 'h-2' : ''}>
-                  {renderMarkdown(line)}
-                </p>
-              ))}
-            </div>
-          )}
+          {isUser ? msg.text : <div className="space-y-1">{renderMessage(msg.text)}</div>}
         </div>
         {msg.nav && msg.navLabel && (
           <button

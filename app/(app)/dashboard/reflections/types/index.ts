@@ -186,6 +186,7 @@ export interface RandomAyah {
   text_uthmani: string;
   words: RandomAyahWord[];
   translations?: { text: string; resource_name: string }[];
+  chapter_name?: string;
 }
 
 export interface RandomAyahResponse {
