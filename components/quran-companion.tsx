@@ -22,9 +22,8 @@ const SUGGESTIONS = [
   'Tell me about Surah Al-Kahf',
   'Find verses about patience',
   'Tafsir of Surah Ad-Duha (93:1)',
-  "What's in Juz 30?",
   'Find reciter Mishari Alafasy',
-  'Play reciter Sudais',
+  'I am struggling',
   'Surprise me with a random ayah'
 ];
 
@@ -455,7 +454,7 @@ export function QuranCompanion() {
                     <p className="text-base font-serif font-bold text-foreground">
                       Ask anything about the Quran
                     </p>
-                    <p className="text-xs text-muted-foreground max-w-65">
+                    <p className="text-xs text-muted-foreground max-w-72">
                       I fetch live data from the Quran Foundation API — verses, tafsir, surah info,
                       topic search and more.
                     </p>
