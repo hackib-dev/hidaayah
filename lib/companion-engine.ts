@@ -901,34 +901,64 @@ export async function resolveIntent(intent: Intent): Promise<CompanionResponse> 
         get_text: '1',
         translation_ids: '131',
         versesResultsNumber: 5,
-        navigationalResultsNumber: 3
+        navigationalResultsNumber: 5
       });
-      const navItems = res.result?.navigation ?? [];
+
+      // Keyword searches (e.g. "struggling") return results only in navigation as ayah items
+      const navAyahs = (res.result?.navigation ?? []).filter((n) => n.result_type === 'ayah');
       const verses = res.result?.verses ?? [];
 
-      if (navItems.length === 0 && verses.length === 0) {
+      // Merge: verse results first, then nav ayahs (deduped by key)
+      type AyahHit = { key: string; arabic: string; translation: string };
+      const seen = new Set<string>();
+      const hits: AyahHit[] = [];
+
+      const cleanTranslation = (raw: string) =>
+        raw
+          .replace(/<em>(.*?)<\/em>/gi, '*$1*') // keep emphasis as markdown italic
+          .replace(/<[^>]+>/g, '')
+          .trim();
+
+      for (const v of verses) {
+        const key = String(v.key);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        hits.push({ key, arabic: v.arabic ?? '', translation: cleanTranslation(v.name ?? '') });
+      }
+      for (const n of navAyahs) {
+        const key = String(n.key);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        hits.push({ key, arabic: n.arabic ?? '', translation: cleanTranslation(n.name ?? '') });
+      }
+
+      if (hits.length === 0) {
         return {
           text: `No results found for "${intent.query}". Try a different topic or keyword.`
         };
       }
 
-      const header = `**Search results for "${intent.query}":**\n`;
-      const lines: string[] = [];
-
-      // Navigation results (surah/juz matches)
-      for (const n of navItems.slice(0, 3)) {
-        lines.push(`• **${n.name}** — ${n.arabic ?? ''}`);
+      // Fetch chapter names for labelling (cached after first call)
+      const chaptersRes = await fetchChapters('en').catch(() => null);
+      const chapterMap: Record<number, string> = {};
+      for (const c of chaptersRes?.chapters ?? []) {
+        chapterMap[c.id] = c.name_simple;
       }
 
-      // Verse results — key is the verse key like "2:255"
-      const firstVerseKey = verses[0]?.key as string | undefined;
-      for (const v of verses.slice(0, 5)) {
-        lines.push(`• **${v.key}** — ${v.name}`);
-      }
+      // Build output: header + one block per verse (key, surah name, Arabic, translation)
+      const header = `**Verses about "${intent.query}":**\n`;
+      const blocks = hits.slice(0, 5).map((h) => {
+        const chNum = parseInt(h.key.split(':')[0], 10);
+        const surahName = chapterMap[chNum] ? `${chapterMap[chNum]}` : `Surah ${chNum}`;
+        const lines = [`**${h.key}** · *${surahName}*`];
+        if (h.arabic) lines.push(h.arabic);
+        if (h.translation) lines.push(`"${h.translation}"`);
+        return lines.join('\n');
+      });
 
       return {
-        text: header + lines.join('\n'),
-        verseKey: firstVerseKey
+        text: header + '\n' + blocks.join('\n\n'),
+        verseKey: hits[0]?.key
       };
     }
 
