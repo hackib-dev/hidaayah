@@ -129,7 +129,7 @@ export default function GuidancePage() {
     <main className="min-h-screen pb-20 md:pb-8">
       <Navigation />
 
-      <div className="pt-16 md:pt-20 px-4 md:px-6">
+      <div className="pt-16 md:pt-16 lg:pt-20 px-4 md:px-6">
         <div className="max-w-3xl mx-auto py-6">
           <Suspense
             fallback={

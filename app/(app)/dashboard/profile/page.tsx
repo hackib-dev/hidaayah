@@ -395,6 +395,7 @@ export default function ProfilePage() {
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [followingCount, setFollowingCount] = useState<number | null>(null);
 
   const gardenState = typeof window !== 'undefined' ? loadGarden() : null;
 
@@ -429,11 +430,18 @@ export default function ProfilePage() {
 
   const profileId = reflectProfile?.id ?? user?.sub ?? '';
 
+  useEffect(() => {
+    if (!profileId) return;
+    fetchUserFollowing(profileId, { limit: 1, page: 1 })
+      .then((res) => setFollowingCount(res.total))
+      .catch(() => setFollowingCount(0));
+  }, [profileId]);
+
   return (
     <main className="min-h-screen pb-20 md:pb-8">
       <Navigation />
 
-      <div className="pt-16 md:pt-20 px-4 md:px-6">
+      <div className="pt-16 md:pt-16 lg:pt-20 px-4 md:px-6">
         <div className="max-w-3xl mx-auto space-y-5 py-6">
           {/* Profile Header */}
           <motion.div
@@ -533,9 +541,7 @@ export default function ProfilePage() {
                     className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold"
                   >
                     <Users className="w-3 h-3" />
-                    {reflectProfile?.postsCount !== undefined
-                      ? `${reflectProfile.postsCount} posts`
-                      : 'following'}
+                    {followingCount !== null ? followingCount : '—'} following
                   </button>
                 </>
               )}
@@ -581,7 +587,7 @@ export default function ProfilePage() {
               {
                 icon: BookmarkIcon,
                 value: savedCount,
-                label: 'Saved',
+                label: 'Bookmarks',
                 bg: 'bg-teal-muted',
                 iconColor: 'text-teal',
                 border: 'border-teal/15',
@@ -781,14 +787,16 @@ export default function ProfilePage() {
                   <User className="w-4 h-4 text-muted-foreground" />
                 </button>
                 <button
-                  onClick={() => setShowSearch(true)}
+                  onClick={() => setShowFollowing(true)}
                   className="flex items-center justify-between p-3 rounded-2xl bg-card border border-border hover:bg-secondary/50 transition-colors text-left"
                 >
                   <div>
-                    <p className="text-sm font-bold text-foreground">Find</p>
-                    <p className="text-xs text-muted-foreground">People</p>
+                    <p className="text-sm font-bold text-foreground">
+                      {followingCount !== null ? followingCount : '—'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Following</p>
                   </div>
-                  <Search className="w-4 h-4 text-muted-foreground" />
+                  <Users className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
             </motion.div>

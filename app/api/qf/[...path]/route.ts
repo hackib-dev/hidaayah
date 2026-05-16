@@ -55,7 +55,11 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
   };
 
   const hasBody = req.method !== 'GET' && req.method !== 'HEAD';
-  const body = hasBody ? await req.text() : undefined;
+  const bodyText = hasBody ? await req.text() : '';
+  const body = bodyText.length > 0 ? bodyText : undefined;
+
+  // Only send Content-Type when there is an actual body
+  if (!body) delete headers['Content-Type'];
 
   const upstream = await fetch(upstreamUrl, {
     method: req.method,

@@ -12,18 +12,23 @@ import type { ChapterReciter, Chapter } from '@/app/(app)/dashboard/quran/types'
 
 interface RecitersBrowserProps {
   onSelectReciterAndSurah?: (reciterId: number, surahNumber: number) => void;
+  initialSearch?: string;
 }
 
-export function RecitersBrowser({ onSelectReciterAndSurah }: RecitersBrowserProps) {
+export function RecitersBrowser({ onSelectReciterAndSurah, initialSearch }: RecitersBrowserProps) {
   const [reciters, setReciters] = useState<ChapterReciter[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(initialSearch ?? '');
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [selectedSurah, setSelectedSurah] = useState<Record<number, number>>({});
   const [playing, setPlaying] = useState<{ reciterId: number; surahNumber: number } | null>(null);
   const [loadingAudio, setLoadingAudio] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (initialSearch !== undefined) setSearch(initialSearch);
+  }, [initialSearch]);
 
   useEffect(() => {
     Promise.all([fetchChapterReciters(), fetchChapters()])

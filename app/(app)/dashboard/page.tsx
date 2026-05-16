@@ -20,19 +20,26 @@ import {
   Pause
 } from 'lucide-react';
 import Link from 'next/link';
-import { fetchActiveStreak, fetchAllTodayGoalPlans } from '@/app/(app)/dashboard/profile/queries';
+import {
+  fetchActiveStreak,
+  fetchAllTodayGoalPlans,
+  goalPctFor
+} from '@/app/(app)/dashboard/profile/queries';
 import {
   fetchBookmarks,
   fetchMyReflectionsCount,
   fetchLastReadingSession,
   fetchNotes
 } from '@/app/(app)/dashboard/reflections/queries';
-import { fetchRandomAyah, fetchVerseAudioFiles } from '@/app/(app)/dashboard/quran/queries';
+import {
+  fetchRandomAyah,
+  fetchVerseAudioFiles,
+  fetchChapter
+} from '@/app/(app)/dashboard/quran/queries';
 import { QF_DEFAULT_MUSHAF_ID, QF_DEFAULT_RECITER_ID } from '@/config';
 import type { TodayGoalPlan } from '@/app/(app)/dashboard/profile/types';
 import type { RandomAyah } from '@/app/(app)/dashboard/reflections/types';
 import { QuranGarden } from '@/components/quran-garden';
-import { awardXP, loadGarden } from '@/lib/garden';
 
 function StatSkeleton() {
   return (
@@ -91,18 +98,6 @@ export default function HomePage() {
       .then((res) => {
         const days = res?.data?.[0]?.days ?? 0;
         setStreakDays(days);
-        // Award streak_day XP once per calendar day when streak is active
-        if (days > 0 && typeof window !== 'undefined') {
-          const today = new Date().toISOString().slice(0, 10);
-          const lastStreakXP = localStorage.getItem('garden_last_streak_xp_date');
-          if (lastStreakXP !== today) {
-            localStorage.setItem('garden_last_streak_xp_date', today);
-            // Sync streak days into garden state before awarding
-            const g = loadGarden();
-            g.streakDays = days;
-            awardXP('streak_day');
-          }
-        }
       })
       .catch(() => setStreakDays(0))
       .finally(() => setStreakLoading(false));
@@ -157,18 +152,45 @@ export default function HomePage() {
       .finally(() => setNotesLoading(false));
 
     fetchRandomAyah()
-      .then((res) => setRandomAyah(res?.verse ?? null))
+      .then(async (res) => {
+        const verse = res?.verse ?? null;
+        if (verse) {
+          const chapterNum = parseInt(verse.verse_key.split(':')[0], 10);
+          const chapterRes = await fetchChapter(chapterNum).catch(() => null);
+          const name = chapterRes?.chapter?.name_simple ?? null;
+          setRandomAyah(name ? { ...verse, chapter_name: name } : verse);
+        } else {
+          setRandomAyah(null);
+        }
+      })
       .catch(() => setRandomAyah(null))
       .finally(() => setAyahLoading(false));
   }, [user]);
 
+  // Re-fetch goal progress when user returns to this tab (e.g. after reading on quran page)
+  useEffect(() => {
+    if (!user) return;
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      fetchAllTodayGoalPlans()
+        .then((plans) => setTodayPlans(plans))
+        .catch(() => null);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [user]);
+
   const displayName = reflectProfile?.firstName ?? reflectProfile?.username ?? user!.name;
+  const ayahTranslation = randomAyah?.translations?.[0]?.text
+    .replace(/<sup[^>]*>.*?<\/sup>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .trim();
 
   return (
     <main className="min-h-screen pb-24 md:pb-8">
       <Navigation />
 
-      <div className="pt-16 md:pt-20 px-4 md:px-6">
+      <div className="pt-16 md:pt-16 lg:pt-20 px-4 md:px-6">
         <div className="max-w-2xl mx-auto space-y-5 py-6">
           {/* Greeting */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
@@ -252,7 +274,7 @@ export default function HomePage() {
                       {todayPlans.length === 0
                         ? 'No goals yet — tap to set one'
                         : (() => {
-                            const done = todayPlans.filter((p) => p.progress >= 1).length;
+                            const done = todayPlans.filter((p) => goalPctFor(p) >= 100).length;
                             return done === todayPlans.length
                               ? `All ${todayPlans.length} goal${todayPlans.length !== 1 ? 's' : ''} complete`
                               : `${done} / ${todayPlans.length} complete`;
@@ -262,7 +284,7 @@ export default function HomePage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {todayPlans.length > 0 &&
-                    todayPlans.filter((p) => p.progress >= 1).length === todayPlans.length && (
+                    todayPlans.filter((p) => goalPctFor(p) >= 100).length === todayPlans.length && (
                       <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                     )}
                   <ArrowRight className="w-4 h-4 text-muted-foreground" />
@@ -271,38 +293,53 @@ export default function HomePage() {
             )}
           </motion.div>
 
-          {/* Resume Reading */}
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.13 }}
-          >
-            {sessionLoading ? (
-              <CardSkeleton rows={2} />
-            ) : lastVerse ? (
-              <Link
-                href={
-                  lastVerse.startsWith('page:')
-                    ? `/dashboard/quran?page=${lastVerse.slice(5)}`
-                    : `/dashboard/quran?verse=${lastVerse}`
-                }
-                className="flex items-center justify-between rounded-xl border border-border bg-card p-4 hover:bg-secondary/40 transition-colors"
+          {/* Resume Reading — hidden only when all goals are achieved */}
+          {(() => {
+            const allGoalsDone =
+              !planLoading &&
+              todayPlans.length > 0 &&
+              todayPlans.every((p) => goalPctFor(p) >= 100);
+            if (allGoalsDone) return null;
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.13 }}
               >
-                <div className="flex items-center gap-3">
-                  <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Resume reading</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {lastVerse.startsWith('page:')
-                        ? `Page ${lastVerse.slice(5)}`
-                        : `Verse ${lastVerse}`}
-                    </p>
-                  </div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground" />
-              </Link>
-            ) : null}
-          </motion.div>
+                {sessionLoading ? (
+                  <CardSkeleton rows={2} />
+                ) : (
+                  <Link
+                    href={
+                      lastVerse
+                        ? lastVerse.startsWith('page:')
+                          ? `/dashboard/quran?page=${lastVerse.slice(5)}`
+                          : `/dashboard/quran?verse=${lastVerse}`
+                        : '/dashboard/quran'
+                    }
+                    className="flex items-center justify-between rounded-xl border border-border bg-card p-4 hover:bg-secondary/40 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">
+                          {lastVerse ? 'Resume reading' : 'Start reading'}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {lastVerse
+                            ? lastVerse.startsWith('page:')
+                              ? `Page ${lastVerse.slice(5)}`
+                              : `Verse ${lastVerse}`
+                            : 'Open the Quran'}
+                        </p>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                  </Link>
+                )}
+              </motion.div>
+            );
+          })()}
 
           {/* Random Ayah */}
           <motion.div
@@ -325,15 +362,22 @@ export default function HomePage() {
                 >
                   {randomAyah.text_uthmani}
                 </p>
-                {randomAyah.translations?.[0] && (
+                {ayahTranslation && (
                   <p className="text-sm text-muted-foreground italic leading-relaxed">
-                    &ldquo;{randomAyah.translations[0].text}&rdquo;
+                    &ldquo;{ayahTranslation}&rdquo;
                   </p>
                 )}
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                    {randomAyah.verse_key}
-                  </p>
+                  <div>
+                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                      {randomAyah.verse_key}
+                      {randomAyah.chapter_name && (
+                        <span className="text-muted-foreground font-normal ml-1">
+                          · {randomAyah.chapter_name}
+                        </span>
+                      )}
+                    </p>
+                  </div>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={async () => {
@@ -377,7 +421,7 @@ export default function HomePage() {
                       {ayahPlaying ? 'Pause' : 'Play'}
                     </button>
                     <Link
-                      href={`/dashboard/quran?verse=${randomAyah.verse_key}`}
+                      href={`/dashboard/quran?verse=${randomAyah.verse_key}&mode=translation`}
                       className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       Read in context →

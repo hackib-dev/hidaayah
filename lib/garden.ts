@@ -1,20 +1,8 @@
 // ─── Quran Garden — XP & Progression Engine ──────────────────────────────────
-// All garden state is persisted in localStorage so it survives page reloads.
-// The engine is intentionally framework-agnostic so it can be called from
-// anywhere in the app (quran-reader, reflections, notes, guidance, etc.)
+// Only two actions earn XP: reading a new Mushaf page and reading tafsir.
+// Pages are deduplicated via a persisted Set so revisiting a page never re-counts.
 
-export type GardenAction =
-  | 'read_verse' // 1 verse read in translation mode
-  | 'read_page' // 1 mushaf page viewed
-  | 'read_tafsir' // tafsir expanded for a verse
-  | 'listen_verse' // audio played for a verse
-  | 'write_note' // note saved
-  | 'write_reflection' // reflection/post written
-  | 'seek_guidance' // AI guidance query submitted
-  | 'join_circle' // joined a recitation circle
-  | 'complete_goal' // a daily goal completed
-  | 'share_verse' // verse shared
-  | 'streak_day'; // daily streak maintained (called once per day)
+export type GardenAction = 'read_page' | 'read_tafsir';
 
 export interface GardenState {
   totalXP: number;
@@ -27,57 +15,48 @@ export interface GardenState {
   actionCounts: Record<GardenAction, number>;
   unlockedElements: string[];
   lastXPGain: { amount: number; action: GardenAction; ts: number } | null;
+  // Persisted set of Mushaf page numbers already counted
+  readPages: number[];
 }
 
 // ─── XP table ─────────────────────────────────────────────────────────────────
 const XP_TABLE: Record<GardenAction, number> = {
-  read_verse: 2,
-  read_page: 8,
-  read_tafsir: 5,
-  listen_verse: 3,
-  write_note: 10,
-  write_reflection: 20,
-  seek_guidance: 8,
-  join_circle: 25,
-  complete_goal: 30,
-  share_verse: 5,
-  streak_day: 15
+  read_page: 10, // each unique page
+  read_tafsir: 8 // each tafsir expansion
 };
 
 // ─── Level thresholds (XP needed to reach each level) ────────────────────────
 const LEVEL_THRESHOLDS = [
-  0, 50, 120, 220, 350, 520, 730, 990, 1300, 1670, 2100, 2600, 3180, 3840, 4590, 5440, 6400, 7480,
-  8690, 10000
+  0, 60, 150, 280, 450, 660, 920, 1230, 1600, 2040, 2550, 3140, 3820, 4600, 5490, 6500, 7640, 8920,
+  10350, 12000
 ];
 
 // ─── Stage thresholds (total XP) ─────────────────────────────────────────────
 const STAGE_THRESHOLDS: [number, 1 | 2 | 3 | 4][] = [
   [0, 1],
-  [200, 2],
-  [800, 3],
-  [2500, 4]
+  [300, 2],
+  [1000, 3],
+  [3000, 4]
 ];
 
 // ─── Unlockable garden elements ───────────────────────────────────────────────
 const UNLOCK_RULES: { id: string; condition: (s: GardenState) => boolean }[] = [
-  { id: 'small_flowers', condition: (s) => s.totalXP >= 50 },
-  { id: 'rich_grass', condition: (s) => s.totalXP >= 100 },
-  { id: 'first_tree', condition: (s) => s.totalXP >= 200 },
-  { id: 'pathway', condition: (s) => s.totalXP >= 300 },
-  { id: 'stream', condition: (s) => s.totalXP >= 500 },
-  { id: 'birds', condition: (s) => s.totalXP >= 700 },
+  { id: 'small_flowers', condition: (s) => s.totalXP >= 60 },
+  { id: 'rich_grass', condition: (s) => s.totalXP >= 150 },
+  { id: 'first_tree', condition: (s) => s.readPages.length >= 10 },
+  { id: 'pathway', condition: (s) => s.readPages.length >= 30 },
   { id: 'wisdom_tree', condition: (s) => s.actionCounts.read_tafsir >= 10 },
-  { id: 'reflection_pool', condition: (s) => s.actionCounts.write_reflection >= 5 },
-  { id: 'fruit_tree', condition: (s) => s.totalXP >= 1200 },
-  { id: 'glow_path', condition: (s) => s.totalXP >= 1800 },
-  { id: 'rare_flowers', condition: (s) => s.actionCounts.write_reflection >= 20 },
-  { id: 'circle_grove', condition: (s) => s.actionCounts.join_circle >= 3 },
-  { id: 'waterfall', condition: (s) => s.totalXP >= 3000 },
-  { id: 'golden_light', condition: (s) => s.totalXP >= 5000 }
+  { id: 'stream', condition: (s) => s.readPages.length >= 60 },
+  { id: 'birds', condition: (s) => s.totalXP >= 800 },
+  { id: 'fruit_tree', condition: (s) => s.readPages.length >= 100 },
+  { id: 'glow_path', condition: (s) => s.actionCounts.read_tafsir >= 30 },
+  { id: 'rare_flowers', condition: (s) => s.readPages.length >= 200 },
+  { id: 'waterfall', condition: (s) => s.readPages.length >= 400 },
+  { id: 'golden_light', condition: (s) => s.readPages.length >= 604 } // all 604 pages
 ];
 
 // ─── Storage key ──────────────────────────────────────────────────────────────
-const STORAGE_KEY = 'hidaayah_garden_v1';
+const STORAGE_KEY = 'hidaayah_garden_v2';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function getMondayISO(date = new Date()): string {
@@ -130,6 +109,8 @@ export function loadGarden(): GardenState {
       parsed.weeklyXP = 0;
       parsed.weekStart = getMondayISO();
     }
+    // Back-compat: ensure readPages exists
+    if (!Array.isArray(parsed.readPages)) parsed.readPages = [];
     return parsed;
   } catch {
     return defaultState();
@@ -169,12 +150,51 @@ export function awardXP(action: GardenAction, multiplier = 1): GardenState {
 
   saveGarden(newState);
 
-  // Dispatch a custom event so any mounted garden component can react
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('garden:xp', { detail: { xp, action } }));
   }
 
   return newState;
+}
+
+// Awards XP for reading a Mushaf page only if it hasn't been read before.
+// Returns the XP awarded (0 if already counted).
+export function awardPageXP(pageNumber: number): number {
+  const state = loadGarden();
+  if (state.readPages.includes(pageNumber)) return 0;
+
+  const base = XP_TABLE.read_page;
+  const streakBonus = state.streakDays >= 7 ? 1.2 : state.streakDays >= 3 ? 1.1 : 1;
+  const xp = Math.round(base * streakBonus);
+
+  const today = todayISO();
+  const monday = getMondayISO();
+
+  const newState: GardenState = {
+    ...state,
+    totalXP: state.totalXP + xp,
+    weeklyXP: (state.weekStart === monday ? state.weeklyXP : 0) + xp,
+    weekStart: monday,
+    lastActivityDate: today,
+    readPages: [...state.readPages, pageNumber],
+    actionCounts: {
+      ...state.actionCounts,
+      read_page: (state.actionCounts.read_page ?? 0) + 1
+    },
+    lastXPGain: { amount: xp, action: 'read_page', ts: Date.now() }
+  };
+
+  newState.level = computeLevel(newState.totalXP);
+  newState.stage = computeStage(newState.totalXP);
+  newState.unlockedElements = computeUnlocks(newState);
+
+  saveGarden(newState);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('garden:xp', { detail: { xp, action: 'read_page' } }));
+  }
+
+  return xp;
 }
 
 export function getXPForNextLevel(state: GardenState): {
@@ -191,7 +211,6 @@ export function getXPForNextLevel(state: GardenState): {
 }
 
 export function getVitalityPct(state: GardenState): number {
-  // Vitality decays if no activity for > 2 days, recovers with engagement
   const today = new Date();
   const last = new Date(state.lastActivityDate || todayISO());
   const daysSince = Math.floor((today.getTime() - last.getTime()) / 86_400_000);
@@ -209,19 +228,11 @@ function defaultState(): GardenState {
     streakDays: 0,
     lastActivityDate: todayISO(),
     actionCounts: {
-      read_verse: 0,
       read_page: 0,
-      read_tafsir: 0,
-      listen_verse: 0,
-      write_note: 0,
-      write_reflection: 0,
-      seek_guidance: 0,
-      join_circle: 0,
-      complete_goal: 0,
-      share_verse: 0,
-      streak_day: 0
+      read_tafsir: 0
     },
     unlockedElements: [],
+    readPages: [],
     lastXPGain: null
   };
 }

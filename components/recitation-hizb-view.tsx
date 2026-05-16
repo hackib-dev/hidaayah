@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BookOpen, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { fetchHizbs } from '@/app/(app)/dashboard/quran/queries';
 import type { Hizb } from '@/app/(app)/dashboard/quran/types';
+import { cn } from '@/lib/utils';
 
 interface HizbRecitationViewProps {
   onSelectHizb: (hizbNumber: number, verseKey: string) => void;
+  scrollToHizb?: number;
 }
 
 function getHizbStartKey(hizb: Hizb): string {
@@ -16,9 +18,20 @@ function getHizbStartKey(hizb: Hizb): string {
   return `${firstEntry[0]}:${firstEntry[1].split('-')[0]}`;
 }
 
-export function HizbRecitationView({ onSelectHizb }: HizbRecitationViewProps) {
+export function HizbRecitationView({ onSelectHizb, scrollToHizb }: HizbRecitationViewProps) {
   const [hizbs, setHizbs] = useState<Hizb[]>([]);
   const [loading, setLoading] = useState(true);
+  const itemRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+
+  useEffect(() => {
+    if (!scrollToHizb) return;
+    const scroll = () => {
+      itemRefs.current[scrollToHizb]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+    // Delay to let AnimatePresence tab transition finish before scrolling
+    const t = setTimeout(scroll, 250);
+    return () => clearTimeout(t);
+  }, [scrollToHizb, hizbs]);
 
   useEffect(() => {
     fetchHizbs()
@@ -67,8 +80,14 @@ export function HizbRecitationView({ onSelectHizb }: HizbRecitationViewProps) {
               return (
                 <button
                   key={hizb.hizb_number}
+                  ref={(el) => {
+                    itemRefs.current[hizb.hizb_number] = el;
+                  }}
                   onClick={() => onSelectHizb(hizb.hizb_number, startKey)}
-                  className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-primary/5 transition-colors"
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-3 w-full text-left transition-colors',
+                    scrollToHizb === hizb.hizb_number ? 'bg-primary/10' : 'hover:bg-primary/5'
+                  )}
                 >
                   <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
                     {hizb.hizb_number}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { loadGarden, getXPForNextLevel, getVitalityPct } from '@/lib/garden';
 import type { GardenState } from '@/lib/garden';
@@ -653,29 +653,41 @@ export function QuranGarden({ compact = false }: QuranGardenProps) {
       )}
 
       {/* Action counts */}
-      <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
+      <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
         <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
           Your Journey
         </p>
-        <div className="grid grid-cols-2 gap-2">
-          {(
-            [
-              ['Verses Read', state.actionCounts.read_verse],
-              ['Pages Read', state.actionCounts.read_page],
-              ['Tafsir Read', state.actionCounts.read_tafsir],
-              ['Reflections', state.actionCounts.write_reflection],
-              ['Notes Written', state.actionCounts.write_note],
-              ['Goals Completed', state.actionCounts.complete_goal]
-            ] as [string, number][]
-          ).map(([label, count]) => (
-            <div
-              key={label}
-              className="flex items-center justify-between p-2.5 rounded-xl bg-secondary/50"
-            >
-              <span className="text-xs text-muted-foreground">{label}</span>
-              <span className="text-sm font-bold text-foreground">{count}</span>
-            </div>
-          ))}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-0.5 p-3 rounded-xl bg-emerald-600/10 border border-emerald-600/15">
+            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest">
+              Pages Read
+            </span>
+            <span className="text-2xl font-bold text-foreground">{state.readPages.length}</span>
+            <span className="text-[10px] text-muted-foreground">of 604 Mushaf pages</span>
+          </div>
+          <div className="flex flex-col gap-0.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/15">
+            <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest">
+              Tafsir Read
+            </span>
+            <span className="text-2xl font-bold text-foreground">
+              {state.actionCounts.read_tafsir}
+            </span>
+            <span className="text-[10px] text-muted-foreground">tafsir expansions</span>
+          </div>
+        </div>
+        {/* Progress toward full Mushaf */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+            <span>Mushaf progress</span>
+            <span>{Math.round((state.readPages.length / 604) * 100)}%</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+            <motion.div
+              className="h-full rounded-full bg-emerald-500"
+              animate={{ width: `${(state.readPages.length / 604) * 100}%` }}
+              transition={{ duration: 1, ease: 'easeOut' }}
+            />
+          </div>
         </div>
       </div>
 

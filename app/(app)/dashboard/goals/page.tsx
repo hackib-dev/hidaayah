@@ -25,7 +25,6 @@ import {
 } from '@/app/(app)/dashboard/profile/queries';
 import type { GoalEstimateDay } from '@/app/(app)/dashboard/profile/queries';
 import type { TodayGoalPlan } from '@/app/(app)/dashboard/profile/types';
-import { awardXP } from '@/lib/garden';
 
 function CardSkeleton() {
   return (
@@ -183,22 +182,13 @@ export default function GoalsPage() {
       seen.add(p.goalId);
       updated.push(p as TodayGoalPlan);
     }
-    // Award XP for any goal that just became complete
-    for (const p of updated) {
-      const wasComplete = currentPlans.find(
-        (old) => old.goalId === p.goalId && goalInfoFor(old)?.pct === 100
-      );
-      if (!wasComplete && goalInfoFor(p as TodayGoalPlan)?.pct === 100) {
-        awardXP('complete_goal');
-      }
-    }
     setPlans(updated);
   };
 
   return (
     <main className="min-h-screen pb-24 md:pb-8">
       <Navigation />
-      <div className="pt-16 md:pt-20 px-4 md:px-6">
+      <div className="pt-16 md:pt-16 lg:pt-20 px-4 md:px-6">
         <div className="max-w-2xl mx-auto space-y-5 py-6">
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">

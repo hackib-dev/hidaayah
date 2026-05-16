@@ -147,6 +147,49 @@ export const fetchAllTodayGoalPlans = async (): Promise<TodayGoalPlan[]> => {
   return plans;
 };
 
+// ─── Goal completion helper ───────────────────────────────────────────────────
+// Returns the percentage completion (0–100) for a goal plan.
+// progress field semantics differ by type:
+//   QURAN_PAGES → progress = pages read (compare to dailyTargetPages)
+//   QURAN_TIME  → progress = seconds read (compare to dailyTargetSeconds)
+//   QURAN_RANGE → use range overlap
+export function goalPctFor(plan: TodayGoalPlan): number {
+  if (plan.goalType === 'QURAN_PAGES' && plan.dailyTargetPages) {
+    return Math.min(100, Math.round((plan.pagesRead / plan.dailyTargetPages) * 100));
+  }
+  if (plan.goalType === 'QURAN_TIME' && plan.dailyTargetSeconds) {
+    return Math.min(100, Math.round((plan.secondsRead / plan.dailyTargetSeconds) * 100));
+  }
+  if (plan.goalType === 'QURAN_RANGE') {
+    const targets = plan.dailyTargetRanges ?? [];
+    const readRanges = plan.ranges ?? [];
+    const toNum = (vk: string) => {
+      const [ch, v] = vk.split(':').map(Number);
+      return ch * 10000 + v;
+    };
+    const parseRange = (r: string) => {
+      const [from, to] = r.split('-');
+      return { from: toNum(from), to: toNum(to ?? from) };
+    };
+    const parsedRead = readRanges.map(parseRange);
+    let totalVerses = 0;
+    let readVerses = 0;
+    for (const t of targets) {
+      const target = parseRange(t);
+      totalVerses += target.to - target.from + 1;
+      for (const rr of parsedRead) {
+        const overlapFrom = Math.max(rr.from, target.from);
+        const overlapTo = Math.min(rr.to, target.to);
+        if (overlapFrom <= overlapTo) readVerses += overlapTo - overlapFrom + 1;
+      }
+    }
+    return totalVerses > 0
+      ? Math.min(100, Math.round((Math.min(readVerses, totalVerses) / totalVerses) * 100))
+      : 0;
+  }
+  return 0;
+}
+
 // ─── Reflect User Profile ─────────────────────────────────────────────────────
 // Prefer /v1/users/profile (self, full data) with the user's access token.
 // If the user token is absent, fall back to /v1/users/{sub} using the reflectApi
