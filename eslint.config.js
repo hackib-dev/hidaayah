@@ -1,7 +1,6 @@
 // eslint.config.js
 const reactPlugin = require('eslint-plugin-react');
 const reactHooksPlugin = require('eslint-plugin-react-hooks');
-const prettierPlugin = require('eslint-plugin-prettier');
 const typescriptPlugin = require('@typescript-eslint/eslint-plugin');
 const typescriptParser = require('@typescript-eslint/parser');
 const importPlugin = require('eslint-plugin-import');
@@ -38,7 +37,6 @@ module.exports = [
     plugins: {
       react: reactPlugin,
       'react-hooks': reactHooksPlugin,
-      prettier: prettierPlugin,
       '@typescript-eslint': typescriptPlugin,
       import: importPlugin,
       'jsx-a11y': jsxA11yPlugin
@@ -85,9 +83,7 @@ module.exports = [
       'tailwindcss/no-custom-classname': 'off',
       'consistent-return': 'off',
       'no-plusplus': 'off',
-      '@next/next/no-html-link-for-pages': 'off',
-
-      'prettier/prettier': 'error'
+      '@next/next/no-html-link-for-pages': 'off'
     },
     ignores: ['.next', 'node_modules', 'dist', 'build'],
     settings: {

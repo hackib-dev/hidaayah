@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import { motion, useInView } from "framer-motion";
-import * as THREE from "three";
-import { Brain, Heart, TrendingUp } from "lucide-react";
+import { useEffect, useRef, useState } from 'react';
+import { motion, useInView } from 'framer-motion';
+import * as THREE from 'three';
+import { Brain, Heart, TrendingUp } from 'lucide-react';
 
 interface AICompanion3DProps {
   isDark: boolean;
@@ -100,7 +100,7 @@ function AICompanion3D({ isDark }: AICompanion3DProps) {
     // Renderer
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
-      alpha: true,
+      alpha: true
     });
 
     renderer.setSize(width, height);
@@ -140,12 +140,12 @@ function AICompanion3D({ isDark }: AICompanion3DProps) {
       uniforms: {
         uTime: { value: 0 },
         uIsDark: {
-          value: isDark ? 1.0 : 0.0,
-        },
+          value: isDark ? 1.0 : 0.0
+        }
       },
 
       transparent: true,
-      side: THREE.DoubleSide,
+      side: THREE.DoubleSide
     });
 
     // Mesh
@@ -177,32 +177,23 @@ function AICompanion3D({ isDark }: AICompanion3DProps) {
 
       particlePositions[i3 + 2] = radius * Math.cos(phi);
 
-      const color =
-        Math.random() > 0.5
-          ? new THREE.Color(0x0fc2b0)
-          : new THREE.Color(0xd4a84f);
+      const color = Math.random() > 0.5 ? new THREE.Color(0x0fc2b0) : new THREE.Color(0xd4a84f);
 
       particleColors[i3] = color.r;
       particleColors[i3 + 1] = color.g;
       particleColors[i3 + 2] = color.b;
     }
 
-    particleGeometry.setAttribute(
-      "position",
-      new THREE.BufferAttribute(particlePositions, 3),
-    );
+    particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
 
-    particleGeometry.setAttribute(
-      "color",
-      new THREE.BufferAttribute(particleColors, 3),
-    );
+    particleGeometry.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
 
     const particleMaterial = new THREE.PointsMaterial({
       size: 0.02,
       vertexColors: true,
       transparent: true,
       opacity: 0.6,
-      depthWrite: false,
+      depthWrite: false
     });
 
     const particles = new THREE.Points(particleGeometry, particleMaterial);
@@ -214,10 +205,7 @@ function AICompanion3D({ isDark }: AICompanion3DProps) {
 
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(
-      isDark ? 0x0fc2b0 : 0xd4a84f,
-      0.8,
-    );
+    const directionalLight = new THREE.DirectionalLight(isDark ? 0x0fc2b0 : 0xd4a84f, 0.8);
 
     directionalLight.position.set(2, 3, 4);
 
@@ -264,12 +252,12 @@ function AICompanion3D({ isDark }: AICompanion3DProps) {
       renderer.setSize(newWidth, newHeight);
     };
 
-    window.addEventListener("resize", handleResize);
+    window.addEventListener('resize', handleResize);
 
     return () => {
       cancelAnimationFrame(frameId);
 
-      window.removeEventListener("resize", handleResize);
+      window.removeEventListener('resize', handleResize);
 
       geometry.dispose();
       material.dispose();
@@ -289,31 +277,29 @@ function AICompanion3D({ isDark }: AICompanion3DProps) {
 
 const FEATURES = [
   {
-    title: "Contextual Wisdom",
+    title: 'Contextual Wisdom',
 
     description:
       "Every response draws from the Qur'an, Sunnah, and centuries of Islamic scholarship tailored to your exact situation.",
 
-    icon: Brain,
+    icon: Brain
   },
 
   {
-    title: "Emotional Intelligence",
+    title: 'Emotional Intelligence',
 
-    description:
-      "Responds with compassion and wisdom inspired by prophetic guidance.",
+    description: 'Responds with compassion and wisdom inspired by prophetic guidance.',
 
-    icon: Heart,
+    icon: Heart
   },
 
   {
-    title: "Always Learning",
+    title: 'Always Learning',
 
-    description:
-      "Adapts guidance to your spiritual journey and personal growth.",
+    description: 'Adapts guidance to your spiritual journey and personal growth.',
 
-    icon: TrendingUp,
-  },
+    icon: TrendingUp
+  }
 ];
 
 export default function AICompanionSection() {
@@ -321,21 +307,21 @@ export default function AICompanionSection() {
 
   const isInView = useInView(sectionRef, {
     once: true,
-    amount: 0.3,
+    amount: 0.3
   });
 
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    setIsDark(document.documentElement.classList.contains("dark"));
+    setIsDark(document.documentElement.classList.contains('dark'));
 
     const observer = new MutationObserver(() => {
-      setIsDark(document.documentElement.classList.contains("dark"));
+      setIsDark(document.documentElement.classList.contains('dark'));
     });
 
     observer.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ["class"],
+      attributeFilter: ['class']
     });
 
     return () => observer.disconnect();
@@ -370,8 +356,7 @@ export default function AICompanionSection() {
           -translate-y-1/2
         "
         style={{
-          background:
-            "radial-gradient(ellipse, rgba(var(--teal-rgb),0.06) 0%, transparent 70%)",
+          background: 'radial-gradient(ellipse, rgba(var(--teal-rgb),0.06) 0%, transparent 70%)'
         }}
       />
 
@@ -381,7 +366,7 @@ export default function AICompanionSection() {
         animate={isInView ? { opacity: 1, y: 0 } : {}}
         transition={{
           duration: 1,
-          ease: [0.16, 1, 0.3, 1],
+          ease: [0.16, 1, 0.3, 1]
         }}
         className="
           relative
@@ -430,9 +415,8 @@ export default function AICompanionSection() {
             text-muted-foreground
           "
         >
-          Meet your spiritual companion — an AI trained on Islamic knowledge,
-          designed to offer guidance that honors both tradition and your unique
-          journey.
+          Meet your spiritual companion — an AI trained on Islamic knowledge, designed to offer
+          guidance that honors both tradition and your unique journey.
         </p>
       </motion.div>
 
@@ -455,7 +439,7 @@ export default function AICompanionSection() {
           transition={{
             duration: 1.2,
             delay: 0.3,
-            ease: [0.16, 1, 0.3, 1],
+            ease: [0.16, 1, 0.3, 1]
           }}
           className="
             relative
@@ -480,8 +464,7 @@ export default function AICompanionSection() {
               blur-xl
             "
             style={{
-              background:
-                "radial-gradient(ellipse, rgba(var(--teal-rgb),0.3) 0%, transparent 70%)",
+              background: 'radial-gradient(ellipse, rgba(var(--teal-rgb),0.3) 0%, transparent 70%)'
             }}
           />
         </motion.div>
@@ -493,20 +476,20 @@ export default function AICompanionSection() {
               key={feature.title}
               initial={{
                 opacity: 0,
-                x: 30,
+                x: 30
               }}
               animate={
                 isInView
                   ? {
                       opacity: 1,
-                      x: 0,
+                      x: 0
                     }
                   : {}
               }
               transition={{
                 duration: 0.8,
                 delay: 0.4 + index * 0.1,
-                ease: [0.16, 1, 0.3, 1],
+                ease: [0.16, 1, 0.3, 1]
               }}
               className="
                   flex
@@ -530,15 +513,11 @@ export default function AICompanionSection() {
                     border
                   "
                 style={{
-                  background: "rgba(var(--teal-rgb),0.1)",
-                  borderColor: "rgba(var(--teal-rgb),0.2)",
+                  background: 'rgba(var(--teal-rgb),0.1)',
+                  borderColor: 'rgba(var(--teal-rgb),0.2)'
                 }}
               >
-                <feature.icon
-                  size={18}
-                  className="text-teal-500"
-                  strokeWidth={1.5}
-                />
+                <feature.icon size={18} className="text-teal-500" strokeWidth={1.5} />
               </div>
 
               <div>

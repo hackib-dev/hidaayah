@@ -1,72 +1,72 @@
-"use client";
+'use client';
 
-import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { useRef } from 'react';
+import { motion, useInView } from 'framer-motion';
 
 const floatingWords = [
   {
-    text: "anxiety",
-    x: "8%",
-    y: "15%",
-    size: "22px",
-    delay: 0.1,
+    text: 'anxiety',
+    x: '8%',
+    y: '15%',
+    size: '22px',
+    delay: 0.1
   },
   {
-    text: "distraction",
-    x: "72%",
-    y: "10%",
-    size: "17px",
-    delay: 0.3,
+    text: 'distraction',
+    x: '72%',
+    y: '10%',
+    size: '17px',
+    delay: 0.3
   },
   {
-    text: "emptiness",
-    x: "18%",
-    y: "52%",
-    size: "26px",
-    delay: 0.5,
+    text: 'emptiness',
+    x: '18%',
+    y: '52%',
+    size: '26px',
+    delay: 0.5
   },
   {
-    text: "noise",
-    x: "78%",
-    y: "42%",
-    size: "20px",
-    delay: 0.2,
+    text: 'noise',
+    x: '78%',
+    y: '42%',
+    size: '20px',
+    delay: 0.2
   },
   {
-    text: "searching",
-    x: "55%",
-    y: "22%",
-    size: "18px",
-    delay: 0.7,
+    text: 'searching',
+    x: '55%',
+    y: '22%',
+    size: '18px',
+    delay: 0.7
   },
   {
-    text: "overwhelmed",
-    x: "40%",
-    y: "70%",
-    size: "24px",
-    delay: 0.4,
+    text: 'overwhelmed',
+    x: '40%',
+    y: '70%',
+    size: '24px',
+    delay: 0.4
   },
   {
-    text: "lost",
-    x: "85%",
-    y: "68%",
-    size: "28px",
-    delay: 0.6,
+    text: 'lost',
+    x: '85%',
+    y: '68%',
+    size: '28px',
+    delay: 0.6
   },
   {
-    text: "hollow",
-    x: "5%",
-    y: "80%",
-    size: "16px",
-    delay: 0.8,
+    text: 'hollow',
+    x: '5%',
+    y: '80%',
+    size: '16px',
+    delay: 0.8
   },
   {
-    text: "restless",
-    x: "62%",
-    y: "82%",
-    size: "19px",
-    delay: 0.35,
-  },
+    text: 'restless',
+    x: '62%',
+    y: '82%',
+    size: '19px',
+    delay: 0.35
+  }
 ];
 
 export default function ProblemSection() {
@@ -74,14 +74,14 @@ export default function ProblemSection() {
 
   const inView = useInView(sectionRef, {
     once: true,
-    amount: 0.25,
+    amount: 0.25
   });
 
   const verseRef = useRef<HTMLDivElement | null>(null);
 
   const verseInView = useInView(verseRef, {
     once: true,
-    amount: 0.8,
+    amount: 0.8
   });
 
   return (
@@ -96,23 +96,23 @@ export default function ProblemSection() {
             key={i}
             initial={{
               opacity: 0,
-              y: 10,
+              y: 10
             }}
             animate={
               inView
                 ? {
                     opacity: 0.08,
-                    y: 0,
+                    y: 0
                   }
                 : {
                     opacity: 0,
-                    y: 10,
+                    y: 10
                   }
             }
             transition={{
               duration: 1.5,
               delay: word.delay,
-              ease: [0.16, 1, 0.3, 1],
+              ease: [0.16, 1, 0.3, 1]
             }}
             className="absolute select-none italic text-muted-foreground"
             style={{
@@ -121,7 +121,7 @@ export default function ProblemSection() {
               fontSize: word.size,
               fontWeight: 300,
               fontFamily: "'Cormorant Garamond', serif",
-              filter: "blur(0.5px)",
+              filter: 'blur(0.5px)'
             }}
           >
             {word.text}
@@ -135,23 +135,23 @@ export default function ProblemSection() {
         <motion.div
           initial={{
             opacity: 0,
-            y: 12,
+            y: 12
           }}
           animate={
             inView
               ? {
                   opacity: 1,
-                  y: 0,
+                  y: 0
                 }
               : {}
           }
           transition={{
             duration: 1,
-            delay: 0.2,
+            delay: 0.2
           }}
           className="mb-10 text-xs font-medium uppercase tracking-[0.25em] text-[var(--teal)] opacity-70"
           style={{
-            fontFamily: "'Inter', sans-serif",
+            fontFamily: "'Inter', sans-serif"
           }}
         >
           The Human Condition
@@ -161,24 +161,24 @@ export default function ProblemSection() {
         <motion.h2
           initial={{
             opacity: 0,
-            y: 24,
+            y: 24
           }}
           animate={
             inView
               ? {
                   opacity: 1,
-                  y: 0,
+                  y: 0
                 }
               : {}
           }
           transition={{
             duration: 1.3,
             delay: 0.5,
-            ease: [0.16, 1, 0.3, 1],
+            ease: [0.16, 1, 0.3, 1]
           }}
           className="mb-14 text-[clamp(38px,6vw,72px)] font-light leading-[1.15] tracking-[-0.01em] text-foreground"
           style={{
-            fontFamily: "'Cormorant Garamond', serif",
+            fontFamily: "'Cormorant Garamond', serif"
           }}
         >
           We searched everywhere
@@ -192,25 +192,24 @@ export default function ProblemSection() {
           <motion.div
             initial={{
               opacity: 0,
-              scaleX: 0,
+              scaleX: 0
             }}
             animate={
               verseInView
                 ? {
                     opacity: 1,
-                    scaleX: 1,
+                    scaleX: 1
                   }
                 : {}
             }
             transition={{
               duration: 1.2,
               delay: 0.2,
-              ease: [0.16, 1, 0.3, 1],
+              ease: [0.16, 1, 0.3, 1]
             }}
             className="mx-auto mb-10 h-px w-20 origin-center opacity-50"
             style={{
-              background:
-                "linear-gradient(90deg, transparent, var(--gold), transparent)",
+              background: 'linear-gradient(90deg, transparent, var(--gold), transparent)'
             }}
           />
 
@@ -218,20 +217,20 @@ export default function ProblemSection() {
           <motion.div
             initial={{
               opacity: 0,
-              y: 20,
+              y: 20
             }}
             animate={
               verseInView
                 ? {
                     opacity: 1,
-                    y: 0,
+                    y: 0
                   }
                 : {}
             }
             transition={{
               duration: 1.4,
               delay: 0.5,
-              ease: [0.16, 1, 0.3, 1],
+              ease: [0.16, 1, 0.3, 1]
             }}
             className="mb-10 rounded-[24px] border border-border bg-card p-10"
           >
@@ -241,7 +240,7 @@ export default function ProblemSection() {
               className="mb-5 text-[clamp(22px,3vw,30px)] leading-[1.9] text-[var(--gold)] opacity-85"
               style={{
                 fontFamily: "'Amiri', serif",
-                fontWeight: 400,
+                fontWeight: 400
               }}
             >
               أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ
@@ -252,11 +251,10 @@ export default function ProblemSection() {
               className="mb-3 text-[20px] italic text-foreground opacity-80"
               style={{
                 fontFamily: "'Cormorant Garamond', serif",
-                fontWeight: 300,
+                fontWeight: 300
               }}
             >
-              &quot;Verily, in the remembrance of Allah do hearts find
-              rest.&quot;
+              &quot;Verily, in the remembrance of Allah do hearts find rest.&quot;
             </div>
 
             {/* Reference */}
@@ -264,7 +262,7 @@ export default function ProblemSection() {
               className="text-xs tracking-[0.1em] text-muted-foreground"
               style={{
                 fontFamily: "'Inter', sans-serif",
-                fontWeight: 400,
+                fontWeight: 400
               }}
             >
               Ar-Ra&apos;d 13:28
@@ -275,24 +273,24 @@ export default function ProblemSection() {
           <motion.p
             initial={{
               opacity: 0,
-              y: 16,
+              y: 16
             }}
             animate={
               verseInView
                 ? {
                     opacity: 1,
-                    y: 0,
+                    y: 0
                   }
                 : {}
             }
             transition={{
               duration: 1.2,
               delay: 0.9,
-              ease: [0.16, 1, 0.3, 1],
+              ease: [0.16, 1, 0.3, 1]
             }}
             className="text-[clamp(22px,3vw,30px)] font-light italic leading-[1.5] text-foreground opacity-90"
             style={{
-              fontFamily: "'Cormorant Garamond', serif",
+              fontFamily: "'Cormorant Garamond', serif"
             }}
           >
             Yet the guidance we needed was always with us.
@@ -305,7 +303,7 @@ export default function ProblemSection() {
         className="pointer-events-none absolute bottom-0 left-1/2 h-[250px] w-[600px] -translate-x-1/2"
         style={{
           background:
-            "radial-gradient(ellipse at bottom, rgba(15, 194, 176, 0.05) 0%, transparent 70%)",
+            'radial-gradient(ellipse at bottom, rgba(15, 194, 176, 0.05) 0%, transparent 70%)'
         }}
       />
     </section>

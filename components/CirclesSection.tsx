@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import { motion, useInView } from "framer-motion";
+import { useEffect, useRef, useState } from 'react';
+import { motion, useInView } from 'framer-motion';
 
-import { BookOpen, RotateCcw, Mic, MessageCircle } from "lucide-react";
+import { BookOpen, RotateCcw, Mic, MessageCircle } from 'lucide-react';
 
 type NodeType = {
   id: number;
@@ -25,121 +25,121 @@ const NODES: NodeType[] = [
     id: 0,
     x: 50,
     y: 50,
-    label: "You",
-    color: "var(--teal)",
+    label: 'You',
+    color: 'var(--teal)',
     size: 14,
-    role: "",
+    role: ''
   },
 
   {
     id: 1,
     x: 22,
     y: 28,
-    label: "Yusuf",
-    color: "var(--teal)",
+    label: 'Yusuf',
+    color: 'var(--teal)',
     size: 10,
-    role: "Hifdh",
+    role: 'Hifdh'
   },
 
   {
     id: 2,
     x: 75,
     y: 22,
-    label: "Amina",
-    color: "var(--teal)",
+    label: 'Amina',
+    color: 'var(--teal)',
     size: 10,
-    role: "Muraaja'ah",
+    role: "Muraaja'ah"
   },
 
   {
     id: 3,
     x: 85,
     y: 60,
-    label: "Ibrahim",
-    color: "var(--gold)",
+    label: 'Ibrahim',
+    color: 'var(--gold)',
     size: 10,
-    role: "Reflection",
+    role: 'Reflection'
   },
 
   {
     id: 4,
     x: 60,
     y: 80,
-    label: "Khadija",
-    color: "var(--teal)",
+    label: 'Khadija',
+    color: 'var(--teal)',
     size: 10,
-    role: "Recitation",
+    role: 'Recitation'
   },
 
   {
     id: 5,
     x: 15,
     y: 65,
-    label: "Omar",
-    color: "var(--teal)",
+    label: 'Omar',
+    color: 'var(--teal)',
     size: 10,
-    role: "Hifdh",
+    role: 'Hifdh'
   },
 
   {
     id: 6,
     x: 40,
     y: 18,
-    label: "Fatima",
-    color: "var(--gold)",
+    label: 'Fatima',
+    color: 'var(--gold)',
     size: 9,
-    role: "Tafsir",
+    role: 'Tafsir'
   },
 
   {
     id: 7,
     x: 88,
     y: 38,
-    label: "Ali",
-    color: "var(--teal)",
+    label: 'Ali',
+    color: 'var(--teal)',
     size: 9,
-    role: "Recitation",
+    role: 'Recitation'
   },
 
   {
     id: 8,
     x: 30,
     y: 82,
-    label: "Maryam",
-    color: "var(--teal)",
+    label: 'Maryam',
+    color: 'var(--teal)',
     size: 9,
-    role: "Muraaja'ah",
+    role: "Muraaja'ah"
   },
 
   {
     id: 9,
     x: 68,
     y: 42,
-    label: "Hassan",
-    color: "var(--teal)",
+    label: 'Hassan',
+    color: 'var(--teal)',
     size: 9,
-    role: "Hifdh",
+    role: 'Hifdh'
   },
 
   {
     id: 10,
     x: 12,
     y: 44,
-    label: "Zaid",
-    color: "var(--gold)",
+    label: 'Zaid',
+    color: 'var(--gold)',
     size: 8,
-    role: "Reflection",
+    role: 'Reflection'
   },
 
   {
     id: 11,
     x: 55,
     y: 62,
-    label: "Aisha",
-    color: "var(--teal)",
+    label: 'Aisha',
+    color: 'var(--teal)',
     size: 8,
-    role: "Tafsir",
-  },
+    role: 'Tafsir'
+  }
 ];
 
 const EDGES: EdgeType[] = [
@@ -166,37 +166,37 @@ const EDGES: EdgeType[] = [
   { from: 5, to: 10 },
 
   { from: 9, to: 11 },
-  { from: 9, to: 7 },
+  { from: 9, to: 7 }
 ];
 
 const GROUPS = [
   {
-    name: "Hifdh Circle",
-    count: "12 members",
-    color: "teal",
-    icon: BookOpen,
+    name: 'Hifdh Circle',
+    count: '12 members',
+    color: 'teal',
+    icon: BookOpen
   },
 
   {
     name: "Muraaja'ah",
-    count: "8 members",
-    color: "gold",
-    icon: RotateCcw,
+    count: '8 members',
+    color: 'gold',
+    icon: RotateCcw
   },
 
   {
-    name: "Recitation Group",
-    count: "24 members",
-    color: "teal",
-    icon: Mic,
+    name: 'Recitation Group',
+    count: '24 members',
+    color: 'teal',
+    icon: Mic
   },
 
   {
-    name: "Reflections",
-    count: "156 members",
-    color: "teal",
-    icon: MessageCircle,
-  },
+    name: 'Reflections',
+    count: '156 members',
+    color: 'teal',
+    icon: MessageCircle
+  }
 ];
 
 function ConstellationSVG({ inView }: { inView: boolean }) {
@@ -225,20 +225,14 @@ function ConstellationSVG({ inView }: { inView: boolean }) {
   }, [inView]);
 
   return (
-    <svg
-      viewBox="0 0 100 100"
-      className="h-full w-full"
-      preserveAspectRatio="xMidYMid meet"
-    >
+    <svg viewBox="0 0 100 100" className="h-full w-full" preserveAspectRatio="xMidYMid meet">
       {/* Edges */}
       {EDGES.map((edge, index) => {
         const from = NODES[edge.from];
 
         const to = NODES[edge.to];
 
-        const opacity = inView
-          ? 0.18 + Math.sin(pulse * 0.8 + index * 0.5) * 0.08
-          : 0;
+        const opacity = inView ? 0.18 + Math.sin(pulse * 0.8 + index * 0.5) * 0.08 : 0;
 
         return (
           <motion.line
@@ -252,20 +246,20 @@ function ConstellationSVG({ inView }: { inView: boolean }) {
             strokeOpacity={opacity}
             initial={{
               pathLength: 0,
-              opacity: 0,
+              opacity: 0
             }}
             animate={
               inView
                 ? {
                     pathLength: 1,
-                    opacity: 1,
+                    opacity: 1
                   }
                 : {}
             }
             transition={{
               duration: 1.5,
               delay: 0.5 + index * 0.08,
-              ease: [0.16, 1, 0.3, 1],
+              ease: [0.16, 1, 0.3, 1]
             }}
           />
         );
@@ -273,8 +267,7 @@ function ConstellationSVG({ inView }: { inView: boolean }) {
 
       {/* Nodes */}
       {NODES.map((node, index) => {
-        const glowSize =
-          node.size * (1 + Math.sin(pulse * 1.2 + index * 0.7) * 0.15);
+        const glowSize = node.size * (1 + Math.sin(pulse * 1.2 + index * 0.7) * 0.15);
 
         return (
           <g key={node.id}>
@@ -286,18 +279,18 @@ function ConstellationSVG({ inView }: { inView: boolean }) {
               fill={node.color}
               opacity={inView ? 0.08 + Math.sin(pulse * 0.9 + index) * 0.03 : 0}
               initial={{
-                scale: 0,
+                scale: 0
               }}
               animate={
                 inView
                   ? {
-                      scale: 1,
+                      scale: 1
                     }
                   : {}
               }
               transition={{
                 duration: 0.8,
-                delay: 0.3 + index * 0.06,
+                delay: 0.3 + index * 0.06
               }}
             />
 
@@ -309,47 +302,43 @@ function ConstellationSVG({ inView }: { inView: boolean }) {
               fill={node.color}
               opacity={inView ? 0.85 : 0}
               initial={{
-                scale: 0,
+                scale: 0
               }}
               animate={
                 inView
                   ? {
-                      scale: 1,
+                      scale: 1
                     }
                   : {}
               }
               transition={{
                 duration: 0.6,
                 delay: 0.4 + index * 0.06,
-                type: "spring",
+                type: 'spring'
               }}
             />
 
             {/* Label */}
             <motion.text
               x={node.x}
-              y={
-                index === 0
-                  ? node.y - node.size * 0.5
-                  : node.y + node.size * 0.5 + 2.5
-              }
+              y={index === 0 ? node.y - node.size * 0.5 : node.y + node.size * 0.5 + 2.5}
               textAnchor="middle"
-              fill={index === 0 ? node.color : "var(--muted-foreground)"}
-              fontSize={index === 0 ? "2.8" : "2.2"}
-              fontWeight={index === 0 ? "500" : "300"}
+              fill={index === 0 ? node.color : 'var(--muted-foreground)'}
+              fontSize={index === 0 ? '2.8' : '2.2'}
+              fontWeight={index === 0 ? '500' : '300'}
               opacity={inView ? (index === 0 ? 0.9 : 1) : 0}
               initial={{
-                opacity: 0,
+                opacity: 0
               }}
               animate={
                 inView
                   ? {
-                      opacity: index === 0 ? 0.9 : 1,
+                      opacity: index === 0 ? 0.9 : 1
                     }
                   : {}
               }
               transition={{
-                delay: index === 0 ? 1 : 0.8 + index * 0.05,
+                delay: index === 0 ? 1 : 0.8 + index * 0.05
               }}
             >
               {node.label}
@@ -366,7 +355,7 @@ export default function CirclesSection() {
 
   const isInView = useInView(sectionRef, {
     once: true,
-    amount: 0.3,
+    amount: 0.3
   });
 
   return (
@@ -398,8 +387,7 @@ export default function CirclesSection() {
           -translate-y-1/2
         "
         style={{
-          background:
-            "radial-gradient(ellipse, rgba(var(--teal-rgb),0.04) 0%, transparent 70%)",
+          background: 'radial-gradient(ellipse, rgba(var(--teal-rgb),0.04) 0%, transparent 70%)'
         }}
       />
 
@@ -407,19 +395,19 @@ export default function CirclesSection() {
       <motion.div
         initial={{
           opacity: 0,
-          y: 20,
+          y: 20
         }}
         animate={
           isInView
             ? {
                 opacity: 1,
-                y: 0,
+                y: 0
               }
             : {}
         }
         transition={{
           duration: 1,
-          ease: [0.16, 1, 0.3, 1],
+          ease: [0.16, 1, 0.3, 1]
         }}
         className="
           relative
@@ -455,8 +443,7 @@ export default function CirclesSection() {
             md:text-6xl
           "
         >
-          You&apos;re never on this journey{" "}
-          <em className="text-teal-500">alone.</em>
+          You&apos;re never on this journey <em className="text-teal-500">alone.</em>
         </h2>
 
         <p
@@ -468,8 +455,8 @@ export default function CirclesSection() {
             text-muted-foreground
           "
         >
-          Connect with believers who share your commitment to growth through
-          memorization, reflection, recitation, and spiritual accountability.
+          Connect with believers who share your commitment to growth through memorization,
+          reflection, recitation, and spiritual accountability.
         </p>
       </motion.div>
 
@@ -491,20 +478,20 @@ export default function CirclesSection() {
         <motion.div
           initial={{
             opacity: 0,
-            scale: 0.9,
+            scale: 0.9
           }}
           animate={
             isInView
               ? {
                   opacity: 1,
-                  scale: 1,
+                  scale: 1
                 }
               : {}
           }
           transition={{
             duration: 1.2,
             delay: 0.3,
-            ease: [0.16, 1, 0.3, 1],
+            ease: [0.16, 1, 0.3, 1]
           }}
           className="
             relative
@@ -520,7 +507,7 @@ export default function CirclesSection() {
             backdrop-blur-md
           "
           style={{
-            boxShadow: "0 0 60px rgba(var(--teal-rgb),0.05)",
+            boxShadow: '0 0 60px rgba(var(--teal-rgb),0.05)'
           }}
         >
           <ConstellationSVG inView={isInView} />
@@ -536,30 +523,30 @@ export default function CirclesSection() {
           "
         >
           {GROUPS.map((group, index) => {
-            const isTeal = group.color === "teal";
+            const isTeal = group.color === 'teal';
 
             return (
               <motion.div
                 key={group.name}
                 initial={{
                   opacity: 0,
-                  x: 24,
+                  x: 24
                 }}
                 animate={
                   isInView
                     ? {
                         opacity: 1,
-                        x: 0,
+                        x: 0
                       }
                     : {}
                 }
                 transition={{
                   duration: 0.8,
                   delay: 0.5 + index * 0.1,
-                  ease: [0.16, 1, 0.3, 1],
+                  ease: [0.16, 1, 0.3, 1]
                 }}
                 whileHover={{
-                  x: 4,
+                  x: 4
                 }}
                 className="
                     flex
@@ -589,18 +576,14 @@ export default function CirclesSection() {
                       border
                     "
                   style={{
-                    background: isTeal
-                      ? "rgba(15,194,176,0.12)"
-                      : "rgba(212,168,79,0.12)",
+                    background: isTeal ? 'rgba(15,194,176,0.12)' : 'rgba(212,168,79,0.12)',
 
-                    borderColor: isTeal
-                      ? "rgba(15,194,176,0.2)"
-                      : "rgba(212,168,79,0.2)",
+                    borderColor: isTeal ? 'rgba(15,194,176,0.2)' : 'rgba(212,168,79,0.2)'
                   }}
                 >
                   <group.icon
                     size={18}
-                    className={isTeal ? "text-teal-500" : "text-yellow-500"}
+                    className={isTeal ? 'text-teal-500' : 'text-yellow-500'}
                     strokeWidth={1.5}
                   />
                 </div>

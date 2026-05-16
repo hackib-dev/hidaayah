@@ -1,14 +1,8 @@
-"use client";
+'use client';
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-} from "react";
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
-type Theme = "light" | "dark";
+type Theme = 'light' | 'dark';
 
 interface ThemeContextType {
   theme: Theme;
@@ -19,17 +13,15 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | null>(null);
 
 function getSystemTheme(): Theme {
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 function getStoredTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === 'undefined') return 'dark';
 
-  const savedTheme = localStorage.getItem("hidaayah-theme");
+  const savedTheme = localStorage.getItem('hidaayah-theme');
 
-  if (savedTheme === "light" || savedTheme === "dark") {
+  if (savedTheme === 'light' || savedTheme === 'dark') {
     return savedTheme;
   }
 
@@ -37,7 +29,7 @@ function getStoredTheme(): Theme {
 }
 
 export default function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [theme, setTheme] = useState<Theme>('dark');
   const [mounted, setMounted] = useState(false);
 
   // Initialize theme
@@ -53,34 +45,34 @@ export default function ThemeProvider({ children }: { children: ReactNode }) {
 
     const root = document.documentElement;
 
-    root.classList.remove("light", "dark");
+    root.classList.remove('light', 'dark');
     root.classList.add(theme);
 
-    localStorage.setItem("hidaayah-theme", theme);
+    localStorage.setItem('hidaayah-theme', theme);
   }, [theme, mounted]);
 
   // Listen for system theme changes
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
     const handleChange = () => {
-      const savedTheme = localStorage.getItem("hidaayah-theme");
+      const savedTheme = localStorage.getItem('hidaayah-theme');
 
       // Only auto-update if user hasn't manually chosen
       if (!savedTheme) {
-        setTheme(mediaQuery.matches ? "dark" : "light");
+        setTheme(mediaQuery.matches ? 'dark' : 'light');
       }
     };
 
-    mediaQuery.addEventListener("change", handleChange);
+    mediaQuery.addEventListener('change', handleChange);
 
     return () => {
-      mediaQuery.removeEventListener("change", handleChange);
+      mediaQuery.removeEventListener('change', handleChange);
     };
   }, []);
 
   const toggleTheme = () => {
-    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   };
 
   // Prevent hydration mismatch
@@ -91,7 +83,7 @@ export default function ThemeProvider({ children }: { children: ReactNode }) {
       value={{
         theme,
         toggleTheme,
-        setTheme,
+        setTheme
       }}
     >
       {children}
@@ -103,7 +95,7 @@ export function useTheme() {
   const context = useContext(ThemeContext);
 
   if (!context) {
-    throw new Error("useTheme must be used within ThemeProvider");
+    throw new Error('useTheme must be used within ThemeProvider');
   }
 
   return context;
