@@ -417,8 +417,7 @@ export default function QuranGardenSection() {
                 letterSpacing: '0.25em',
                 textTransform: 'uppercase',
                 marginBottom: '1.5rem',
-                opacity: 0.8,
-                textShadow: '0 2px 20px var(--background)'
+                opacity: 0.8
               }}
             >
               The Quran Garden
@@ -431,8 +430,7 @@ export default function QuranGardenSection() {
                 color: 'var(--foreground)',
                 lineHeight: 1.2,
                 letterSpacing: '-0.01em',
-                marginBottom: '1.25rem',
-                textShadow: '0 4px 40px var(--background)'
+                marginBottom: '1.25rem'
               }}
             >
               Your relationship with the
@@ -447,8 +445,7 @@ export default function QuranGardenSection() {
                 color: 'var(--muted-foreground)',
                 lineHeight: 1.75,
                 maxWidth: '480px',
-                margin: '0 auto',
-                textShadow: '0 2px 30px var(--background)'
+                margin: '0 auto'
               }}
             >
               Every moment of connection, every verse reflected upon, every prayer offered — watch

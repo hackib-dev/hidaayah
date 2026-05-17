@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function CTASection() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -116,7 +117,9 @@ export default function CTASection() {
               fontStyle: 'italic',
               background: 'linear-gradient(135deg, var(--teal), var(--emerald), var(--gold))',
               WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent'
+              backgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              color: 'var(--teal)'
             }}
           >
             Qur'an starts now.
@@ -227,39 +230,6 @@ export default function CTASection() {
               />
             ))}
           </div>
-          <div>
-            <span
-              style={{
-                fontFamily: "'Inter', sans-serif",
-                fontSize: '14px',
-                fontWeight: 400,
-                color: 'var(--muted-foreground)'
-              }}
-            >
-              Joined by{' '}
-            </span>
-            <span
-              style={{
-                fontFamily: "'Inter', sans-serif",
-                fontSize: '14px',
-                fontWeight: 500,
-                color: 'var(--teal)'
-              }}
-            >
-              12,400+ believers
-            </span>
-            <span
-              style={{
-                fontFamily: "'Inter', sans-serif",
-                fontSize: '14px',
-                fontWeight: 400,
-                color: 'var(--muted-foreground)'
-              }}
-            >
-              {' '}
-              worldwide
-            </span>
-          </div>
         </motion.div>
       </div>
 
@@ -281,22 +251,24 @@ export default function CTASection() {
           padding: '0 2rem'
         }}
       >
-        {['Privacy', 'Terms', 'Contact'].map((link) => (
-          <button
-            key={link}
+        {[
+          { label: 'Privacy', href: '/privacy' },
+          { label: 'Terms', href: '/terms' }
+        ].map(({ label, href }) => (
+          <Link
+            key={label}
+            href={href}
             style={{
               fontFamily: "'Inter', sans-serif",
               fontSize: '13px',
               fontWeight: 300,
               color: 'var(--muted-foreground)',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              letterSpacing: '0.05em'
+              letterSpacing: '0.05em',
+              textDecoration: 'none'
             }}
           >
-            {link}
-          </button>
+            {label}
+          </Link>
         ))}
         <span
           style={{

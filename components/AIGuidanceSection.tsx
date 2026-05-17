@@ -59,27 +59,27 @@ const EMOTION_STYLES: Record<
   }
 > = {
   hopeful: {
-    bg: '#003B36',
+    bg: 'rgba(15, 194, 176, 0.12)',
     color: 'var(--teal)'
   },
 
   grateful: {
-    bg: '#4A2D00',
+    bg: 'rgba(212, 168, 79, 0.12)',
     color: 'var(--gold)'
   },
 
   struggling: {
-    bg: '#4B1020',
-    color: '#FF4D73'
+    bg: 'rgba(220, 50, 90, 0.12)',
+    color: '#E03660'
   },
 
   anxious: {
-    bg: '#241C4A',
-    color: '#9B8CFF'
+    bg: 'rgba(120, 100, 220, 0.12)',
+    color: '#7B6FD4'
   },
 
   peaceful: {
-    bg: '#4A2F00',
+    bg: 'rgba(212, 168, 79, 0.12)',
     color: 'var(--gold)'
   }
 };
@@ -146,7 +146,7 @@ export default function AIGuidanceSection() {
 
   const [selected, setSelected] = useState<number | null>(null);
 
-  const [showResponse, setShowResponse] = useState(false);
+  const [displayedIndex, setDisplayedIndex] = useState<number | null>(null);
 
   const [burst, setBurst] = useState(false);
 
@@ -157,7 +157,6 @@ export default function AIGuidanceSection() {
   const handleSelect = (index: number) => {
     if (isTyping) return;
 
-    setShowResponse(false);
     setSelected(index);
     setBurst(true);
     setIsTyping(true);
@@ -178,7 +177,7 @@ export default function AIGuidanceSection() {
         setTimeout(() => {
           setBurst(false);
           setIsTyping(false);
-          setShowResponse(true);
+          setDisplayedIndex(index);
         }, 500);
       }
     }, 50);
@@ -194,11 +193,11 @@ export default function AIGuidanceSection() {
     }
   }, [isInView, selected]);
 
-  const currentPrompt = selected !== null ? PROMPTS[selected] : null;
+  const displayedPrompt = displayedIndex !== null ? PROMPTS[displayedIndex] : null;
 
-  const currentVerse = currentPrompt?.verse;
+  const currentVerse = displayedPrompt?.verse;
 
-  const emotionStyle = currentPrompt ? EMOTION_STYLES[currentPrompt.emotion] : null;
+  const emotionStyle = displayedPrompt ? EMOTION_STYLES[displayedPrompt.emotion] : null;
 
   return (
     <section
@@ -428,7 +427,7 @@ export default function AIGuidanceSection() {
                   style={{
                     color: isSelected ? style.color : 'var(--muted-foreground)',
 
-                    background: isSelected ? style.bg : 'rgba(255,255,255,0.03)',
+                    background: isSelected ? style.bg : 'var(--muted)',
 
                     borderColor: isSelected ? `${style.color}40` : 'var(--border)'
                   }}
@@ -461,7 +460,7 @@ export default function AIGuidanceSection() {
 
               boxShadow: isTyping ? '0 0 0 4px rgba(var(--teal-rgb),0.1)' : 'none',
 
-              background: 'rgba(255,255,255,0.02)'
+              background: 'var(--muted)'
             }}
           >
             <div
@@ -507,9 +506,9 @@ export default function AIGuidanceSection() {
 
         {/* Response */}
         <AnimatePresence mode="wait">
-          {showResponse && currentVerse && emotionStyle && (
+          {currentVerse && emotionStyle && (
             <motion.div
-              key={selected}
+              key={displayedIndex}
               initial={{
                 opacity: 0,
                 y: 16
@@ -535,9 +534,9 @@ export default function AIGuidanceSection() {
                     p-8
                   "
                 style={{
-                  background: `${emotionStyle.bg}80`,
+                  background: emotionStyle.bg,
 
-                  borderColor: `${emotionStyle.color}25`
+                  borderColor: `${emotionStyle.color}40`
                 }}
               >
                 {/* Arabic */}
@@ -630,7 +629,7 @@ export default function AIGuidanceSection() {
                     "
                   style={{
                     background:
-                      'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)'
+                      'linear-gradient(90deg, transparent, var(--border), transparent)'
                   }}
                 />
 

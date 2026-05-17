@@ -12,6 +12,8 @@ import {
   BookOpen,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Bookmark,
   Share2,
   Settings2,
@@ -26,11 +28,13 @@ import {
   X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { TajweedLegend } from '@/components/TajweedLegend';
 import {
   fetchVersesByChapter,
   fetchChapter,
   fetchVerseAudioFiles,
-  fetchVerseReciters
+  fetchVerseReciters,
+  fetchTajweedByChapter
 } from '@/app/(app)/dashboard/quran/queries';
 import { fetchTafsirByChapter } from '@/app/(app)/dashboard/guidance/queries';
 import {
@@ -57,7 +61,7 @@ import {
   QF_DEFAULT_RECITER_ID
 } from '@/config';
 
-type QuranFont = 'qpc_hafs' | 'uthmani' | 'indopak';
+type QuranFont = 'qpc_hafs' | 'uthmani' | 'indopak' | 'tajweed';
 
 const FONT_OPTIONS: { id: QuranFont; label: string; fontFamily: string; wordField: keyof Word }[] =
   [
@@ -78,15 +82,22 @@ const FONT_OPTIONS: { id: QuranFont; label: string; fontFamily: string; wordFiel
       label: 'IndoPak',
       fontFamily: 'IndoPak, var(--font-arabic)',
       wordField: 'text_indopak'
+    },
+    {
+      id: 'tajweed',
+      label: 'Tajweed',
+      fontFamily: 'QPCHafs, var(--font-arabic)',
+      wordField: 'text_uthmani'
     }
   ];
 
 interface QuranReaderProps {
   surahNumber: number;
   scrollToVerse?: number;
+  onSurahChange?: (surahNumber: number) => void;
 }
 
-export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
+export function QuranReader({ surahNumber, scrollToVerse, onSurahChange }: QuranReaderProps) {
   const [chapter, setChapter] = useState<Chapter | null>(null);
   const [verses, setVerses] = useState<Verse[]>([]);
   const [tafsirs, setTafsirs] = useState<Record<number, string>>({});
@@ -119,6 +130,10 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
 
   // Font selection
   const [selectedFont, setSelectedFont] = useState<QuranFont>('qpc_hafs');
+
+  // Tajweed HTML: verse_key → HTML string
+  const [tajweedMap, setTajweedMap] = useState<Record<string, string>>({});
+  const [loadingTajweed, setLoadingTajweed] = useState(false);
 
   // Footnotes
   const [footnote, setFootnote] = useState<{ text: string } | null>(null);
@@ -159,12 +174,13 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
             qpc_uthmani_hafs: 'qpc_hafs',
             code_v2: 'qpc_hafs',
             text_uthmani: 'uthmani',
-            text_indopak: 'indopak'
+            text_indopak: 'indopak',
+            text_uthmani_tajweed: 'tajweed'
           };
           const mapped =
             fontMap[data.quranReaderStyles.quranFont] ??
             (data.quranReaderStyles.quranFont as QuranFont);
-          if (['qpc_hafs', 'uthmani', 'indopak'].includes(mapped)) setSelectedFont(mapped);
+          if (['qpc_hafs', 'uthmani', 'indopak', 'tajweed'].includes(mapped)) setSelectedFont(mapped);
         }
         if (data?.audio?.reciter) {
           setSelectedReciterId(data.audio.reciter);
@@ -176,6 +192,20 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
       });
   }, []);
 
+  // Fetch tajweed HTML when tajweed font is selected (once per surah)
+  const tajweedLoadedForRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (selectedFont !== 'tajweed') return;
+    if (tajweedLoadedForRef.current === surahNumber) return;
+    tajweedLoadedForRef.current = surahNumber;
+    setLoadingTajweed(true);
+    setTajweedMap({});
+    fetchTajweedByChapter(surahNumber)
+      .then((map) => setTajweedMap(map))
+      .catch(() => null)
+      .finally(() => setLoadingTajweed(false));
+  }, [selectedFont, surahNumber]);
+
   // Debounced save whenever settings change (skip until first load completes)
   useEffect(() => {
     if (!prefsLoadedRef.current) return;
@@ -184,7 +214,8 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
       const fontApiMap: Record<QuranFont, string> = {
         qpc_hafs: 'qpc_uthmani_hafs',
         uthmani: 'text_uthmani',
-        indopak: 'text_indopak'
+        indopak: 'text_indopak',
+        tajweed: 'text_uthmani_tajweed'
       };
       savePreferencesBulk(
         {
@@ -627,46 +658,71 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex gap-4 items-start">
+    <div className="flex-1 min-w-0 space-y-4">
       {/* Surah Header */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         className="p-5 rounded-2xl bg-linear-to-br from-card to-teal-muted border border-teal/15 shadow-sm"
       >
-        <div className="flex items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-1 rounded-xl bg-primary/10 text-primary text-xs font-bold">
-                Surah {surahNumber}
-              </span>
-              {chapter && (
-                <span
-                  className={cn(
-                    'px-2 py-1 rounded-lg text-xs font-bold',
-                    chapter.revelation_place === 'makkah'
-                      ? 'bg-teal-muted text-teal'
-                      : 'bg-gold-muted text-accent'
-                  )}
-                >
-                  {chapter.revelation_place === 'makkah' ? 'Meccan' : 'Medinan'}
+        <div className="flex items-center gap-2">
+          {/* Next surah (RTL: next is on the left) */}
+          <motion.button
+            whileTap={{ scale: 0.88 }}
+            onClick={() => onSurahChange?.(surahNumber + 1)}
+            disabled={surahNumber >= 114}
+            aria-label="Next surah"
+            className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-30 shrink-0 focus-ring"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </motion.button>
+
+          <div className="flex flex-1 items-center justify-between gap-4 min-w-0">
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-1 rounded-xl bg-primary/10 text-primary text-xs font-bold">
+                  Surah {surahNumber}
                 </span>
-              )}
+                {chapter && (
+                  <span
+                    className={cn(
+                      'px-2 py-1 rounded-lg text-xs font-bold',
+                      chapter.revelation_place === 'makkah'
+                        ? 'bg-teal-muted text-teal'
+                        : 'bg-gold-muted text-accent'
+                    )}
+                  >
+                    {chapter.revelation_place === 'makkah' ? 'Meccan' : 'Medinan'}
+                  </span>
+                )}
+              </div>
+              <h1 className="text-xl md:text-2xl font-serif font-bold text-foreground">
+                {chapter?.name_simple ?? `Surah ${surahNumber}`}
+              </h1>
+              <p className="text-sm text-muted-foreground">{chapter?.translated_name.name}</p>
             </div>
-            <h1 className="text-xl md:text-2xl font-serif font-bold text-foreground">
-              {chapter?.name_simple ?? `Surah ${surahNumber}`}
-            </h1>
-            <p className="text-sm text-muted-foreground">{chapter?.translated_name.name}</p>
+            <div className="text-right shrink-0">
+              <p
+                className="text-3xl md:text-4xl text-foreground"
+                style={{ fontFamily: 'var(--font-arabic)' }}
+              >
+                {chapter?.name_arabic}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">{chapter?.verses_count} verses</p>
+            </div>
           </div>
-          <div className="text-right">
-            <p
-              className="text-3xl md:text-4xl text-foreground"
-              style={{ fontFamily: 'var(--font-arabic)' }}
-            >
-              {chapter?.name_arabic}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">{chapter?.verses_count} verses</p>
-          </div>
+
+          {/* Previous surah (RTL: previous is on the right) */}
+          <motion.button
+            whileTap={{ scale: 0.88 }}
+            onClick={() => onSurahChange?.(surahNumber - 1)}
+            disabled={surahNumber <= 1}
+            aria-label="Previous surah"
+            className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-30 shrink-0 focus-ring"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </motion.button>
         </div>
       </motion.div>
 
@@ -1049,29 +1105,44 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
               </div>
 
               {/* Arabic — word-by-word with selected font */}
-              <p
-                dir="rtl"
-                className={cn(
-                  'text-foreground text-center leading-[2.5] mb-4 wrap-break-word',
-                  arabicSizeClass
-                )}
-              >
-                {verse.words?.length ? (
-                  verse.words
-                    .filter((word) => word.char_type_name !== 'end')
-                    .map((word) => {
-                      const fontOpt = FONT_OPTIONS.find((f) => f.id === selectedFont)!;
-                      return (
-                        <span key={word.id} style={{ fontFamily: fontOpt.fontFamily }}>
-                          {(word[fontOpt.wordField] as string) || word.text_uthmani}{' '}
-                        </span>
-                      );
-                    })
-                ) : (
-                  // Fallback to verse-level text if words not loaded
-                  <span style={{ fontFamily: 'var(--font-arabic)' }}>{verse.text_uthmani}</span>
-                )}
-              </p>
+              {selectedFont === 'tajweed' ? (
+                <div
+                  dir="rtl"
+                  className={cn(
+                    'text-center leading-[2.5] mb-4 tajweed-text',
+                    arabicSizeClass
+                  )}
+                  style={{ fontFamily: 'QPCHafs, var(--font-arabic)' }}
+                  dangerouslySetInnerHTML={{
+                    __html: loadingTajweed
+                      ? '...'
+                      : (tajweedMap[verse.verse_key] ?? verse.text_uthmani)
+                  }}
+                />
+              ) : (
+                <p
+                  dir="rtl"
+                  className={cn(
+                    'text-foreground text-center leading-[2.5] mb-4 wrap-break-word',
+                    arabicSizeClass
+                  )}
+                >
+                  {verse.words?.length ? (
+                    verse.words
+                      .filter((word) => word.char_type_name !== 'end')
+                      .map((word) => {
+                        const fontOpt = FONT_OPTIONS.find((f) => f.id === selectedFont)!;
+                        return (
+                          <span key={word.id} style={{ fontFamily: fontOpt.fontFamily }}>
+                            {(word[fontOpt.wordField] as string) || word.text_uthmani}{' '}
+                          </span>
+                        );
+                      })
+                  ) : (
+                    <span style={{ fontFamily: 'var(--font-arabic)' }}>{verse.text_uthmani}</span>
+                  )}
+                </p>
+              )}
 
               {/* Transliteration */}
               {showTransliteration && transliteration && (
@@ -1278,5 +1349,13 @@ export function QuranReader({ surahNumber, scrollToVerse }: QuranReaderProps) {
         )}
       </div>
     </div>
+
+    {/* Tajweed legend sidebar */}
+    {selectedFont === 'tajweed' && (
+      <div className="hidden lg:block w-48 shrink-0 sticky top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto">
+        <TajweedLegend />
+      </div>
+    )}
+  </div>
   );
 }

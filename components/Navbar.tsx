@@ -84,20 +84,7 @@ export default function Navbar() {
   };
 
   return (
-    <motion.nav
-      initial={{
-        opacity: 0,
-        y: -20
-      }}
-      animate={{
-        opacity: 1,
-        y: 0
-      }}
-      transition={{
-        duration: 1,
-        delay: 4.8,
-        ease: [0.16, 1, 0.3, 1]
-      }}
+    <nav
       className={`fixed left-0 right-0 top-0 z-50 flex h-16 items-center px-4 sm:px-6 transition-all duration-500 ${
         scrolled ? 'border-b border-border bg-background/85 backdrop-blur-[20px]' : 'bg-transparent'
       }`}
@@ -169,6 +156,6 @@ export default function Navbar() {
           </motion.button>
         </div>
       </div>
-    </motion.nav>
+    </nav>
   );
 }

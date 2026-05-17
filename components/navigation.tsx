@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { LogOut, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Home, Compass, BookOpen, Bookmark, BookText, Users, Leaf } from 'lucide-react';
-import { motion } from 'framer-motion';
 import HidaayahLogo from '@/components/HidaayahLogo';
 
 export function Navigation() {
@@ -36,9 +35,7 @@ export function Navigation() {
       <nav className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
         <div className="w-full max-w-6xl mx-auto px-4 lg:px-6 h-14 lg:h-16 flex items-center justify-between gap-2">
           <Link href="/" className="flex items-center gap-2 shrink-0">
-            <motion.div whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.95 }}>
-              <HidaayahLogo size={30} />
-            </motion.div>
+            <HidaayahLogo size={30} />
           </Link>
 
           {/* Nav items — icon-only on md/lg tablets, icon + label on xl+ */}
@@ -61,11 +58,7 @@ export function Navigation() {
                   )}
                 >
                   {isActive && (
-                    <motion.div
-                      layoutId="nav-pill"
-                      className="absolute inset-0 rounded-xl bg-primary"
-                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                    />
+                    <div className="absolute inset-0 rounded-xl bg-primary" />
                   )}
                   <span className="relative flex items-center gap-2">
                     <Icon className="w-4 h-4 shrink-0" strokeWidth={isActive ? 2.5 : 2} />
@@ -90,11 +83,7 @@ export function Navigation() {
                 )}
               >
                 {pathname === '/dashboard/profile' && (
-                  <motion.div
-                    layoutId="nav-pill"
-                    className="absolute inset-0 rounded-xl bg-primary"
-                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                  />
+                  <div className="absolute inset-0 rounded-xl bg-primary" />
                 )}
                 <span className="relative flex items-center gap-2">
                   <User
@@ -130,21 +119,12 @@ export function Navigation() {
                 href={item.href}
                 className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full py-1.5 rounded-xl transition-colors duration-200 touch-active"
               >
-                <motion.div
-                  whileTap={{ scale: 0.88 }}
-                  className={cn(
-                    'p-1 rounded-lg transition-colors duration-200',
-                    isActive ? 'bg-primary/15' : ''
-                  )}
-                >
+                <div className={cn('p-1 rounded-lg', isActive ? 'bg-primary/15' : '')}>
                   <Icon
-                    className={cn(
-                      'w-4 h-4 transition-colors duration-200',
-                      isActive ? 'text-primary' : 'text-muted-foreground'
-                    )}
+                    className={cn('w-4 h-4', isActive ? 'text-primary' : 'text-muted-foreground')}
                     strokeWidth={isActive ? 2.5 : 2}
                   />
-                </motion.div>
+                </div>
                 <span
                   className={cn(
                     'text-[9px] font-medium transition-colors duration-200 leading-none',

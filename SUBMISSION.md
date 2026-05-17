@@ -55,17 +55,34 @@ Each guidance result includes:
 
 ---
 
-### 2. Immersive Mushaf Page View (`/dashboard/quran` → Mushaf mode)
+### 2. Public Landing Page (`/`)
+
+A fully animated marketing landing page for first-time visitors — no login required.
+
+- **Hero section** — headline, animated Arabic calligraphy, and CTA buttons (Get Started / Sign In)
+- **Problem section** — floating emotional keywords (anxiety, emptiness, restlessness…) with an animated Quranic verse reveal on scroll
+- **AI Guidance section** — live interactive demo of the emotion-to-verse flow: click a feeling prompt, watch the input type character-by-character, and see the colour-coded verse response appear — all client-side with no API call, so any visitor can experience the product before signing up. Response panel stays open when switching between prompts (no close/reopen flash). In light mode all response card backgrounds use theme-aware `rgba()` tints so text remains legible
+- **AI Companion section** — marketing callouts (Contextual Wisdom, Emotional Intelligence, Always Learning) with a live Three.js animated 3D orb rendered via custom GLSL vertex/fragment shaders; the orb breathes, pulses, and adapts its colour palette to light/dark mode in real time
+- **CTA section** — final sign-up prompt
+
+**Page:** [app/page.tsx](app/page.tsx)  
+**Components:** [components/HeroSection.tsx](components/HeroSection.tsx), [components/ProblemSection.tsx](components/ProblemSection.tsx), [components/AIGuidanceSection.tsx](components/AIGuidanceSection.tsx), [components/AICompanionSection.tsx](components/AICompanionSection.tsx), [components/CTASection.tsx](components/CTASection.tsx)
+
+---
+
+### 3. Immersive Mushaf Page View (`/dashboard/quran` → Mushaf mode)
 
 A full digital recreation of the printed Quran page experience.
 
 **Reading:**
 
 - 604 Mushaf pages rendered using the official QCF v2 per-page Unicode fonts, loaded dynamically via the FontFace API from `verses.quran.foundation/fonts`
-- Three Arabic scripts: Madani QCF (exact Medina Mushaf), Uthmani Unicode, IndoPak Nastaleeq
+- **Four Arabic scripts:** Madani QCF (exact Medina Mushaf), Uthmani Unicode, IndoPak Nastaleeq, and **Tajweed** — colour-coded tajweed rules rendered from the QF Content API's `/quran/verses/uthmani_tajweed` endpoint; each rule class (`qalaqah`, `ikhfa`, `idgham_ghunnah`, `iqlab`, `izhaar`, `madda_*`, etc.) is styled with a distinct colour via CSS selectors on the `<tajweed>` HTML tags returned by the API. Colours are lightened automatically in dark mode so they remain legible on dark backgrounds
+- **Tajweed colour key legend** — a sticky sidebar panel lists every rule with its colour dot, name, and plain-English description; visible on desktop whenever Tajweed font is active
 - Three page themes: Cream, White, Dark — matching the printed feel
 - Three font size options (Small / Medium / Large) with **auto-fit**: the font size is computed from the container height divided by number of lines × line-height ratio, so Arabic text always fills the page with no whitespace
 - Surah name banners rendered between surahs on multi-surah pages, with gold-tinted decorative borders and corner ornaments matching the Mushaf aesthetic
+- **Page bookmark** — bookmark any Mushaf page via QF User API; bookmarked state is loaded on page change and persists across sessions
 - Fullscreen maximize/minimize toggle (covers entire viewport)
 
 **Navigation:**
@@ -87,13 +104,16 @@ A full digital recreation of the printed Quran page experience.
 
 ---
 
-### 3. Translation Reader (`/dashboard/quran` → Translation mode)
+### 4. Translation Reader (`/dashboard/quran` → Translation mode)
 
 A surah-by-surah reading experience with translation, transliteration, and per-verse tools.
 
 - Loads verses 50 at a time with "Load more" pagination
-- Three Arabic fonts (QPC Hafs, Uthmani, IndoPak) + font size slider (5 levels)
+- **Four Arabic fonts:** QPC Hafs, Uthmani, IndoPak, and **Tajweed** — same colour-coded tajweed rendering as the Mushaf view, fetched from `/quran/verses/uthmani_tajweed` and cached per surah
+- **Tajweed colour key legend** — sticky sidebar panel on desktop, visible whenever Tajweed font is selected; disappears when switching to another font
+- Font size slider (5 levels)
 - Transliteration toggle
+- **Surah navigation arrows** — left/right chevrons on the surah header card let users jump to the previous or next surah without returning to the surah list. Arrows follow RTL convention (left = next surah, right = previous)
 - **Per-verse bookmarking** — creates/deletes bookmarks via QF User API (`/v1/bookmarks`)
 - **Per-verse notes** — full CRUD (create, edit, delete) synced to QF User API (`/v1/notes`)
 - **Per-verse audio** — tap Play on any verse to jump playback to that verse; audio auto-advances to the next verse on `onEnded`
@@ -106,7 +126,46 @@ A surah-by-surah reading experience with translation, transliteration, and per-v
 
 ---
 
-### 4. Quran Navigation Formats
+### 5. Quran Companion (Floating Chat Assistant)
+
+A persistent floating chat panel available on every page of the authenticated app — mounted in the root layout so it survives navigation.
+
+**How it works:**
+
+- Rule-based intent engine (`lib/companion-engine.ts`) — no LLM, no external AI API. The user's message is parsed with regex and a 200+ entry surah-name lookup table to classify intent, then a live QF API call is made to fulfil it. Responses are formatted text returned synchronously from the engine
+- Arabic segments in responses are automatically detected and rendered RTL in a block with the Arabic font, while English prose renders normally — no manual tagging required
+
+**Supported intents:**
+
+| Intent | Example | What happens |
+|---|---|---|
+| Open specific verse | "Show me 2:255" or "Ayat al-Kursi" | Fetches verse via `/verses/by_key/:key`, returns Arabic + translation + inline "Open in reader →" link |
+| Surah info | "Tell me about Al-Kahf" | Fetches chapter metadata + first verse |
+| Tafsir lookup | "Tafsir of Ad-Duha" | Fetches Ibn Kathir tafsir for that verse |
+| Semantic search | "Find verses about patience" / "I am struggling" | Hits QF Search API, returns top result |
+| Random ayah | "Surprise me" | Calls `/verses/random`, returns a random verse |
+| Juz / Hizb navigation | "Open Juz 30" | Returns summary + "Open Juz 30 →" deep link |
+| Reciter lookup | "Find Mishari Alafasy" | Deep links to the Reciters tab filtered to that name |
+
+**Navigation integration:**
+
+- Every response that references a verse, surah, juz, hizb, page, or reciter shows a clickable "Open in reader →" / "Read surah →" link
+- Clicking dispatches a `quran-companion-navigate` custom DOM event; the Quran page listens for it and navigates to the correct view, verse, and mode without a full page reload
+
+**UX:**
+
+- Floating action button (bottom-right) with a Sparkles icon; opens an animated slide-up panel
+- Suggestion chips on first open: "Show me Ayat al-Kursi", "Find verses about patience", "Surprise me with a random ayah", etc.
+- Auto-scroll to latest message; auto-focus input on open
+- Typing indicator (animated dots) while the engine resolves
+- Supports multi-line input (Shift+Enter for newline, Enter to send)
+
+**Component:** [components/quran-companion.tsx](components/quran-companion.tsx)  
+**Engine:** [lib/companion-engine.ts](lib/companion-engine.ts)
+
+---
+
+### 7. Quran Navigation Formats
 
 Users can browse the Quran by Surah, Juz, Hizb, Page, or Reciters — each surfacing a different structural view.
 
@@ -121,7 +180,36 @@ Users can browse the Quran by Surah, Juz, Hizb, Page, or Reciters — each surfa
 
 ---
 
-### 5. Reflections Journal (`/dashboard/reflections`)
+### 8. Quran Garden (`/dashboard/garden`)
+
+A gamified XP and progression system that grows a visual garden as the user engages with the Quran.
+
+**XP system:**
+- Two actions earn XP: reading a unique Mushaf page (+10 XP) and expanding tafsir (+8 XP)
+- Pages are deduplicated via a persisted Set — revisiting the same page never re-awards XP
+- 20 levels with non-linear XP thresholds (60 XP for level 2 up to 12 000 XP for level 20)
+- An XP toast notification animates up from the bottom of the screen whenever XP is earned
+
+**Garden progression:**
+- The SVG garden scene evolves through 4 visual stages based on total XP (stage 2 at 300 XP, stage 3 at 1 000 XP, stage 4 at 3 000 XP)
+- 12 unlockable garden elements tied to milestones: first flowers, rich grass, first tree, pathway, wisdom tree (10 tafsirs read), stream, birds, fruit tree, glowing path (30 tafsirs), rare flowers, waterfall, and golden light (all 604 pages read)
+- Garden "vitality" — a health percentage based on weekly XP that determines how lush and saturated the scene looks; an inactive week dims the garden
+- Floating particle animations, stage-specific sky gradients, and soft SVG filters
+
+**Stats panel:**
+- Total XP, weekly XP, current level with XP-to-next-level bar
+- Garden stage badge and unlocked element count
+- Streak days and last activity date
+
+**State:** fully client-side, persisted to `localStorage` under `hidaayah_garden_v2`
+
+**Page:** [app/(app)/dashboard/garden/page.tsx](<app/(app)/dashboard/garden/page.tsx>)  
+**Component:** [components/quran-garden.tsx](components/quran-garden.tsx)  
+**Engine:** [lib/garden.ts](lib/garden.ts)
+
+---
+
+### 9. Reflections Journal (`/dashboard/reflections`)
 
 A personal spiritual journal powered by the QF Reflect API.
 
@@ -147,7 +235,7 @@ A personal spiritual journal powered by the QF Reflect API.
 
 ---
 
-### 6. Recitation Circles (`/dashboard/circles`)
+### 10. Recitation Circles (`/dashboard/circles`)
 
 Community live-recitation rooms powered by QF Reflect Rooms API.
 
@@ -161,7 +249,7 @@ Community live-recitation rooms powered by QF Reflect Rooms API.
 
 ---
 
-### 7. Goals & Progress Tracking (`/dashboard/goals`)
+### 11. Goals & Progress Tracking (`/dashboard/goals`)
 
 Daily Quran engagement goals backed by QF User API.
 
@@ -175,7 +263,7 @@ Daily Quran engagement goals backed by QF User API.
 
 ---
 
-### 8. Thematic Collections (`/dashboard/collections`)
+### 12. Thematic Collections (`/dashboard/collections`)
 
 Curated verse collections by theme (Mercy, Patience, Gratitude, etc.).
 
@@ -187,13 +275,13 @@ Curated verse collections by theme (Mercy, Patience, Gratitude, etc.).
 
 ---
 
-### 9. Bookmarks (`/dashboard/bookmarks`)
+### 13. Bookmarks (`/dashboard/bookmarks`)
 
 A single view of all verses the user has bookmarked across the app, with direct links back to the reader.
 
 ---
 
-### 10. Home Dashboard (`/dashboard`)
+### 14. Home Dashboard (`/dashboard`)
 
 An at-a-glance summary of the user's Quran engagement:
 
@@ -210,7 +298,7 @@ An at-a-glance summary of the user's Quran engagement:
 
 ---
 
-### 11. Profile & Settings (`/dashboard/profile`)
+### 15. Profile & Settings (`/dashboard/profile`)
 
 - Display name, username, bio, country (ISO 3166-1 alpha-2 dropdown), verified badge, followers count, join year
 - Edit profile fields synced to QF Reflect API (`/v1/profile`)
@@ -222,7 +310,7 @@ An at-a-glance summary of the user's Quran engagement:
 
 ---
 
-### 12. Authentication
+### 16. Authentication
 
 Full OAuth2 PKCE flow using QF's OAuth2 server.
 
@@ -237,12 +325,12 @@ Full OAuth2 PKCE flow using QF's OAuth2 server.
 
 ## QF APIs Used
 
-| API                                         | Endpoints                                                                                                                                                                                                                                                                                                                                                              |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Content API** (`/content/api/v4`)         | chapters, verses by chapter/juz/page/key, verse audio files, `/resources/recitations` (verse reciters), `/resources/chapter_reciters` (chapter reciters with style/qirat), `/chapter_recitations/:id/:chapter` (full chapter audio), tafsirs, foot notes, pages, juzs, hizbs, random ayah, collections, bookmarks, notes, reading sessions, activity days, preferences |
-| **Search API**                              | `/search` — semantic search by emotion/situation text                                                                                                                                                                                                                                                                                                                  |
-| **User API** (proxied `/api/qf/auth`)       | `/v1/users/me`, `/v1/bookmarks`, `/v1/notes`, `/v1/reading-sessions`, `/v1/activity-days`, `/v1/goals`, `/v1/goal-plans`, `/v1/streaks`, `/v1/preferences`                                                                                                                                                                                                             |
-| **Reflect API** (proxied `/api/qf/reflect`) | `/v1/profile`, `/v1/posts`, `/v1/posts/:id/like`, `/v1/posts/:id/save`, `/v1/notes`, `/v1/rooms`, `/v1/rooms/search`, `/v1/rooms/:id/join`                                                                                                                                                                                                                             |
+| API                                         | Endpoints                                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Content API** (`/content/api/v4`)         | chapters, verses by chapter/juz/page/key, verse audio files, `/resources/recitations`, `/resources/chapter_reciters`, `/chapter_recitations/:id/:chapter`, tafsirs, foot notes, pages, juzs, hizbs, random ayah, collections, bookmarks, notes, reading sessions, activity days, preferences, **`/quran/verses/uthmani_tajweed`** (colour-coded tajweed HTML for Translation & Mushaf views) |
+| **Search API**                              | `/search` — semantic search by emotion/situation text                                                                                                                                                                                                                                                                                                                                        |
+| **User API** (proxied `/api/qf/auth`)       | `/v1/users/me`, `/v1/bookmarks`, `/v1/notes`, `/v1/reading-sessions`, `/v1/activity-days`, `/v1/goals`, `/v1/goal-plans`, `/v1/streaks`, `/v1/preferences`                                                                                                                                                                                                                                   |
+| **Reflect API** (proxied `/api/qf/reflect`) | `/v1/profile`, `/v1/posts`, `/v1/posts/:id/like`, `/v1/posts/:id/save`, `/v1/notes`, `/v1/rooms`, `/v1/rooms/search`, `/v1/rooms/:id/join`                                                                                                                                                                                                                                                   |
 
 **Total unique endpoints used: 90+**
 
@@ -278,6 +366,20 @@ Full OAuth2 PKCE flow using QF's OAuth2 server.
 
 **Dual reciter ID spaces.** The QF Content API exposes two distinct reciter lists with incompatible ID spaces: `/resources/recitations` (ayah-by-ayah, used by `/recitations/:id/by_chapter/:chapter`) and `/resources/chapter_reciters` (full-chapter audio, used by `/chapter_recitations/:id/:chapter`). The Mushaf and Translation readers filter to only verse-level recitation IDs so every listed option has valid per-ayah audio. The new Reciters browse tab uses the chapter reciters list and plays full-surah audio, surfacing the richer metadata (style, qirat) that endpoint provides.
 
+**Rule-based companion with zero LLM dependency.** The Quran Companion resolves all queries locally using regex intent parsing and a hand-coded 200+ entry surah-name table, then makes a single targeted QF API call. This means zero latency from model inference, no API key, and responses that are always factually grounded in QF data — the companion can't hallucinate a verse that doesn't exist because it fetches the real one.
+
+**Companion navigation via custom DOM events.** The companion is mounted in the root layout (outside the Quran page's React tree). To navigate the Quran page without prop drilling or a global store, the companion dispatches a `quran-companion-navigate` custom DOM event with the target encoded in `detail`. The Quran page listens for this event and handles the navigation internally — clean decoupling with no shared state.
+
+**Tajweed rendering via native HTML tags.** The QF tajweed endpoint returns Arabic text with custom `<tajweed class="rule_name">` tags. Rather than parsing and converting them, the app renders the HTML directly with `dangerouslySetInnerHTML` inside a `.tajweed-text` parent and targets each rule with CSS attribute selectors (`.tajweed-text tajweed[class='qalaqah'] { color: … }`). Dark mode overrides are applied via `.dark .tajweed-text …` selectors, boosting dark-navy blues and dark reds to legible lighter variants. The tajweed map is fetched once per surah (Translation view) or once per chapter-per-page (Mushaf view) and cached in component state.
+
+**Tajweed legend stays fixed while content scrolls.** The colour-key legend panel uses `sticky top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto` so it pins to the top of the viewport and never scrolls out of view even on long surahs.
+
+**Gamified garden with deduplication.** The XP engine stores every Mushaf page number that has already been read in a persisted `readPages` Set. Award calls for those page numbers are silently no-ops, preventing farming. The same approach is not applied to tafsir (since re-reading tafsir has genuine learning value) but a separate `awardedVersesRef` in the reader prevents double-awarding within a single session.
+
+**RTL-aware surah navigation.** Surah navigation arrows in the Translation reader follow RTL convention: the left chevron advances to the next surah (higher number) and the right chevron goes back — matching the direction Arabic Quran text flows and consistent with the Mushaf page-turn arrows.
+
+**Landing page AI guidance demo.** The public landing page's AI Guidance section simulates the full guidance UX (emotion selection → typing animation → verse response) entirely client-side with no API call. The response panel is always visible once triggered — switching between prompts swaps content with a crossfade using `AnimatePresence mode="wait"` keyed on `displayedIndex`, with no close/reopen flash between selections.
+
 **Accessibility.** All action buttons have `aria-label`, `aria-pressed` (toggles), and `aria-expanded` (collapsibles). Focus rings are applied via a `.focus-ring` utility class. A `prefers-reduced-motion: reduce` block in `globals.css` collapses all CSS transitions and animations to near-instant for users who need it.
 
 ---
@@ -298,18 +400,24 @@ _(private — available on request)_
 
 Suggested walkthrough for the demo video:
 
-1. **(0:00–0:20) Home screen** — show the greeting, streak, saved verses, and "verse of the moment" with inline audio playback
+1. **(0:00–0:15) Landing page** — scroll through the public landing page, show the floating emotional words, the Quranic verse reveal, and click through the AI Guidance demo section
 
-2. **(0:20–0:50) Emotion-driven guidance** — tap "Seek Guidance", speak into the microphone ("I'm feeling anxious about a big decision"), watch the search results come in, see the Arabic verse with audio, expand the tafsir, write a short reflection, save it
+2. **(0:15–0:30) Home screen** — after sign-in, show the greeting, streak, saved verses, "verse of the moment" with inline audio playback, and the quick-action grid
 
-3. **(0:50–1:30) Mushaf reader** — open the Quran, switch to Mushaf mode, swipe through a few pages, show the surah banner appearing, tap a word to start audio, let it play through to the end of the page and auto-advance to the next page, toggle fullscreen
+3. **(0:30–1:00) Emotion-driven guidance** — tap "Seek Guidance", speak into the microphone ("I'm feeling anxious about a big decision"), watch the search results come in, see the Arabic verse with audio, expand the tafsir, write a short reflection, save it
 
-4. **(1:30–1:50) Translation reader** — switch to Translation mode, open a verse's notes panel, add a note, show it appear in the journal
+4. **(1:00–1:10) Quran Companion** — tap the floating Sparkles button, type "Show me Ayat al-Kursi", watch it fetch the verse and show the "Open in reader →" link, tap it to navigate directly to 2:255
 
-5. **(1:50–2:10) Reflections journal** — open Reflections, show Notes tab with verse-linked notes, switch to Reflections tab, show date-grouped posts with like/save actions
+5. **(1:10–1:50) Mushaf reader** — open the Quran, switch to Mushaf mode, swipe through a few pages, show the surah banner appearing, tap a word to start audio, let it play through to the end of the page and auto-advance to the next page, switch to Tajweed font and show the colour-coded text with the legend panel on the right, toggle fullscreen
 
-6. **(2:10–2:30) Goals & Profile** — quick look at Goals page with progress bars; open Profile to show streak, followers, bio, country
+6. **(1:50–2:10) Translation reader** — switch to Translation mode, use the surah navigation arrows to move between surahs, switch to Tajweed font, show the legend, open a verse's notes panel and add a note
 
-7. **(2:30–2:40) Reciters** — open the Reciters tab, search for a reciter, expand to pick a surah, tap Play to stream the full chapter — show the style/qirat badge and the live "Playing" indicator
+7. **(2:10–2:25) Quran Garden** — open the Garden page, show the SVG scene at its current stage, point out unlocked elements, and the XP / level / vitality stats
 
-8. **(2:40–2:55) Circles** — show the recitation rooms search with room-type filter
+8. **(2:25–2:40) Reflections journal** — open Reflections, show Notes tab with verse-linked notes, switch to Reflections tab, show date-grouped posts with like/save actions
+
+9. **(2:40–2:50) Goals & Profile** — quick look at Goals page with progress bars; open Profile to show streak, followers, bio, country
+
+10. **(2:50–3:00) Reciters** — open the Reciters tab, search for a reciter, expand to pick a surah, tap Play to stream the full chapter — show the style/qirat badge and the live "Playing" indicator
+
+11. **(3:00–3:10) Circles** — show the recitation rooms search with room-type filter

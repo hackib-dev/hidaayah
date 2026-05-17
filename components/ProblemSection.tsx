@@ -20,7 +20,7 @@ const floatingWords = [
   },
   {
     text: 'emptiness',
-    x: '18%',
+    x: '14%',
     y: '52%',
     size: '26px',
     delay: 0.5
@@ -42,7 +42,7 @@ const floatingWords = [
   {
     text: 'overwhelmed',
     x: '40%',
-    y: '70%',
+    y: '90%',
     size: '24px',
     delay: 0.4
   },
@@ -90,7 +90,7 @@ export default function ProblemSection() {
       className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-8 py-32"
     >
       {/* Floating Emotional Words */}
-      <div className="pointer-events-none absolute inset-0">
+      <div className="pointer-events-none absolute inset-0 z-10">
         {floatingWords.map((word, i) => (
           <motion.div
             key={i}
@@ -101,7 +101,7 @@ export default function ProblemSection() {
             animate={
               inView
                 ? {
-                    opacity: 0.08,
+                    opacity: 0.22,
                     y: 0
                   }
                 : {
@@ -149,7 +149,7 @@ export default function ProblemSection() {
             duration: 1,
             delay: 0.2
           }}
-          className="mb-10 text-xs font-medium uppercase tracking-[0.25em] text-[var(--teal)] opacity-70"
+          className="mb-10 text-xs font-medium uppercase tracking-[0.25em] text-teal"
           style={{
             fontFamily: "'Inter', sans-serif"
           }}
@@ -237,7 +237,7 @@ export default function ProblemSection() {
             {/* Arabic */}
             <div
               dir="rtl"
-              className="mb-5 text-[clamp(22px,3vw,30px)] leading-[1.9] text-[var(--gold)] opacity-85"
+              className="mb-5 text-[clamp(22px,3vw,30px)] leading-[1.9] text-gold"
               style={{
                 fontFamily: "'Amiri', serif",
                 fontWeight: 400
@@ -248,7 +248,7 @@ export default function ProblemSection() {
 
             {/* Translation */}
             <div
-              className="mb-3 text-[20px] italic text-foreground opacity-80"
+              className="mb-3 text-[20px] italic text-foreground"
               style={{
                 fontFamily: "'Cormorant Garamond', serif",
                 fontWeight: 300
@@ -288,7 +288,7 @@ export default function ProblemSection() {
               delay: 0.9,
               ease: [0.16, 1, 0.3, 1]
             }}
-            className="text-[clamp(22px,3vw,30px)] font-light italic leading-[1.5] text-foreground opacity-90"
+            className="text-[clamp(22px,3vw,30px)] font-light italic leading-[1.5] text-foreground"
             style={{
               fontFamily: "'Cormorant Garamond', serif"
             }}

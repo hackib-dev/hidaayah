@@ -448,7 +448,11 @@ export default function QuranPage() {
                 </div>
 
                 {selectedSurah && readerMode === 'translation' && (
-                  <QuranReader surahNumber={selectedSurah} scrollToVerse={scrollToVerse} />
+                  <QuranReader
+                    surahNumber={selectedSurah}
+                    scrollToVerse={scrollToVerse}
+                    onSurahChange={(n) => openReader(n)}
+                  />
                 )}
 
                 {readerMode === 'mushaf' && (selectedSurah || selectedPage) && (

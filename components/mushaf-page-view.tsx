@@ -26,10 +26,12 @@ import {
   fetchJuzs,
   fetchHizbs,
   fetchPageForVerseKey,
-  fetchChapter
+  fetchChapter,
+  fetchTajweedByChapter
 } from '@/app/(app)/dashboard/quran/queries';
 import type { Verse, Word, Reciter, Juz, Hizb } from '@/app/(app)/dashboard/quran/types';
 import { cn } from '@/lib/utils';
+import { TajweedLegend } from '@/components/TajweedLegend';
 import { QF_DEFAULT_RECITER_ID, QF_DEFAULT_MUSHAF_ID } from '@/config';
 import { awardPageXP } from '@/lib/garden';
 import {
@@ -45,7 +47,7 @@ const TOTAL_PAGES = 604;
 
 // ─── Font / Style options ──────────────────────────────────────────────────────
 
-type MushafFont = 'qcf_v2' | 'uthmani' | 'indopak';
+type MushafFont = 'qcf_v2' | 'uthmani' | 'indopak' | 'tajweed';
 
 interface FontOption {
   id: MushafFont;
@@ -76,6 +78,13 @@ const FONT_OPTIONS: FontOption[] = [
     arabicLabel: 'هندي/باكستاني',
     description: 'South Asian Nastaleeq style',
     sampleText: 'بِسْمِ اللہِ'
+  },
+  {
+    id: 'tajweed',
+    label: 'Tajweed',
+    arabicLabel: 'تجويد',
+    description: 'Colour-coded tajweed rules',
+    sampleText: 'بِسْمِ اللَّهِ'
   }
 ];
 
@@ -165,6 +174,9 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
   const [activeVerseKey, setActiveVerseKey] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [font, setFont] = useState<MushafFont>('qcf_v2');
+  const [tajweedMap, setTajweedMap] = useState<Record<string, string>>({});
+  const [loadingTajweed, setLoadingTajweed] = useState(false);
+  const tajweedLoadedChaptersRef = useRef<Set<number>>(new Set());
   const [theme, setTheme] = useState<PageTheme>('cream');
   const [fontSize, setFontSize] = useState<'xs' | 'sm' | 'md'>('xs');
 
@@ -357,6 +369,25 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
       if (first) setCurrentChapterName(first.name_simple ?? chapterName);
     });
   }, [verses, chapterName]);
+
+  // Fetch tajweed HTML for all chapters on the current page when tajweed font is active
+  useEffect(() => {
+    if (font !== 'tajweed' || verses.length === 0) return;
+    const chapterIds = [...new Set(verses.map((v) => parseInt(v.verse_key.split(':')[0], 10)))];
+    const missing = chapterIds.filter((id) => !tajweedLoadedChaptersRef.current.has(id));
+    if (missing.length === 0) return;
+    setLoadingTajweed(true);
+    Promise.all(
+      missing.map((id) => fetchTajweedByChapter(id).catch(() => ({} as Record<string, string>)))
+    )
+      .then((results) => {
+        const merged: Record<string, string> = {};
+        for (const map of results) Object.assign(merged, map);
+        setTajweedMap((prev) => ({ ...prev, ...merged }));
+        missing.forEach((id) => tajweedLoadedChaptersRef.current.add(id));
+      })
+      .finally(() => setLoadingTajweed(false));
+  }, [font, verses]);
 
   // Fetch audio separately — re-runs when page verses load OR reciter changes
   useEffect(() => {
@@ -805,6 +836,9 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
         </div>
       </div>
 
+      {/* Tajweed legend */}
+      {font === 'tajweed' && <TajweedLegend />}
+
       {/* Theme */}
       <div className="rounded-2xl border border-border bg-card p-3 space-y-2">
         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
@@ -1025,22 +1059,41 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
                           className="flex justify-center items-baseline flex-wrap"
                           style={{ lineHeight: String(lineHeightRatio) }}
                         >
-                          {words.map((word, wi) => (
-                            <span
-                              key={`${word.verseKey}-${word.position}-${wi}`}
-                              onClick={() => {
-                                if (activeVerseKey === word.verseKey) setIsPlaying((p) => !p);
-                                else playVerse(word.verseKey);
-                              }}
-                              className="cursor-pointer transition-colors duration-150 px-px"
-                              style={{
-                                ...getWordStyle(word),
-                                color:
-                                  activeVerseKey === word.verseKey ? '#16a34a' : themeConfig.text
-                              }}
-                              dangerouslySetInnerHTML={{ __html: getWordText(word) }}
-                            />
-                          ))}
+                          {font === 'tajweed' ? (
+                            [...new Map(words.map((w) => [w.verseKey, w])).keys()].map((vk) => (
+                              <span
+                                key={vk}
+                                onClick={() => {
+                                  if (activeVerseKey === vk) setIsPlaying((p) => !p);
+                                  else playVerse(vk);
+                                }}
+                                className="tajweed-text cursor-pointer transition-opacity duration-150 px-px"
+                                style={{
+                                  fontFamily: "'UthmanicHafs', serif",
+                                  fontSize: activeFontSize,
+                                  opacity: activeVerseKey && activeVerseKey !== vk ? 0.45 : 1
+                                }}
+                                dangerouslySetInnerHTML={{ __html: loadingTajweed ? '' : (tajweedMap[vk] ?? '') }}
+                              />
+                            ))
+                          ) : (
+                            words.map((word, wi) => (
+                              <span
+                                key={`${word.verseKey}-${word.position}-${wi}`}
+                                onClick={() => {
+                                  if (activeVerseKey === word.verseKey) setIsPlaying((p) => !p);
+                                  else playVerse(word.verseKey);
+                                }}
+                                className="cursor-pointer transition-colors duration-150 px-px"
+                                style={{
+                                  ...getWordStyle(word),
+                                  color:
+                                    activeVerseKey === word.verseKey ? '#16a34a' : themeConfig.text
+                                }}
+                                dangerouslySetInnerHTML={{ __html: getWordText(word) }}
+                              />
+                            ))
+                          )}
                         </div>
                       </div>
                     );
@@ -1067,7 +1120,7 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
       </div>
 
       {/* ── Desktop sidebar (lg+) — always visible ─────────────── */}
-      <div className="hidden lg:flex w-52 shrink-0 flex-col gap-3 sticky top-4">
+      <div className="hidden lg:flex w-52 shrink-0 flex-col gap-3 sticky top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto">
         <SidebarContent />
       </div>
 

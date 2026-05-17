@@ -38,12 +38,12 @@ export default function HidaayahLogo({
       {!iconOnly && (
         <span
           style={{
-            fontFamily: 'var(--font-serif)',
-            fontWeight: 700,
-            fontSize: size * 0.67,
-            // --foreground switches automatically between light/dark mode
-            color: 'var(--foreground)',
-            letterSpacing: '0.5px',
+            fontFamily: "'Inter', sans-serif",
+            fontWeight: 500,
+            fontSize: size * 0.36,
+            color: 'var(--teal)',
+            letterSpacing: '0.3em',
+            textTransform: 'uppercase',
             lineHeight: 1,
             userSelect: 'none'
           }}

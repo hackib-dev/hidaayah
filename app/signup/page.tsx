@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth-provider';
 import HidaayahLogo from '@/components/HidaayahLogo';
-import { ArrowRight, AlertCircle } from 'lucide-react';
+import { ArrowRight, AlertCircle, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
@@ -27,6 +27,13 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <Link
+        href="/"
+        className="absolute top-4 left-4 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Hidaayah
+      </Link>
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}

@@ -176,6 +176,21 @@ export const fetchPageForVerseKey = async (verseKey: string): Promise<number | n
   return firstKey ? Number(firstKey) : null;
 };
 
+// ─── Tajweed ──────────────────────────────────────────────────────────────────
+export const fetchTajweedByChapter = async (
+  chapterNumber: number
+): Promise<Record<string, string>> => {
+  const response = await contentApi.get<{ verses: { verse_key: string; text_uthmani_tajweed: string }[] }>(
+    '/quran/verses/uthmani_tajweed',
+    { params: { chapter_number: chapterNumber } }
+  );
+  const map: Record<string, string> = {};
+  for (const v of response.data.verses ?? []) {
+    map[v.verse_key] = v.text_uthmani_tajweed;
+  }
+  return map;
+};
+
 // ─── Translations ─────────────────────────────────────────────────────────────
 export const fetchTranslations = async (chapterNumber: number, resourceId = 131) => {
   const response = await contentApi.get(`/translations/${chapterNumber}`, {
