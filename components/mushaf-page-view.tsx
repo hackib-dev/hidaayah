@@ -378,7 +378,7 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
     if (missing.length === 0) return;
     setLoadingTajweed(true);
     Promise.all(
-      missing.map((id) => fetchTajweedByChapter(id).catch(() => ({} as Record<string, string>)))
+      missing.map((id) => fetchTajweedByChapter(id).catch(() => ({}) as Record<string, string>))
     )
       .then((results) => {
         const merged: Record<string, string> = {};
@@ -1059,41 +1059,43 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
                           className="flex justify-center items-baseline flex-wrap"
                           style={{ lineHeight: String(lineHeightRatio) }}
                         >
-                          {font === 'tajweed' ? (
-                            [...new Map(words.map((w) => [w.verseKey, w])).keys()].map((vk) => (
-                              <span
-                                key={vk}
-                                onClick={() => {
-                                  if (activeVerseKey === vk) setIsPlaying((p) => !p);
-                                  else playVerse(vk);
-                                }}
-                                className="tajweed-text cursor-pointer transition-opacity duration-150 px-px"
-                                style={{
-                                  fontFamily: "'UthmanicHafs', serif",
-                                  fontSize: activeFontSize,
-                                  opacity: activeVerseKey && activeVerseKey !== vk ? 0.45 : 1
-                                }}
-                                dangerouslySetInnerHTML={{ __html: loadingTajweed ? '' : (tajweedMap[vk] ?? '') }}
-                              />
-                            ))
-                          ) : (
-                            words.map((word, wi) => (
-                              <span
-                                key={`${word.verseKey}-${word.position}-${wi}`}
-                                onClick={() => {
-                                  if (activeVerseKey === word.verseKey) setIsPlaying((p) => !p);
-                                  else playVerse(word.verseKey);
-                                }}
-                                className="cursor-pointer transition-colors duration-150 px-px"
-                                style={{
-                                  ...getWordStyle(word),
-                                  color:
-                                    activeVerseKey === word.verseKey ? '#16a34a' : themeConfig.text
-                                }}
-                                dangerouslySetInnerHTML={{ __html: getWordText(word) }}
-                              />
-                            ))
-                          )}
+                          {font === 'tajweed'
+                            ? [...new Map(words.map((w) => [w.verseKey, w])).keys()].map((vk) => (
+                                <span
+                                  key={vk}
+                                  onClick={() => {
+                                    if (activeVerseKey === vk) setIsPlaying((p) => !p);
+                                    else playVerse(vk);
+                                  }}
+                                  className="tajweed-text cursor-pointer transition-opacity duration-150 px-px"
+                                  style={{
+                                    fontFamily: "'UthmanicHafs', serif",
+                                    fontSize: activeFontSize,
+                                    opacity: activeVerseKey && activeVerseKey !== vk ? 0.45 : 1
+                                  }}
+                                  dangerouslySetInnerHTML={{
+                                    __html: loadingTajweed ? '' : (tajweedMap[vk] ?? '')
+                                  }}
+                                />
+                              ))
+                            : words.map((word, wi) => (
+                                <span
+                                  key={`${word.verseKey}-${word.position}-${wi}`}
+                                  onClick={() => {
+                                    if (activeVerseKey === word.verseKey) setIsPlaying((p) => !p);
+                                    else playVerse(word.verseKey);
+                                  }}
+                                  className="cursor-pointer transition-colors duration-150 px-px"
+                                  style={{
+                                    ...getWordStyle(word),
+                                    color:
+                                      activeVerseKey === word.verseKey
+                                        ? '#16a34a'
+                                        : themeConfig.text
+                                  }}
+                                  dangerouslySetInnerHTML={{ __html: getWordText(word) }}
+                                />
+                              ))}
                         </div>
                       </div>
                     );

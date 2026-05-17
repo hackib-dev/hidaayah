@@ -20,7 +20,7 @@ const LIGHT_RULES = [
   { label: 'Madd Permissible', color: '#7090FF', desc: 'Permissible elongation (2–6)' },
   { label: 'Madd Obligatory', color: '#4466DD', desc: 'Obligatory elongation (6)' },
   { label: 'Madd Necessary', color: '#5577EE', desc: 'Necessary elongation (6)' },
-  { label: 'Silent / Hamzat Waṣl', color: '#888888', desc: 'Connecting hamza / silent letter' },
+  { label: 'Silent / Hamzat Waṣl', color: '#888888', desc: 'Connecting hamza / silent letter' }
 ];
 
 const DARK_RULES = [
@@ -41,7 +41,7 @@ const DARK_RULES = [
   { label: 'Madd Permissible', color: '#88AAFF', desc: 'Permissible elongation (2–6)' },
   { label: 'Madd Obligatory', color: '#6688EE', desc: 'Obligatory elongation (6)' },
   { label: 'Madd Necessary', color: '#7799FF', desc: 'Necessary elongation (6)' },
-  { label: 'Silent / Hamzat Waṣl', color: '#AAAAAA', desc: 'Connecting hamza / silent letter' },
+  { label: 'Silent / Hamzat Waṣl', color: '#AAAAAA', desc: 'Connecting hamza / silent letter' }
 ];
 
 export function TajweedLegend() {

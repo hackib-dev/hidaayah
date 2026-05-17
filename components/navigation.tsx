@@ -57,9 +57,7 @@ export function Navigation() {
                       : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                   )}
                 >
-                  {isActive && (
-                    <div className="absolute inset-0 rounded-xl bg-primary" />
-                  )}
+                  {isActive && <div className="absolute inset-0 rounded-xl bg-primary" />}
                   <span className="relative flex items-center gap-2">
                     <Icon className="w-4 h-4 shrink-0" strokeWidth={isActive ? 2.5 : 2} />
                     {/* Label hidden on tablets (md–lg), visible on xl+ */}

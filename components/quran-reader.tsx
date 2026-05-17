@@ -180,7 +180,8 @@ export function QuranReader({ surahNumber, scrollToVerse, onSurahChange }: Quran
           const mapped =
             fontMap[data.quranReaderStyles.quranFont] ??
             (data.quranReaderStyles.quranFont as QuranFont);
-          if (['qpc_hafs', 'uthmani', 'indopak', 'tajweed'].includes(mapped)) setSelectedFont(mapped);
+          if (['qpc_hafs', 'uthmani', 'indopak', 'tajweed'].includes(mapped))
+            setSelectedFont(mapped);
         }
         if (data?.audio?.reciter) {
           setSelectedReciterId(data.audio.reciter);
@@ -659,703 +660,704 @@ export function QuranReader({ surahNumber, scrollToVerse, onSurahChange }: Quran
 
   return (
     <div className="flex gap-4 items-start">
-    <div className="flex-1 min-w-0 space-y-4">
-      {/* Surah Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="p-5 rounded-2xl bg-linear-to-br from-card to-teal-muted border border-teal/15 shadow-sm"
-      >
-        <div className="flex items-center gap-2">
-          {/* Next surah (RTL: next is on the left) */}
-          <motion.button
-            whileTap={{ scale: 0.88 }}
-            onClick={() => onSurahChange?.(surahNumber + 1)}
-            disabled={surahNumber >= 114}
-            aria-label="Next surah"
-            className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-30 shrink-0 focus-ring"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </motion.button>
+      <div className="flex-1 min-w-0 space-y-4">
+        {/* Surah Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-5 rounded-2xl bg-linear-to-br from-card to-teal-muted border border-teal/15 shadow-sm"
+        >
+          <div className="flex items-center gap-2">
+            {/* Next surah (RTL: next is on the left) */}
+            <motion.button
+              whileTap={{ scale: 0.88 }}
+              onClick={() => onSurahChange?.(surahNumber + 1)}
+              disabled={surahNumber >= 114}
+              aria-label="Next surah"
+              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-30 shrink-0 focus-ring"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </motion.button>
 
-          <div className="flex flex-1 items-center justify-between gap-4 min-w-0">
-            <div className="space-y-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded-xl bg-primary/10 text-primary text-xs font-bold">
-                  Surah {surahNumber}
-                </span>
-                {chapter && (
-                  <span
-                    className={cn(
-                      'px-2 py-1 rounded-lg text-xs font-bold',
-                      chapter.revelation_place === 'makkah'
-                        ? 'bg-teal-muted text-teal'
-                        : 'bg-gold-muted text-accent'
-                    )}
-                  >
-                    {chapter.revelation_place === 'makkah' ? 'Meccan' : 'Medinan'}
+            <div className="flex flex-1 items-center justify-between gap-4 min-w-0">
+              <div className="space-y-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-xl bg-primary/10 text-primary text-xs font-bold">
+                    Surah {surahNumber}
                   </span>
-                )}
-              </div>
-              <h1 className="text-xl md:text-2xl font-serif font-bold text-foreground">
-                {chapter?.name_simple ?? `Surah ${surahNumber}`}
-              </h1>
-              <p className="text-sm text-muted-foreground">{chapter?.translated_name.name}</p>
-            </div>
-            <div className="text-right shrink-0">
-              <p
-                className="text-3xl md:text-4xl text-foreground"
-                style={{ fontFamily: 'var(--font-arabic)' }}
-              >
-                {chapter?.name_arabic}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">{chapter?.verses_count} verses</p>
-            </div>
-          </div>
-
-          {/* Previous surah (RTL: previous is on the right) */}
-          <motion.button
-            whileTap={{ scale: 0.88 }}
-            onClick={() => onSurahChange?.(surahNumber - 1)}
-            disabled={surahNumber <= 1}
-            aria-label="Previous surah"
-            className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-30 shrink-0 focus-ring"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </motion.button>
-        </div>
-      </motion.div>
-
-      {/* Hidden audio element — src is managed imperatively in the sync effect */}
-      <audio
-        ref={audioRef}
-        onEnded={() => {
-          const nextIndex = currentVerseIndex + 1;
-          if (nextIndex < verseAudioFiles.length) {
-            setCurrentVerseIndex(nextIndex);
-            // isPlaying stays true — the sync effect will play the new src
-          } else {
-            setIsPlaying(false);
-            setCurrentVerseIndex(0);
-            setActiveVerse(1);
-          }
-        }}
-      />
-
-      {/* Audio Player */}
-      <div className="p-4 rounded-2xl bg-card border border-border shadow-sm">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <motion.button
-              whileTap={{ scale: 0.88 }}
-              onClick={() => {
-                const prev = Math.max(0, currentVerseIndex - 1);
-                setCurrentVerseIndex(prev);
-                setIsPlaying(true);
-              }}
-              disabled={currentVerseIndex === 0}
-              aria-label="Previous verse"
-              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40 focus-ring"
-            >
-              <SkipBack className="w-4 h-4" />
-            </motion.button>
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setIsPlaying((p) => !p)}
-              disabled={loadingAudio}
-              aria-label={isPlaying ? 'Pause recitation' : 'Play recitation'}
-              className={cn(
-                'p-3 rounded-xl transition-all duration-200 focus-ring',
-                isPlaying
-                  ? 'bg-linear-to-br from-primary to-teal text-white shadow-sm'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              )}
-            >
-              {loadingAudio ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : isPlaying ? (
-                <Pause className="w-5 h-5" />
-              ) : (
-                <Play className="w-5 h-5" />
-              )}
-            </motion.button>
-            <motion.button
-              whileTap={{ scale: 0.88 }}
-              onClick={() => {
-                const next = Math.min(verseAudioFiles.length - 1, currentVerseIndex + 1);
-                setCurrentVerseIndex(next);
-                setIsPlaying(true);
-              }}
-              disabled={currentVerseIndex >= verseAudioFiles.length - 1}
-              aria-label="Next verse"
-              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40 focus-ring"
-            >
-              <SkipForward className="w-4 h-4" />
-            </motion.button>
-          </div>
-          <div className="flex-1 text-center min-w-0">
-            <p className="text-sm font-semibold text-foreground truncate">
-              {selectedReciter?.name ?? 'Loading reciters...'}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {isPlaying ? `Verse ${activeVerse} playing` : 'Paused'}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <motion.button
-              whileTap={{ scale: 0.88 }}
-              onClick={() => setIsMuted((m) => !m)}
-              aria-label={isMuted ? 'Unmute audio' : 'Mute audio'}
-              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors focus-ring"
-            >
-              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            </motion.button>
-            <motion.button
-              whileTap={{ scale: 0.88 }}
-              onClick={() => setShowSettings((s) => !s)}
-              aria-label={showSettings ? 'Hide settings' : 'Show settings'}
-              aria-expanded={showSettings}
-              className={cn(
-                'p-2 rounded-xl transition-colors focus-ring',
-                showSettings
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-              )}
-            >
-              <Settings2 className="w-4 h-4" />
-            </motion.button>
-          </div>
-        </div>
-
-        <AnimatePresence>
-          {showSettings && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.22 }}
-              className="overflow-hidden"
-            >
-              <div className="mt-4 pt-4 border-t border-border space-y-4">
-                {/* Reciter selector */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Mic className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-foreground font-medium">Reciter</span>
-                  </div>
-                  <button
-                    onClick={() => setShowReciterPicker((v) => !v)}
-                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors text-sm"
-                  >
-                    <span className="text-foreground font-medium truncate">
-                      {loadingReciters ? 'Loading...' : (selectedReciter?.name ?? 'Select reciter')}
-                    </span>
-                    <ChevronDown
+                  {chapter && (
+                    <span
                       className={cn(
-                        'w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200',
-                        showReciterPicker && 'rotate-180'
+                        'px-2 py-1 rounded-lg text-xs font-bold',
+                        chapter.revelation_place === 'makkah'
+                          ? 'bg-teal-muted text-teal'
+                          : 'bg-gold-muted text-accent'
                       )}
-                    />
-                  </button>
-                  <AnimatePresence>
-                    {showReciterPicker && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.18 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="max-h-48 overflow-y-auto rounded-xl border border-border bg-card divide-y divide-border">
-                          {reciters.map((reciter) => (
-                            <button
-                              key={reciter.id}
-                              onClick={() => {
-                                setSelectedReciterId(reciter.id);
-                                setShowReciterPicker(false);
-                                setIsPlaying(false);
-                              }}
-                              className={cn(
-                                'w-full text-left px-3 py-2.5 text-sm transition-colors',
-                                reciter.id === selectedReciterId
-                                  ? 'bg-primary/10 text-primary font-semibold'
-                                  : 'text-foreground hover:bg-secondary'
-                              )}
-                            >
-                              {reciter.name}
-                            </button>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* Font selector */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Type className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-foreground font-medium">Arabic Font</span>
-                  </div>
-                  <div className="flex gap-2">
-                    {FONT_OPTIONS.map((font) => (
-                      <button
-                        key={font.id}
-                        onClick={() => setSelectedFont(font.id)}
-                        className={cn(
-                          'flex-1 py-2 rounded-xl text-xs font-medium transition-colors',
-                          selectedFont === font.id
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                        )}
-                      >
-                        {font.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Arabic size */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Type className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-foreground font-medium">Arabic Size</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <motion.button
-                      whileTap={{ scale: 0.88 }}
-                      onClick={() => setArabicSize((s) => Math.max(1, s - 1))}
-                      className="p-1.5 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
                     >
-                      <Minus className="w-3 h-3" />
-                    </motion.button>
-                    <span className="text-sm font-bold w-8 text-center">{arabicSize}</span>
-                    <motion.button
-                      whileTap={{ scale: 0.88 }}
-                      onClick={() => setArabicSize((s) => Math.min(5, s + 1))}
-                      className="p-1.5 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
-                    >
-                      <Plus className="w-3 h-3" />
-                    </motion.button>
-                  </div>
-                </div>
-
-                {/* Transliteration toggle */}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-foreground font-medium">Show Transliteration</span>
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setShowTransliteration((t) => !t)}
-                    className={cn(
-                      'w-11 h-6 rounded-full transition-colors duration-200 relative',
-                      showTransliteration ? 'bg-primary' : 'bg-secondary'
-                    )}
-                  >
-                    <motion.span
-                      animate={{ x: showTransliteration ? 20 : 2 }}
-                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                      className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow block"
-                    />
-                  </motion.button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Verses */}
-      <div className="space-y-4">
-        {verses.map((verse, index) => {
-          const translation = verse.translations?.[0]?.text ?? '';
-          const transliteration =
-            verse.words
-              ?.map((w) => w.transliteration?.text)
-              .filter(Boolean)
-              .join(' ') ?? '';
-          const isBookmarked = !!bookmarkedVerses[verse.verse_number];
-          const isActive = isPlaying && activeVerse === verse.verse_number;
-          const isHighlighted =
-            scrollToVerse === verse.verse_number || activeVerse === verse.verse_number;
-
-          const verseKey = verse.verse_key ?? `${surahNumber}:${verse.verse_number}`;
-          const notesOpen = showNotes === verseKey;
-          const notes = verseNotes[verseKey] ?? [];
-
-          return (
-            <motion.div
-              key={verse.verse_key}
-              id={`verse-${surahNumber}-${verse.verse_number}`}
-              data-verse-key={verseKey}
-              ref={(el) => {
-                verseRefs.current[verse.verse_number] = el;
-              }}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.04 }}
-              className={cn(
-                'p-5 md:p-6 rounded-2xl border transition-all duration-300',
-                isActive
-                  ? 'bg-primary/5 border-primary/40 ring-2 ring-primary/20 shadow-md'
-                  : isHighlighted
-                    ? 'bg-card border-primary/40 ring-2 ring-primary/15 shadow-sm'
-                    : 'bg-card border-border hover:border-primary/20'
-              )}
-            >
-              {/* Active verse indicator bar */}
-              {isActive && (
-                <motion.div
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: 1 }}
-                  className="h-0.5 bg-linear-to-r from-primary to-teal rounded-full mb-4 origin-left"
-                />
-              )}
-
-              {/* Verse header */}
-              <div className="flex items-center justify-between mb-4">
-                <div
-                  className={cn(
-                    'w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm transition-colors duration-300',
-                    isActive
-                      ? 'bg-linear-to-br from-primary to-teal text-white shadow-sm'
-                      : 'bg-linear-to-br from-primary/10 to-teal/10 text-primary'
+                      {chapter.revelation_place === 'makkah' ? 'Meccan' : 'Medinan'}
+                    </span>
                   )}
-                >
-                  {verse.verse_number}
                 </div>
+                <h1 className="text-xl md:text-2xl font-serif font-bold text-foreground">
+                  {chapter?.name_simple ?? `Surah ${surahNumber}`}
+                </h1>
+                <p className="text-sm text-muted-foreground">{chapter?.translated_name.name}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p
+                  className="text-3xl md:text-4xl text-foreground"
+                  style={{ fontFamily: 'var(--font-arabic)' }}
+                >
+                  {chapter?.name_arabic}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">{chapter?.verses_count} verses</p>
+              </div>
+            </div>
 
-                {/* Active playing badge */}
+            {/* Previous surah (RTL: previous is on the right) */}
+            <motion.button
+              whileTap={{ scale: 0.88 }}
+              onClick={() => onSurahChange?.(surahNumber - 1)}
+              disabled={surahNumber <= 1}
+              aria-label="Previous surah"
+              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-30 shrink-0 focus-ring"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </motion.button>
+          </div>
+        </motion.div>
+
+        {/* Hidden audio element — src is managed imperatively in the sync effect */}
+        <audio
+          ref={audioRef}
+          onEnded={() => {
+            const nextIndex = currentVerseIndex + 1;
+            if (nextIndex < verseAudioFiles.length) {
+              setCurrentVerseIndex(nextIndex);
+              // isPlaying stays true — the sync effect will play the new src
+            } else {
+              setIsPlaying(false);
+              setCurrentVerseIndex(0);
+              setActiveVerse(1);
+            }
+          }}
+        />
+
+        {/* Audio Player */}
+        <div className="p-4 rounded-2xl bg-card border border-border shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <motion.button
+                whileTap={{ scale: 0.88 }}
+                onClick={() => {
+                  const prev = Math.max(0, currentVerseIndex - 1);
+                  setCurrentVerseIndex(prev);
+                  setIsPlaying(true);
+                }}
+                disabled={currentVerseIndex === 0}
+                aria-label="Previous verse"
+                className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40 focus-ring"
+              >
+                <SkipBack className="w-4 h-4" />
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setIsPlaying((p) => !p)}
+                disabled={loadingAudio}
+                aria-label={isPlaying ? 'Pause recitation' : 'Play recitation'}
+                className={cn(
+                  'p-3 rounded-xl transition-all duration-200 focus-ring',
+                  isPlaying
+                    ? 'bg-linear-to-br from-primary to-teal text-white shadow-sm'
+                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                )}
+              >
+                {loadingAudio ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : isPlaying ? (
+                  <Pause className="w-5 h-5" />
+                ) : (
+                  <Play className="w-5 h-5" />
+                )}
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.88 }}
+                onClick={() => {
+                  const next = Math.min(verseAudioFiles.length - 1, currentVerseIndex + 1);
+                  setCurrentVerseIndex(next);
+                  setIsPlaying(true);
+                }}
+                disabled={currentVerseIndex >= verseAudioFiles.length - 1}
+                aria-label="Next verse"
+                className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-40 focus-ring"
+              >
+                <SkipForward className="w-4 h-4" />
+              </motion.button>
+            </div>
+            <div className="flex-1 text-center min-w-0">
+              <p className="text-sm font-semibold text-foreground truncate">
+                {selectedReciter?.name ?? 'Loading reciters...'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {isPlaying ? `Verse ${activeVerse} playing` : 'Paused'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <motion.button
+                whileTap={{ scale: 0.88 }}
+                onClick={() => setIsMuted((m) => !m)}
+                aria-label={isMuted ? 'Unmute audio' : 'Mute audio'}
+                className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors focus-ring"
+              >
+                {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.88 }}
+                onClick={() => setShowSettings((s) => !s)}
+                aria-label={showSettings ? 'Hide settings' : 'Show settings'}
+                aria-expanded={showSettings}
+                className={cn(
+                  'p-2 rounded-xl transition-colors focus-ring',
+                  showSettings
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                )}
+              >
+                <Settings2 className="w-4 h-4" />
+              </motion.button>
+            </div>
+          </div>
+
+          <AnimatePresence>
+            {showSettings && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.22 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-4 pt-4 border-t border-border space-y-4">
+                  {/* Reciter selector */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Mic className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm text-foreground font-medium">Reciter</span>
+                    </div>
+                    <button
+                      onClick={() => setShowReciterPicker((v) => !v)}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-secondary hover:bg-secondary/80 transition-colors text-sm"
+                    >
+                      <span className="text-foreground font-medium truncate">
+                        {loadingReciters
+                          ? 'Loading...'
+                          : (selectedReciter?.name ?? 'Select reciter')}
+                      </span>
+                      <ChevronDown
+                        className={cn(
+                          'w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200',
+                          showReciterPicker && 'rotate-180'
+                        )}
+                      />
+                    </button>
+                    <AnimatePresence>
+                      {showReciterPicker && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.18 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="max-h-48 overflow-y-auto rounded-xl border border-border bg-card divide-y divide-border">
+                            {reciters.map((reciter) => (
+                              <button
+                                key={reciter.id}
+                                onClick={() => {
+                                  setSelectedReciterId(reciter.id);
+                                  setShowReciterPicker(false);
+                                  setIsPlaying(false);
+                                }}
+                                className={cn(
+                                  'w-full text-left px-3 py-2.5 text-sm transition-colors',
+                                  reciter.id === selectedReciterId
+                                    ? 'bg-primary/10 text-primary font-semibold'
+                                    : 'text-foreground hover:bg-secondary'
+                                )}
+                              >
+                                {reciter.name}
+                              </button>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Font selector */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Type className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm text-foreground font-medium">Arabic Font</span>
+                    </div>
+                    <div className="flex gap-2">
+                      {FONT_OPTIONS.map((font) => (
+                        <button
+                          key={font.id}
+                          onClick={() => setSelectedFont(font.id)}
+                          className={cn(
+                            'flex-1 py-2 rounded-xl text-xs font-medium transition-colors',
+                            selectedFont === font.id
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                          )}
+                        >
+                          {font.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Arabic size */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Type className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm text-foreground font-medium">Arabic Size</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <motion.button
+                        whileTap={{ scale: 0.88 }}
+                        onClick={() => setArabicSize((s) => Math.max(1, s - 1))}
+                        className="p-1.5 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </motion.button>
+                      <span className="text-sm font-bold w-8 text-center">{arabicSize}</span>
+                      <motion.button
+                        whileTap={{ scale: 0.88 }}
+                        onClick={() => setArabicSize((s) => Math.min(5, s + 1))}
+                        className="p-1.5 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </motion.button>
+                    </div>
+                  </div>
+
+                  {/* Transliteration toggle */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground font-medium">
+                      Show Transliteration
+                    </span>
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setShowTransliteration((t) => !t)}
+                      className={cn(
+                        'w-11 h-6 rounded-full transition-colors duration-200 relative',
+                        showTransliteration ? 'bg-primary' : 'bg-secondary'
+                      )}
+                    >
+                      <motion.span
+                        animate={{ x: showTransliteration ? 20 : 2 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                        className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow block"
+                      />
+                    </motion.button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Verses */}
+        <div className="space-y-4">
+          {verses.map((verse, index) => {
+            const translation = verse.translations?.[0]?.text ?? '';
+            const transliteration =
+              verse.words
+                ?.map((w) => w.transliteration?.text)
+                .filter(Boolean)
+                .join(' ') ?? '';
+            const isBookmarked = !!bookmarkedVerses[verse.verse_number];
+            const isActive = isPlaying && activeVerse === verse.verse_number;
+            const isHighlighted =
+              scrollToVerse === verse.verse_number || activeVerse === verse.verse_number;
+
+            const verseKey = verse.verse_key ?? `${surahNumber}:${verse.verse_number}`;
+            const notesOpen = showNotes === verseKey;
+            const notes = verseNotes[verseKey] ?? [];
+
+            return (
+              <motion.div
+                key={verse.verse_key}
+                id={`verse-${surahNumber}-${verse.verse_number}`}
+                data-verse-key={verseKey}
+                ref={(el) => {
+                  verseRefs.current[verse.verse_number] = el;
+                }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.04 }}
+                className={cn(
+                  'p-5 md:p-6 rounded-2xl border transition-all duration-300',
+                  isActive
+                    ? 'bg-primary/5 border-primary/40 ring-2 ring-primary/20 shadow-md'
+                    : isHighlighted
+                      ? 'bg-card border-primary/40 ring-2 ring-primary/15 shadow-sm'
+                      : 'bg-card border-border hover:border-primary/20'
+                )}
+              >
+                {/* Active verse indicator bar */}
                 {isActive && (
                   <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold"
-                  >
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-                    </span>
-                    Now playing
-                  </motion.div>
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    className="h-0.5 bg-linear-to-r from-primary to-teal rounded-full mb-4 origin-left"
+                  />
                 )}
 
-                <div className="flex items-center gap-1">
-                  <motion.button
-                    whileTap={{ scale: 0.88 }}
-                    onClick={() => toggleBookmark(verse)}
-                    aria-label={
-                      isBookmarked
-                        ? `Remove bookmark from verse ${verse.verse_number}`
-                        : `Bookmark verse ${verse.verse_number}`
-                    }
-                    aria-pressed={isBookmarked}
+                {/* Verse header */}
+                <div className="flex items-center justify-between mb-4">
+                  <div
                     className={cn(
-                      'p-2 rounded-xl transition-colors focus-ring',
-                      isBookmarked
-                        ? 'text-accent bg-gold-muted'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                    )}
-                  >
-                    <Bookmark className={cn('w-4 h-4', isBookmarked && 'fill-current')} />
-                  </motion.button>
-                  <motion.button
-                    whileTap={{ scale: 0.88 }}
-                    onClick={() => toggleNotes(verseKey)}
-                    aria-label={
-                      notesOpen
-                        ? `Close notes for verse ${verse.verse_number}`
-                        : `Add note to verse ${verse.verse_number}`
-                    }
-                    aria-expanded={notesOpen}
-                    className={cn(
-                      'p-2 rounded-xl transition-colors focus-ring',
-                      notesOpen
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                    )}
-                  >
-                    <PenLine className="w-4 h-4" />
-                  </motion.button>
-                  <motion.button
-                    whileTap={{ scale: 0.88 }}
-                    onClick={() => handlePlayVerse(verse.verse_number)}
-                    aria-label={
+                      'w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm transition-colors duration-300',
                       isActive
-                        ? `Pause verse ${verse.verse_number}`
-                        : `Play verse ${verse.verse_number}`
-                    }
-                    aria-pressed={isActive}
-                    className={cn(
-                      'p-2 rounded-xl transition-colors focus-ring',
-                      isActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                        ? 'bg-linear-to-br from-primary to-teal text-white shadow-sm'
+                        : 'bg-linear-to-br from-primary/10 to-teal/10 text-primary'
                     )}
                   >
-                    {isActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                  </motion.button>
-                  <motion.button
-                    whileTap={{ scale: 0.88 }}
-                    aria-label={`Share verse ${verse.verse_number}`}
-                    className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors focus-ring"
-                  >
-                    <Share2 className="w-4 h-4" />
-                  </motion.button>
+                    {verse.verse_number}
+                  </div>
+
+                  {/* Active playing badge */}
+                  {isActive && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold"
+                    >
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                      </span>
+                      Now playing
+                    </motion.div>
+                  )}
+
+                  <div className="flex items-center gap-1">
+                    <motion.button
+                      whileTap={{ scale: 0.88 }}
+                      onClick={() => toggleBookmark(verse)}
+                      aria-label={
+                        isBookmarked
+                          ? `Remove bookmark from verse ${verse.verse_number}`
+                          : `Bookmark verse ${verse.verse_number}`
+                      }
+                      aria-pressed={isBookmarked}
+                      className={cn(
+                        'p-2 rounded-xl transition-colors focus-ring',
+                        isBookmarked
+                          ? 'text-accent bg-gold-muted'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                      )}
+                    >
+                      <Bookmark className={cn('w-4 h-4', isBookmarked && 'fill-current')} />
+                    </motion.button>
+                    <motion.button
+                      whileTap={{ scale: 0.88 }}
+                      onClick={() => toggleNotes(verseKey)}
+                      aria-label={
+                        notesOpen
+                          ? `Close notes for verse ${verse.verse_number}`
+                          : `Add note to verse ${verse.verse_number}`
+                      }
+                      aria-expanded={notesOpen}
+                      className={cn(
+                        'p-2 rounded-xl transition-colors focus-ring',
+                        notesOpen
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                      )}
+                    >
+                      <PenLine className="w-4 h-4" />
+                    </motion.button>
+                    <motion.button
+                      whileTap={{ scale: 0.88 }}
+                      onClick={() => handlePlayVerse(verse.verse_number)}
+                      aria-label={
+                        isActive
+                          ? `Pause verse ${verse.verse_number}`
+                          : `Play verse ${verse.verse_number}`
+                      }
+                      aria-pressed={isActive}
+                      className={cn(
+                        'p-2 rounded-xl transition-colors focus-ring',
+                        isActive
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                      )}
+                    >
+                      {isActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                    </motion.button>
+                    <motion.button
+                      whileTap={{ scale: 0.88 }}
+                      aria-label={`Share verse ${verse.verse_number}`}
+                      className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors focus-ring"
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </motion.button>
+                  </div>
                 </div>
-              </div>
 
-              {/* Arabic — word-by-word with selected font */}
-              {selectedFont === 'tajweed' ? (
-                <div
-                  dir="rtl"
-                  className={cn(
-                    'text-center leading-[2.5] mb-4 tajweed-text',
-                    arabicSizeClass
-                  )}
-                  style={{ fontFamily: 'QPCHafs, var(--font-arabic)' }}
-                  dangerouslySetInnerHTML={{
-                    __html: loadingTajweed
-                      ? '...'
-                      : (tajweedMap[verse.verse_key] ?? verse.text_uthmani)
-                  }}
-                />
-              ) : (
-                <p
-                  dir="rtl"
-                  className={cn(
-                    'text-foreground text-center leading-[2.5] mb-4 wrap-break-word',
-                    arabicSizeClass
-                  )}
-                >
-                  {verse.words?.length ? (
-                    verse.words
-                      .filter((word) => word.char_type_name !== 'end')
-                      .map((word) => {
-                        const fontOpt = FONT_OPTIONS.find((f) => f.id === selectedFont)!;
-                        return (
-                          <span key={word.id} style={{ fontFamily: fontOpt.fontFamily }}>
-                            {(word[fontOpt.wordField] as string) || word.text_uthmani}{' '}
-                          </span>
-                        );
-                      })
-                  ) : (
-                    <span style={{ fontFamily: 'var(--font-arabic)' }}>{verse.text_uthmani}</span>
-                  )}
-                </p>
-              )}
-
-              {/* Transliteration */}
-              {showTransliteration && transliteration && (
-                <p className="text-sm text-muted-foreground text-center mb-3 italic">
-                  {transliteration}
-                </p>
-              )}
-
-              {/* Translation — footnote <sup> clicks fetch /foot_notes/:id */}
-              {translation && (
-                <div
-                  className="text-foreground/90 text-center font-serif leading-relaxed [&_sup]:text-xs [&_sup]:text-primary [&_sup]:cursor-pointer [&_sup]:hover:underline"
-                  onClick={handleTranslationClick}
-                  dangerouslySetInnerHTML={{ __html: translation }}
-                />
-              )}
-
-              {/* Footnote popup */}
-              {footnote && (
-                <div className="mt-3 p-3 rounded-xl bg-secondary/60 border border-border text-sm text-foreground/80 leading-relaxed relative">
-                  <button
-                    onClick={() => setFootnote(null)}
-                    className="absolute top-2 right-2 text-muted-foreground hover:text-foreground text-xs"
-                  >
-                    ✕
-                  </button>
-                  <span className="font-semibold text-primary mr-1">Note:</span>
-                  <span dangerouslySetInnerHTML={{ __html: footnote.text }} />
-                </div>
-              )}
-
-              {/* Tafsir toggle */}
-              <button
-                onClick={() => toggleTafsir(verse.verse_number)}
-                className="flex items-center gap-2 mx-auto mt-4 text-sm text-primary hover:text-primary/80 transition-colors font-semibold"
-              >
-                <BookOpen className="w-4 h-4" />
-                <span>{showTafsir === verse.verse_number ? 'Hide' : 'Show'} Tafsir</span>
-                {showTafsir === verse.verse_number ? (
-                  <ChevronUp className="w-4 h-4" />
+                {/* Arabic — word-by-word with selected font */}
+                {selectedFont === 'tajweed' ? (
+                  <div
+                    dir="rtl"
+                    className={cn('text-center leading-[2.5] mb-4 tajweed-text', arabicSizeClass)}
+                    style={{ fontFamily: 'QPCHafs, var(--font-arabic)' }}
+                    dangerouslySetInnerHTML={{
+                      __html: loadingTajweed
+                        ? '...'
+                        : (tajweedMap[verse.verse_key] ?? verse.text_uthmani)
+                    }}
+                  />
                 ) : (
-                  <ChevronDown className="w-4 h-4" />
-                )}
-              </button>
-
-              <AnimatePresence>
-                {showTafsir === verse.verse_number && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.22 }}
-                    className="overflow-hidden"
+                  <p
+                    dir="rtl"
+                    className={cn(
+                      'text-foreground text-center leading-[2.5] mb-4 wrap-break-word',
+                      arabicSizeClass
+                    )}
                   >
-                    <div className="mt-4 p-4 rounded-xl bg-linear-to-br from-secondary/50 to-teal-muted/50">
-                      {loadingTafsir ? (
-                        <div className="flex items-center gap-2 justify-center py-2">
-                          <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                          <span className="text-xs text-muted-foreground">Loading tafsir...</span>
-                        </div>
-                      ) : tafsirs[verse.verse_number] ? (
-                        <p
-                          className="text-sm text-foreground/80 leading-relaxed"
-                          dangerouslySetInnerHTML={{ __html: tafsirs[verse.verse_number] }}
-                        />
-                      ) : (
-                        <p className="text-sm text-muted-foreground text-center">
-                          Tafsir not available for this verse.
-                        </p>
-                      )}
-                    </div>
-                  </motion.div>
+                    {verse.words?.length ? (
+                      verse.words
+                        .filter((word) => word.char_type_name !== 'end')
+                        .map((word) => {
+                          const fontOpt = FONT_OPTIONS.find((f) => f.id === selectedFont)!;
+                          return (
+                            <span key={word.id} style={{ fontFamily: fontOpt.fontFamily }}>
+                              {(word[fontOpt.wordField] as string) || word.text_uthmani}{' '}
+                            </span>
+                          );
+                        })
+                    ) : (
+                      <span style={{ fontFamily: 'var(--font-arabic)' }}>{verse.text_uthmani}</span>
+                    )}
+                  </p>
                 )}
-              </AnimatePresence>
 
-              {/* Notes panel */}
-              <AnimatePresence>
-                {notesOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.22 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="mt-4 p-4 rounded-xl bg-secondary/40 border border-border space-y-3">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-                        Your Notes
-                      </p>
+                {/* Transliteration */}
+                {showTransliteration && transliteration && (
+                  <p className="text-sm text-muted-foreground text-center mb-3 italic">
+                    {transliteration}
+                  </p>
+                )}
 
-                      {/* Existing notes */}
-                      {notes.length === 0 && verseNotes[verseKey] !== undefined && (
-                        <p className="text-xs text-muted-foreground">
-                          No notes yet. Add one below.
-                        </p>
-                      )}
-                      {notes.map((note) => (
-                        <div key={note.id} className="space-y-1">
-                          {editingNoteId === note.id ? (
-                            <div className="space-y-2">
-                              <textarea
-                                value={editingNoteText}
-                                onChange={(e) => setEditingNoteText(e.target.value)}
-                                rows={3}
-                                className="w-full text-sm rounded-lg border border-border bg-card px-3 py-2 text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
-                              />
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => handleUpdateNote(verseKey, note.id)}
-                                  disabled={savingNote}
-                                  className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
-                                >
-                                  <Check className="w-3 h-3" /> Save
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setEditingNoteId(null);
-                                    setEditingNoteText('');
-                                  }}
-                                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                                >
-                                  <X className="w-3 h-3" /> Cancel
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex items-start justify-between gap-2 group">
-                              <p className="text-sm text-foreground/80 leading-relaxed flex-1">
-                                {note.body}
-                              </p>
-                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                                <button
-                                  onClick={() => {
-                                    setEditingNoteId(note.id);
-                                    setEditingNoteText(note.body);
-                                  }}
-                                  className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors"
-                                >
-                                  <PenLine className="w-3 h-3" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteNote(verseKey, note.id)}
-                                  className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                {/* Translation — footnote <sup> clicks fetch /foot_notes/:id */}
+                {translation && (
+                  <div
+                    className="text-foreground/90 text-center font-serif leading-relaxed [&_sup]:text-xs [&_sup]:text-primary [&_sup]:cursor-pointer [&_sup]:hover:underline"
+                    onClick={handleTranslationClick}
+                    dangerouslySetInnerHTML={{ __html: translation }}
+                  />
+                )}
 
-                      {/* New note input */}
-                      {editingNoteId === null && (
-                        <div className="space-y-2">
-                          <textarea
-                            value={noteInput}
-                            onChange={(e) => setNoteInput(e.target.value)}
-                            placeholder="Write a note on this verse…"
-                            rows={2}
-                            className="w-full text-sm rounded-lg border border-border bg-card px-3 py-2 text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                {/* Footnote popup */}
+                {footnote && (
+                  <div className="mt-3 p-3 rounded-xl bg-secondary/60 border border-border text-sm text-foreground/80 leading-relaxed relative">
+                    <button
+                      onClick={() => setFootnote(null)}
+                      className="absolute top-2 right-2 text-muted-foreground hover:text-foreground text-xs"
+                    >
+                      ✕
+                    </button>
+                    <span className="font-semibold text-primary mr-1">Note:</span>
+                    <span dangerouslySetInnerHTML={{ __html: footnote.text }} />
+                  </div>
+                )}
+
+                {/* Tafsir toggle */}
+                <button
+                  onClick={() => toggleTafsir(verse.verse_number)}
+                  className="flex items-center gap-2 mx-auto mt-4 text-sm text-primary hover:text-primary/80 transition-colors font-semibold"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>{showTafsir === verse.verse_number ? 'Hide' : 'Show'} Tafsir</span>
+                  {showTafsir === verse.verse_number ? (
+                    <ChevronUp className="w-4 h-4" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )}
+                </button>
+
+                <AnimatePresence>
+                  {showTafsir === verse.verse_number && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.22 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-4 p-4 rounded-xl bg-linear-to-br from-secondary/50 to-teal-muted/50">
+                        {loadingTafsir ? (
+                          <div className="flex items-center gap-2 justify-center py-2">
+                            <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                            <span className="text-xs text-muted-foreground">Loading tafsir...</span>
+                          </div>
+                        ) : tafsirs[verse.verse_number] ? (
+                          <p
+                            className="text-sm text-foreground/80 leading-relaxed"
+                            dangerouslySetInnerHTML={{ __html: tafsirs[verse.verse_number] }}
                           />
-                          <button
-                            onClick={() => handleSaveNote(verseKey)}
-                            disabled={savingNote || !noteInput.trim()}
-                            className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors disabled:opacity-40"
-                          >
-                            {savingNote ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center">
+                            Tafsir not available for this verse.
+                          </p>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Notes panel */}
+                <AnimatePresence>
+                  {notesOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.22 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-4 p-4 rounded-xl bg-secondary/40 border border-border space-y-3">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+                          Your Notes
+                        </p>
+
+                        {/* Existing notes */}
+                        {notes.length === 0 && verseNotes[verseKey] !== undefined && (
+                          <p className="text-xs text-muted-foreground">
+                            No notes yet. Add one below.
+                          </p>
+                        )}
+                        {notes.map((note) => (
+                          <div key={note.id} className="space-y-1">
+                            {editingNoteId === note.id ? (
+                              <div className="space-y-2">
+                                <textarea
+                                  value={editingNoteText}
+                                  onChange={(e) => setEditingNoteText(e.target.value)}
+                                  rows={3}
+                                  className="w-full text-sm rounded-lg border border-border bg-card px-3 py-2 text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                                />
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleUpdateNote(verseKey, note.id)}
+                                    disabled={savingNote}
+                                    className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+                                  >
+                                    <Check className="w-3 h-3" /> Save
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setEditingNoteId(null);
+                                      setEditingNoteText('');
+                                    }}
+                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                  >
+                                    <X className="w-3 h-3" /> Cancel
+                                  </button>
+                                </div>
+                              </div>
                             ) : (
-                              <Check className="w-3 h-3" />
+                              <div className="flex items-start justify-between gap-2 group">
+                                <p className="text-sm text-foreground/80 leading-relaxed flex-1">
+                                  {note.body}
+                                </p>
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                  <button
+                                    onClick={() => {
+                                      setEditingNoteId(note.id);
+                                      setEditingNoteText(note.body);
+                                    }}
+                                    className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors"
+                                  >
+                                    <PenLine className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteNote(verseKey, note.id)}
+                                    className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </div>
                             )}
-                            Save note
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          );
-        })}
+                          </div>
+                        ))}
 
-        {/* Load more */}
-        {page < totalPages && (
-          <button
-            onClick={loadMoreVerses}
-            disabled={loadingMore}
-            className="w-full py-3 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors flex items-center justify-center gap-2"
-          >
-            {loadingMore ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Loading...
-              </>
-            ) : (
-              <>
-                <ChevronDown className="w-4 h-4" />
-                Load more verses
-              </>
-            )}
-          </button>
-        )}
+                        {/* New note input */}
+                        {editingNoteId === null && (
+                          <div className="space-y-2">
+                            <textarea
+                              value={noteInput}
+                              onChange={(e) => setNoteInput(e.target.value)}
+                              placeholder="Write a note on this verse…"
+                              rows={2}
+                              className="w-full text-sm rounded-lg border border-border bg-card px-3 py-2 text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                            />
+                            <button
+                              onClick={() => handleSaveNote(verseKey)}
+                              disabled={savingNote || !noteInput.trim()}
+                              className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors disabled:opacity-40"
+                            >
+                              {savingNote ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Check className="w-3 h-3" />
+                              )}
+                              Save note
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            );
+          })}
+
+          {/* Load more */}
+          {page < totalPages && (
+            <button
+              onClick={loadMoreVerses}
+              disabled={loadingMore}
+              className="w-full py-3 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors flex items-center justify-center gap-2"
+            >
+              {loadingMore ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-4 h-4" />
+                  Load more verses
+                </>
+              )}
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Tajweed legend sidebar */}
+      {selectedFont === 'tajweed' && (
+        <div className="hidden lg:block w-48 shrink-0 sticky top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto">
+          <TajweedLegend />
+        </div>
+      )}
     </div>
-
-    {/* Tajweed legend sidebar */}
-    {selectedFont === 'tajweed' && (
-      <div className="hidden lg:block w-48 shrink-0 sticky top-4 self-start max-h-[calc(100vh-2rem)] overflow-y-auto">
-        <TajweedLegend />
-      </div>
-    )}
-  </div>
   );
 }

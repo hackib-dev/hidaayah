@@ -628,8 +628,7 @@ export default function AIGuidanceSection() {
                       w-full
                     "
                   style={{
-                    background:
-                      'linear-gradient(90deg, transparent, var(--border), transparent)'
+                    background: 'linear-gradient(90deg, transparent, var(--border), transparent)'
                   }}
                 />
 

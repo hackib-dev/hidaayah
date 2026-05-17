@@ -137,15 +137,15 @@ A persistent floating chat panel available on every page of the authenticated ap
 
 **Supported intents:**
 
-| Intent | Example | What happens |
-|---|---|---|
-| Open specific verse | "Show me 2:255" or "Ayat al-Kursi" | Fetches verse via `/verses/by_key/:key`, returns Arabic + translation + inline "Open in reader →" link |
-| Surah info | "Tell me about Al-Kahf" | Fetches chapter metadata + first verse |
-| Tafsir lookup | "Tafsir of Ad-Duha" | Fetches Ibn Kathir tafsir for that verse |
-| Semantic search | "Find verses about patience" / "I am struggling" | Hits QF Search API, returns top result |
-| Random ayah | "Surprise me" | Calls `/verses/random`, returns a random verse |
-| Juz / Hizb navigation | "Open Juz 30" | Returns summary + "Open Juz 30 →" deep link |
-| Reciter lookup | "Find Mishari Alafasy" | Deep links to the Reciters tab filtered to that name |
+| Intent                | Example                                          | What happens                                                                                           |
+| --------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| Open specific verse   | "Show me 2:255" or "Ayat al-Kursi"               | Fetches verse via `/verses/by_key/:key`, returns Arabic + translation + inline "Open in reader →" link |
+| Surah info            | "Tell me about Al-Kahf"                          | Fetches chapter metadata + first verse                                                                 |
+| Tafsir lookup         | "Tafsir of Ad-Duha"                              | Fetches Ibn Kathir tafsir for that verse                                                               |
+| Semantic search       | "Find verses about patience" / "I am struggling" | Hits QF Search API, returns top result                                                                 |
+| Random ayah           | "Surprise me"                                    | Calls `/verses/random`, returns a random verse                                                         |
+| Juz / Hizb navigation | "Open Juz 30"                                    | Returns summary + "Open Juz 30 →" deep link                                                            |
+| Reciter lookup        | "Find Mishari Alafasy"                           | Deep links to the Reciters tab filtered to that name                                                   |
 
 **Navigation integration:**
 
@@ -185,18 +185,21 @@ Users can browse the Quran by Surah, Juz, Hizb, Page, or Reciters — each surfa
 A gamified XP and progression system that grows a visual garden as the user engages with the Quran.
 
 **XP system:**
+
 - Two actions earn XP: reading a unique Mushaf page (+10 XP) and expanding tafsir (+8 XP)
 - Pages are deduplicated via a persisted Set — revisiting the same page never re-awards XP
 - 20 levels with non-linear XP thresholds (60 XP for level 2 up to 12 000 XP for level 20)
 - An XP toast notification animates up from the bottom of the screen whenever XP is earned
 
 **Garden progression:**
+
 - The SVG garden scene evolves through 4 visual stages based on total XP (stage 2 at 300 XP, stage 3 at 1 000 XP, stage 4 at 3 000 XP)
 - 12 unlockable garden elements tied to milestones: first flowers, rich grass, first tree, pathway, wisdom tree (10 tafsirs read), stream, birds, fruit tree, glowing path (30 tafsirs), rare flowers, waterfall, and golden light (all 604 pages read)
 - Garden "vitality" — a health percentage based on weekly XP that determines how lush and saturated the scene looks; an inactive week dims the garden
 - Floating particle animations, stage-specific sky gradients, and soft SVG filters
 
 **Stats panel:**
+
 - Total XP, weekly XP, current level with XP-to-next-level bar
 - Garden stage badge and unlocked element count
 - Streak days and last activity date
