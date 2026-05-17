@@ -1,13 +1,11 @@
 <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="32" height="32" rx="7" fill="oklch(0.4 0.12 185)"/>
+  <rect width="32" height="32" rx="7" fill="#2a6b5f"/>
   <defs>
     <mask id="cm">
       <rect width="32" height="32" fill="white"/>
-      <circle cx="21" cy="12" r="11" fill="black"/>
+      <circle cx="22" cy="13" r="9" fill="black"/>
     </mask>
   </defs>
-  <!-- Crescent moon -->
-  <circle cx="16" cy="16" r="13" fill="white" mask="url(#cm)"/>
-  <!-- Star dot -->
-  <circle cx="27" cy="6" r="2" fill="white"/>
+  <circle cx="16" cy="16" r="10" fill="white" mask="url(#cm)"/>
+  <circle cx="27" cy="7" r="2" fill="white"/>
 </svg>

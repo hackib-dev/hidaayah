@@ -1,14 +1,11 @@
 <svg width="192" height="192" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background with safe zone padding for maskable -->
-  <rect width="192" height="192" rx="0" fill="oklch(0.4 0.12 185)"/>
+  <rect width="192" height="192" fill="#2a6b5f"/>
   <defs>
     <mask id="cm">
       <rect width="192" height="192" fill="white"/>
-      <circle cx="124" cy="74" r="66" fill="black"/>
+      <circle cx="114" cy="84" r="39" fill="black"/>
     </mask>
   </defs>
-  <!-- Crescent moon — centered within maskable safe zone (40px inset each side) -->
-  <circle cx="96" cy="96" r="78" fill="white" mask="url(#cm)"/>
-  <!-- Star dot -->
-  <circle cx="162" cy="36" r="12" fill="white"/>
+  <circle cx="96" cy="96" r="45" fill="white" mask="url(#cm)"/>
+  <circle cx="132" cy="63" r="7.5" fill="white"/>
 </svg>

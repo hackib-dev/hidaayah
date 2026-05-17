@@ -7,65 +7,74 @@ const floatingWords = [
   {
     text: 'anxiety',
     x: '8%',
-    y: '15%',
+    y: '10%',
     size: '22px',
-    delay: 0.1
+    delay: 0.1,
+    mobileHide: false
   },
   {
     text: 'distraction',
-    x: '72%',
-    y: '10%',
+    x: '68%',
+    y: '8%',
     size: '17px',
-    delay: 0.3
+    delay: 0.3,
+    mobileHide: false
   },
   {
     text: 'emptiness',
-    x: '14%',
-    y: '52%',
-    size: '26px',
-    delay: 0.5
+    x: '2%',
+    y: '38%',
+    size: '20px',
+    delay: 0.5,
+    mobileHide: false
   },
   {
     text: 'noise',
-    x: '78%',
-    y: '42%',
+    x: '82%',
+    y: '32%',
     size: '20px',
-    delay: 0.2
+    delay: 0.2,
+    mobileHide: false
   },
   {
     text: 'searching',
-    x: '55%',
-    y: '22%',
+    x: '52%',
+    y: '18%',
     size: '18px',
-    delay: 0.7
+    delay: 0.7,
+    mobileHide: false
   },
   {
     text: 'overwhelmed',
-    x: '40%',
-    y: '90%',
-    size: '24px',
-    delay: 0.4
+    x: '28%',
+    y: '88%',
+    size: '20px',
+    delay: 0.4,
+    mobileHide: false
   },
   {
     text: 'lost',
-    x: '85%',
-    y: '68%',
-    size: '28px',
-    delay: 0.6
+    x: '80%',
+    y: '72%',
+    size: '24px',
+    delay: 0.6,
+    mobileHide: true
   },
   {
     text: 'hollow',
-    x: '5%',
-    y: '80%',
+    x: '3%',
+    y: '78%',
     size: '16px',
-    delay: 0.8
+    delay: 0.8,
+    mobileHide: false
   },
   {
     text: 'restless',
-    x: '62%',
-    y: '82%',
+    x: '60%',
+    y: '84%',
     size: '19px',
-    delay: 0.35
+    delay: 0.35,
+    mobileHide: false
   }
 ];
 
@@ -114,11 +123,11 @@ export default function ProblemSection() {
               delay: word.delay,
               ease: [0.16, 1, 0.3, 1]
             }}
-            className="absolute select-none italic text-muted-foreground"
+            className={`absolute select-none italic text-muted-foreground max-w-[45vw] sm:max-w-none ${word.mobileHide ? 'hidden sm:block' : ''}`}
             style={{
               left: word.x,
               top: word.y,
-              fontSize: word.size,
+              fontSize: `clamp(13px, ${word.size}, ${word.size})`,
               fontWeight: 300,
               fontFamily: "'Cormorant Garamond', serif",
               filter: 'blur(0.5px)'
