@@ -998,6 +998,12 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
                   )}
                   dir="rtl"
                 >
+                  {/* Tajweed active-verse highlight — injected here so it survives linter rewrites of globals.css */}
+                  {font === 'tajweed' && (
+                    <style>{`
+                      .tajweed-active { background: rgba(180,140,60,0.18); border-radius: 6px; box-shadow: 0 0 0 2px rgba(180,140,60,0.35); }
+                    `}</style>
+                  )}
                   {/* Hidden per-verse sentinels for IntersectionObserver */}
                   <div
                     ref={(el) => {
@@ -1076,20 +1082,23 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
                               );
                             }
                           }
+                          const isActive = activeVerseKey === verse.verse_key;
                           elements.push(
                             <span
                               key={verse.verse_key}
                               onClick={() => {
-                                if (activeVerseKey === verse.verse_key) setIsPlaying((p) => !p);
+                                if (isActive) setIsPlaying((p) => !p);
                                 else playVerse(verse.verse_key);
                               }}
-                              className="tajweed-text cursor-pointer transition-opacity duration-150 px-px"
+                              className={cn(
+                                'tajweed-text cursor-pointer transition-all duration-150 px-px',
+                                isActive && 'tajweed-active'
+                              )}
                               style={{
                                 fontFamily: "'UthmanicHafs', serif",
                                 fontSize: activeFontSize,
                                 lineHeight: String(tajweedLineHeightRatio),
-                                opacity:
-                                  activeVerseKey && activeVerseKey !== verse.verse_key ? 0.45 : 1
+                                opacity: activeVerseKey && !isActive ? 0.35 : 1,
                               }}
                               dangerouslySetInnerHTML={{
                                 __html: loadingTajweed ? '' : (tajweedMap[verse.verse_key] ?? '')
@@ -1098,17 +1107,30 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
                           );
                         }
                         return (
-                          <div
-                            dir="rtl"
-                            style={{
-                              lineHeight: String(tajweedLineHeightRatio),
-                              textAlign: 'justify',
-                              textAlignLast: 'center',
-                              wordSpacing: '0.15em',
-                              padding: '0 8px'
-                            }}
-                          >
-                            {elements}
+                          <div>
+                            {activeVerseKey && (
+                              <div className="flex justify-center mb-2">
+                                <button
+                                  onClick={() => { setActiveVerseKey(null); setIsPlaying(false); setCurrentVerseKey(null); }}
+                                  className="text-[10px] px-2.5 py-1 rounded-full border border-border bg-background text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+                                  style={{ fontFamily: 'var(--font-sans)' }}
+                                >
+                                  ✕ clear selection
+                                </button>
+                              </div>
+                            )}
+                            <div
+                              dir="rtl"
+                              style={{
+                                lineHeight: String(tajweedLineHeightRatio),
+                                textAlign: 'justify',
+                                textAlignLast: 'center',
+                                wordSpacing: '0.15em',
+                                padding: '0 8px'
+                              }}
+                            >
+                              {elements}
+                            </div>
                           </div>
                         );
                       })()
