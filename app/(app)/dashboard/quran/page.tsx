@@ -215,14 +215,40 @@ export default function QuranPage() {
 
   // ─── Juz handlers ──────────────────────────────────────────────────────────
   const handleSelectJuz = (_juzNumber: number, verseKey: string) => {
-    const [chapter, verse] = verseKey.split(':');
-    openReader(parseInt(chapter, 10), parseInt(verse, 10));
+    fetchPageForVerseKey(verseKey)
+      .then((page) => {
+        if (page) {
+          setSelectedPage(page);
+          setReaderMode('mushaf');
+          setView('reader');
+        } else {
+          const [chapter, verse] = verseKey.split(':');
+          openReader(parseInt(chapter, 10), parseInt(verse, 10));
+        }
+      })
+      .catch(() => {
+        const [chapter, verse] = verseKey.split(':');
+        openReader(parseInt(chapter, 10), parseInt(verse, 10));
+      });
   };
 
   // ─── Hizb handlers ─────────────────────────────────────────────────────────
   const handleSelectHizb = (_hizbNumber: number, verseKey: string) => {
-    const [chapter, verse] = verseKey.split(':');
-    openReader(parseInt(chapter, 10), parseInt(verse, 10));
+    fetchPageForVerseKey(verseKey)
+      .then((page) => {
+        if (page) {
+          setSelectedPage(page);
+          setReaderMode('mushaf');
+          setView('reader');
+        } else {
+          const [chapter, verse] = verseKey.split(':');
+          openReader(parseInt(chapter, 10), parseInt(verse, 10));
+        }
+      })
+      .catch(() => {
+        const [chapter, verse] = verseKey.split(':');
+        openReader(parseInt(chapter, 10), parseInt(verse, 10));
+      });
   };
 
   // ─── Page handlers ─────────────────────────────────────────────────────────
