@@ -625,13 +625,18 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
   // Max font sizes per user preference (caps to avoid overflow)
   const maxFontSizePx = { xs: 19, sm: 24, md: 30 };
   const lineHeightRatio = 2.4;
+  // Tajweed renders as flowing inline text that wraps naturally.
+  // Use the same line-count formula as QCF but with no upper cap so the font
+  // grows large enough to actually fill the container height.
+  const tajweedLineHeightRatio = 2.4;
   const numLines = sortedLines.length || 15;
   const verticalPadding = 48;
   const computedFontPx =
     containerHeight > 0
       ? Math.min(
-          (containerHeight - verticalPadding) / (numLines * lineHeightRatio),
-          maxFontSizePx[fontSize]
+          (containerHeight - verticalPadding) /
+            (numLines * (font === 'tajweed' ? tajweedLineHeightRatio : lineHeightRatio)),
+          font === 'tajweed' ? 999 : maxFontSizePx[fontSize]
         )
       : maxFontSizePx[fontSize];
   const activeFontSize = `${computedFontPx}px`;
@@ -659,9 +664,8 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
   const getWordText = (word: LineWord): string => {
     if (font === 'qcf_v2' && fontReady) return word.code_v2 || word.text_qpc_hafs;
     if (word.char_type_name === 'end') {
-      // Render verse number in an ornate circle for non-QCF fonts
-      const num = word.text_qpc_hafs; // Arabic numeral e.g. ١
-      return `<span style="display:inline-flex;align-items:center;justify-content:center;width:1.6em;height:1.6em;border-radius:50%;border:1.5px solid currentColor;font-size:0.6em;line-height:1;margin:0 0.15em;vertical-align:middle;font-family:'UthmanicHafs',serif">${num}</span>`;
+      const num = word.text_qpc_hafs;
+      return `<span class="tajweed-text"><span class="end">${num}</span></span>`;
     }
     if (font === 'indopak') return word.text_indopak || word.text_uthmani || word.text_qpc_hafs;
     return word.text_qpc_hafs || word.text_uthmani;
@@ -891,11 +895,11 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
     <div
       className={cn(
         'flex gap-4 items-start select-none w-full relative',
-        fullscreen && 'fixed inset-0 z-50 bg-background p-4 overflow-y-auto'
+        fullscreen && 'fixed inset-0 z-50 bg-background p-4 overflow-hidden'
       )}
     >
       {/* ── Mushaf page column ─────────────────────────────────── */}
-      <div className="flex flex-col items-center flex-1 min-w-0">
+      <div className={cn('flex flex-col items-center flex-1 min-w-0', fullscreen && 'h-full')}>
         {/* Page label + mobile toggle */}
         <div className="w-full flex items-center justify-between px-1 py-1.5 mb-2">
           <span className="text-xs text-muted-foreground font-medium">
@@ -942,7 +946,7 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
         </div>
 
         {/* Mushaf page — arrows overlaid on hover */}
-        <div className="relative w-full group/page">
+        <div className={cn('relative w-full group/page', fullscreen && 'flex-1 min-h-0')}>
           {/* Next arrow (left = forward in RTL) */}
           <button
             onClick={() => goTo(page + 1)}
@@ -963,11 +967,14 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
             ref={containerRef}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
-            className="w-full rounded-2xl shadow-md overflow-y-auto relative"
+            className={cn(
+              'w-full rounded-2xl shadow-md overflow-y-auto relative',
+              fullscreen && 'h-full'
+            )}
             style={{
               background: themeConfig.bg,
               border: `1px solid ${themeConfig.border}`,
-              ...(fullscreen ? { minHeight: 'calc(100vh - 8rem)' } : { aspectRatio: '1 / 1.41' })
+              ...(!fullscreen && { aspectRatio: '1 / 1.41' })
             }}
           >
             {loading ? (
@@ -985,7 +992,10 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="min-h-full flex flex-col justify-center px-4 py-6"
+                  className={cn(
+                    'min-h-full flex flex-col px-4 py-6',
+                    font !== 'tajweed' && 'justify-center'
+                  )}
                   dir="rtl"
                 >
                   {/* Hidden per-verse sentinels for IntersectionObserver */}
@@ -1007,78 +1017,154 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
                       />
                     ))}
                   </div>
-                  {sortedLines.map(([lineNum, words]) => {
-                    const bannerChapterId = surahBannerLines.get(lineNum);
-                    const bannerInfo = bannerChapterId ? chapterNames[bannerChapterId] : null;
-                    // golden tint that works across all three themes
-                    const gold =
-                      theme === 'dark' ? 'rgba(180,140,60,0.55)' : 'rgba(120,90,30,0.25)';
-                    const goldText = theme === 'dark' ? '#c8a84b' : '#7a5c1e';
-                    return (
-                      <div key={lineNum}>
-                        {bannerInfo && (
+                  {font === 'tajweed'
+                    ? (() => {
+                        // In tajweed mode: render surah banners then all verses as one continuous flow.
+                        // Line-by-line structure only applies to QCF fonts; tajweed HTML is whole-verse.
+                        const gold =
+                          theme === 'dark' ? 'rgba(180,140,60,0.55)' : 'rgba(120,90,30,0.25)';
+                        const goldText = theme === 'dark' ? '#c8a84b' : '#7a5c1e';
+                        const seenChapters = new Set<number>();
+                        const elements: React.ReactNode[] = [];
+                        for (const verse of verses) {
+                          const chapterId = parseInt(verse.verse_key.split(':')[0], 10);
+                          const verseNum = parseInt(verse.verse_key.split(':')[1], 10);
+                          if (verseNum === 1 && !seenChapters.has(chapterId)) {
+                            seenChapters.add(chapterId);
+                            const bannerInfo = chapterNames[chapterId];
+                            if (bannerInfo) {
+                              elements.push(
+                                <div
+                                  key={`banner-${chapterId}`}
+                                  className="w-full my-2 mx-1 flex items-center justify-center"
+                                  dir="rtl"
+                                  style={{
+                                    border: `1.5px solid ${gold}`,
+                                    borderRadius: '6px',
+                                    padding: '4px 12px',
+                                    background:
+                                      theme === 'dark'
+                                        ? 'rgba(180,140,60,0.08)'
+                                        : 'rgba(120,90,30,0.06)',
+                                    position: 'relative'
+                                  }}
+                                >
+                                  {[
+                                    'top-0 right-0',
+                                    'top-0 left-0',
+                                    'bottom-0 right-0',
+                                    'bottom-0 left-0'
+                                  ].map((pos) => (
+                                    <span
+                                      key={pos}
+                                      className={`absolute ${pos} w-2 h-2 rounded-sm`}
+                                      style={{ background: gold, margin: '-1px' }}
+                                    />
+                                  ))}
+                                  <span
+                                    style={{
+                                      fontFamily: "'UthmanicHafs', 'Amiri', serif",
+                                      fontSize: '0.95rem',
+                                      color: goldText,
+                                      letterSpacing: '0.04em',
+                                      fontWeight: 600
+                                    }}
+                                  >
+                                    سُورَةُ {bannerInfo.arabic}
+                                  </span>
+                                </div>
+                              );
+                            }
+                          }
+                          elements.push(
+                            <span
+                              key={verse.verse_key}
+                              onClick={() => {
+                                if (activeVerseKey === verse.verse_key) setIsPlaying((p) => !p);
+                                else playVerse(verse.verse_key);
+                              }}
+                              className="tajweed-text cursor-pointer transition-opacity duration-150 px-px"
+                              style={{
+                                fontFamily: "'UthmanicHafs', serif",
+                                fontSize: activeFontSize,
+                                lineHeight: String(tajweedLineHeightRatio),
+                                opacity:
+                                  activeVerseKey && activeVerseKey !== verse.verse_key ? 0.45 : 1
+                              }}
+                              dangerouslySetInnerHTML={{
+                                __html: loadingTajweed ? '' : (tajweedMap[verse.verse_key] ?? '')
+                              }}
+                            />
+                          );
+                        }
+                        return (
                           <div
-                            className="my-2 mx-1 flex items-center justify-center"
                             dir="rtl"
                             style={{
-                              border: `1.5px solid ${gold}`,
-                              borderRadius: '6px',
-                              padding: '4px 12px',
-                              background:
-                                theme === 'dark' ? 'rgba(180,140,60,0.08)' : 'rgba(120,90,30,0.06)',
-                              position: 'relative'
+                              lineHeight: String(tajweedLineHeightRatio),
+                              textAlign: 'justify',
+                              textAlignLast: 'center',
+                              wordSpacing: '0.15em',
+                              padding: '0 8px'
                             }}
                           >
-                            {/* corner ornaments */}
-                            {[
-                              'top-0 right-0',
-                              'top-0 left-0',
-                              'bottom-0 right-0',
-                              'bottom-0 left-0'
-                            ].map((pos) => (
-                              <span
-                                key={pos}
-                                className={`absolute ${pos} w-2 h-2 rounded-sm`}
-                                style={{ background: gold, margin: '-1px' }}
-                              />
-                            ))}
-                            <span
-                              style={{
-                                fontFamily: "'UthmanicHafs', 'Amiri', serif",
-                                fontSize: '0.95rem',
-                                color: goldText,
-                                letterSpacing: '0.04em',
-                                fontWeight: 600
-                              }}
-                            >
-                              سُورَةُ {bannerInfo.arabic}
-                            </span>
+                            {elements}
                           </div>
-                        )}
-                        <div
-                          className="flex justify-center items-baseline flex-wrap"
-                          style={{ lineHeight: String(lineHeightRatio) }}
-                        >
-                          {font === 'tajweed'
-                            ? [...new Map(words.map((w) => [w.verseKey, w])).keys()].map((vk) => (
+                        );
+                      })()
+                    : sortedLines.map(([lineNum, words]) => {
+                        const bannerChapterId = surahBannerLines.get(lineNum);
+                        const bannerInfo = bannerChapterId ? chapterNames[bannerChapterId] : null;
+                        const gold =
+                          theme === 'dark' ? 'rgba(180,140,60,0.55)' : 'rgba(120,90,30,0.25)';
+                        const goldText = theme === 'dark' ? '#c8a84b' : '#7a5c1e';
+                        return (
+                          <div key={lineNum}>
+                            {bannerInfo && (
+                              <div
+                                className="my-2 mx-1 flex items-center justify-center"
+                                dir="rtl"
+                                style={{
+                                  border: `1.5px solid ${gold}`,
+                                  borderRadius: '6px',
+                                  padding: '4px 12px',
+                                  background:
+                                    theme === 'dark'
+                                      ? 'rgba(180,140,60,0.08)'
+                                      : 'rgba(120,90,30,0.06)',
+                                  position: 'relative'
+                                }}
+                              >
+                                {[
+                                  'top-0 right-0',
+                                  'top-0 left-0',
+                                  'bottom-0 right-0',
+                                  'bottom-0 left-0'
+                                ].map((pos) => (
+                                  <span
+                                    key={pos}
+                                    className={`absolute ${pos} w-2 h-2 rounded-sm`}
+                                    style={{ background: gold, margin: '-1px' }}
+                                  />
+                                ))}
                                 <span
-                                  key={vk}
-                                  onClick={() => {
-                                    if (activeVerseKey === vk) setIsPlaying((p) => !p);
-                                    else playVerse(vk);
-                                  }}
-                                  className="tajweed-text cursor-pointer transition-opacity duration-150 px-px"
                                   style={{
-                                    fontFamily: "'UthmanicHafs', serif",
-                                    fontSize: activeFontSize,
-                                    opacity: activeVerseKey && activeVerseKey !== vk ? 0.45 : 1
+                                    fontFamily: "'UthmanicHafs', 'Amiri', serif",
+                                    fontSize: '0.95rem',
+                                    color: goldText,
+                                    letterSpacing: '0.04em',
+                                    fontWeight: 600
                                   }}
-                                  dangerouslySetInnerHTML={{
-                                    __html: loadingTajweed ? '' : (tajweedMap[vk] ?? '')
-                                  }}
-                                />
-                              ))
-                            : words.map((word, wi) => (
+                                >
+                                  سُورَةُ {bannerInfo.arabic}
+                                </span>
+                              </div>
+                            )}
+                            <div
+                              className="flex justify-center items-baseline flex-wrap"
+                              style={{ lineHeight: String(lineHeightRatio) }}
+                            >
+                              {words.map((word, wi) => (
                                 <span
                                   key={`${word.verseKey}-${word.position}-${wi}`}
                                   onClick={() => {
@@ -1096,10 +1182,10 @@ export function MushafPageView({ startPage, chapterName, onPageChange }: MushafP
                                   dangerouslySetInnerHTML={{ __html: getWordText(word) }}
                                 />
                               ))}
-                        </div>
-                      </div>
-                    );
-                  })}
+                            </div>
+                          </div>
+                        );
+                      })}
                   {verses.length === 0 && (
                     <p
                       className="text-center py-12 text-sm"

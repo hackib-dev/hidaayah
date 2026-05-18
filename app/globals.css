@@ -236,6 +236,27 @@
 .tajweed-text tajweed[class='izhaar_qamar']        { color: #4488EE; }
 .tajweed-text tajweed[class='ghunnah']             { color: #22AA00; }
 
+/* Verse end marker circle — the QF tajweed API renders numbers as <span class="end"> */
+.tajweed-text span.end {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6em;
+  height: 1.6em;
+  border-radius: 50%;
+  border: 1.5px solid #b8860b;
+  color: #b8860b;
+  font-size: 0.55em;
+  line-height: 1;
+  margin: 0 0.25em;
+  vertical-align: middle;
+  font-family: 'UthmanicHafs', serif;
+}
+.dark .tajweed-text span.end {
+  border-color: #d4a843;
+  color: #d4a843;
+}
+
 /* Dark mode overrides for tajweed — boost colours that are too dark */
 .dark .tajweed-text tajweed[class='ham_wasl']            { color: #AAAAAA; }
 .dark .tajweed-text tajweed[class='slnt']                { color: #AAAAAA; }
