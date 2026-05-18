@@ -165,7 +165,7 @@ A persistent floating chat panel available on every page of the authenticated ap
 
 ---
 
-### 7. Quran Navigation Formats
+### 6. Quran Navigation Formats
 
 Users can browse the Quran by Surah, Juz, Hizb, Page, or Reciters — each surfacing a different structural view.
 
@@ -180,7 +180,7 @@ Users can browse the Quran by Surah, Juz, Hizb, Page, or Reciters — each surfa
 
 ---
 
-### 8. Quran Garden (`/dashboard/garden`)
+### 7. Quran Garden (`/dashboard/garden`)
 
 A gamified XP and progression system that grows a visual garden as the user engages with the Quran.
 
@@ -212,7 +212,7 @@ A gamified XP and progression system that grows a visual garden as the user enga
 
 ---
 
-### 9. Reflections Journal (`/dashboard/reflections`)
+### 8. Reflections Journal (`/dashboard/reflections`)
 
 A personal spiritual journal powered by the QF Reflect API.
 
@@ -238,7 +238,7 @@ A personal spiritual journal powered by the QF Reflect API.
 
 ---
 
-### 10. Recitation Circles (`/dashboard/circles`)
+### 9. Recitation Circles (`/dashboard/circles`)
 
 Community live-recitation rooms powered by QF Reflect Rooms API.
 
@@ -252,7 +252,7 @@ Community live-recitation rooms powered by QF Reflect Rooms API.
 
 ---
 
-### 11. Goals & Progress Tracking (`/dashboard/goals`)
+### 10. Goals & Progress Tracking (`/dashboard/goals`)
 
 Daily Quran engagement goals backed by QF User API.
 
@@ -266,7 +266,7 @@ Daily Quran engagement goals backed by QF User API.
 
 ---
 
-### 12. Thematic Collections (`/dashboard/collections`)
+### 11. Thematic Collections (`/dashboard/collections`)
 
 Curated verse collections by theme (Mercy, Patience, Gratitude, etc.).
 
@@ -278,13 +278,13 @@ Curated verse collections by theme (Mercy, Patience, Gratitude, etc.).
 
 ---
 
-### 13. Bookmarks (`/dashboard/bookmarks`)
+### 12. Bookmarks (`/dashboard/bookmarks`)
 
 A single view of all verses the user has bookmarked across the app, with direct links back to the reader.
 
 ---
 
-### 14. Home Dashboard (`/dashboard`)
+### 13. Home Dashboard (`/dashboard`)
 
 An at-a-glance summary of the user's Quran engagement:
 
@@ -301,7 +301,7 @@ An at-a-glance summary of the user's Quran engagement:
 
 ---
 
-### 15. Profile & Settings (`/dashboard/profile`)
+### 14. Profile & Settings (`/dashboard/profile`)
 
 - Display name, username, bio, country (ISO 3166-1 alpha-2 dropdown), verified badge, followers count, join year
 - Edit profile fields synced to QF Reflect API (`/v1/profile`)
@@ -313,7 +313,7 @@ An at-a-glance summary of the user's Quran engagement:
 
 ---
 
-### 16. Authentication
+### 15. Authentication
 
 Full OAuth2 PKCE flow using QF's OAuth2 server.
 
@@ -328,14 +328,102 @@ Full OAuth2 PKCE flow using QF's OAuth2 server.
 
 ## QF APIs Used
 
-| API                                         | Endpoints                                                                                                                                                                                                                                                                                                                                                                                    |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Content API** (`/content/api/v4`)         | chapters, verses by chapter/juz/page/key, verse audio files, `/resources/recitations`, `/resources/chapter_reciters`, `/chapter_recitations/:id/:chapter`, tafsirs, foot notes, pages, juzs, hizbs, random ayah, collections, bookmarks, notes, reading sessions, activity days, preferences, **`/quran/verses/uthmani_tajweed`** (colour-coded tajweed HTML for Translation & Mushaf views) |
-| **Search API**                              | `/search` — semantic search by emotion/situation text                                                                                                                                                                                                                                                                                                                                        |
-| **User API** (proxied `/api/qf/auth`)       | `/v1/users/me`, `/v1/bookmarks`, `/v1/notes`, `/v1/reading-sessions`, `/v1/activity-days`, `/v1/goals`, `/v1/goal-plans`, `/v1/streaks`, `/v1/preferences`                                                                                                                                                                                                                                   |
-| **Reflect API** (proxied `/api/qf/reflect`) | `/v1/profile`, `/v1/posts`, `/v1/posts/:id/like`, `/v1/posts/:id/save`, `/v1/notes`, `/v1/rooms`, `/v1/rooms/search`, `/v1/rooms/:id/join`                                                                                                                                                                                                                                                   |
+### Content API (`/content/api/v4`) — 20 endpoints
 
-**Total unique endpoints used: 90+**
+| Endpoint | Used by |
+|----------|---------|
+| `GET /chapters` | Surah list |
+| `GET /chapters/:id` | Reader surah header, Companion |
+| `GET /verses/by_chapter/:chapter` | Translation reader |
+| `GET /verses/by_page/:page` | Mushaf page view |
+| `GET /verses/by_juz/:juz` | Juz view |
+| `GET /verses/by_key/:key` | Companion (show verse), guidance |
+| `GET /verses/random` | Home "verse of the moment", Companion "surprise me" |
+| `GET /quran/verses/uthmani_tajweed` | Tajweed colour-coded font (Translation & Mushaf) |
+| `GET /resources/recitations` | Mushaf & Translation reciter selector |
+| `GET /resources/chapter_reciters` | Reciters browser tab |
+| `GET /recitations/:reciterId/by_chapter/:chapter` | Per-ayah audio in Mushaf & Translation readers |
+| `GET /chapter_recitations/:reciterId/:chapter` | Full-chapter audio in Reciters tab |
+| `GET /resources/tafsirs` | Tafsir panel (list available tafsir books) |
+| `GET /tafsirs/:id/by_chapter/:chapter` | Tafsir panel in Translation reader |
+| `GET /tafsirs/:id/by_ayah/:key` | Guidance tafsir, Companion tafsir intent |
+| `GET /pages` | Page navigation view (all 604 pages grid) |
+| `GET /pages/lookup` | Resolve verse key → mushaf page number |
+| `GET /juzs` | Juz list & jump selectors |
+| `GET /hizbs` | Hizb list & jump selectors |
+| `GET /collections` / `GET /collections/:id` | Thematic collections browse & detail |
+
+### Search API — 1 endpoint
+
+| Endpoint | Used by |
+|----------|---------|
+| `GET /v1/search` | Emotion-driven guidance, Companion semantic search |
+
+### User API (proxied via `/api/qf/auth`) — 18 endpoints
+
+| Endpoint | Used by |
+|----------|---------|
+| `GET /v1/bookmarks` | Bookmarks page, reader bookmark state |
+| `POST /v1/bookmarks` | Bookmark verse (reader, guidance) |
+| `DELETE /v1/bookmarks/:id` | Remove bookmark |
+| `GET /v1/notes` | Reflections journal Notes tab |
+| `POST /v1/notes` | Add verse note in reader |
+| `PATCH /v1/notes/:id` | Edit note |
+| `DELETE /v1/notes/:id` | Delete note |
+| `POST /v1/reading-sessions` | Track reading position (IntersectionObserver) |
+| `POST /v1/activity-days` | Flush activity seconds every 10s |
+| `GET /v1/goals` | Goals page, home dashboard summary |
+| `POST /v1/goals` | Create goal |
+| `PUT /v1/goals/:id` | Edit goal |
+| `DELETE /v1/goals/:id` | Delete goal |
+| `GET /v1/goals/estimate` | Goal completion estimate preview |
+| `GET /v1/goals/get-todays-plan` | Home dashboard today's goal progress |
+| `GET /v1/streaks` | Home dashboard streak, profile streak card |
+| `GET /v1/preferences` | Load saved font/scale/reciter on reader mount |
+| `POST /v1/preferences/bulk` | Save font/scale/reciter preference changes |
+
+### Reflect API (proxied via `/api/qf/reflect`) — 26 endpoints
+
+| Endpoint | Used by |
+|----------|---------|
+| `GET /v1/users/profile` | Profile page |
+| `PUT /v1/users/profile` | Edit profile |
+| `GET /v1/users/:id` | View other user profiles |
+| `GET /v1/users/search` | User search |
+| `POST /v1/users/:id/toggle-follow` | Follow / unfollow |
+| `GET /v1/users/:id/followers` | Followers list |
+| `GET /v1/users/:id/following` | Following list |
+| `GET /v1/posts/my-posts` | Reflections journal tab |
+| `POST /v1/posts` | Create reflection (journal, guidance) |
+| `PUT /v1/posts/:id` | Edit reflection |
+| `DELETE /v1/posts/:id` | Delete reflection |
+| `POST /v1/posts/:id/toggle-like` | Like reflection |
+| `POST /v1/posts/:id/toggle-save` | Save reflection |
+| `POST /v1/posts/:id/views` | Record post view |
+| `GET /v1/posts/:id/comments` | View comments |
+| `POST /v1/comments` | Add comment |
+| `POST /v1/comments/:id/toggle-like` | Like comment |
+| `GET /v1/rooms/joined-rooms` | Circles — my rooms |
+| `GET /v1/rooms/managed-rooms` | Circles — rooms I manage |
+| `GET /v1/rooms/search` | Circles search |
+| `GET /v1/rooms/:id` | Room detail |
+| `GET /v1/rooms/:id/members` | Room members list |
+| `GET /v1/rooms/:id/posts` | Room feed |
+| `POST /v1/rooms/groups` | Create circle |
+| `POST /v1/rooms/:id/invite` | Invite member |
+| `POST /v1/rooms/:id/join` | Join room |
+
+### OAuth2 — 2 endpoints
+
+| Endpoint | Used by |
+|----------|---------|
+| `GET /oauth2/auth` | Login / Signup redirect |
+| `POST /oauth2/token` | Authorization code exchange + token refresh |
+
+---
+
+**Total confirmed active endpoints: 67**  
+(20 Content API + 1 Search + 18 User API + 26 Reflect API + 2 OAuth)
 
 ---
 
